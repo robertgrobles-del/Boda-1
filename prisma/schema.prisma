@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model RSVP {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String
+  attending    Boolean
+  guestsCount  Int
+  dietary      String?
+  message      String?
+  cedulas      String   // Almacenado como JSON string o valores separados por comas
+  createdAt    DateTime @default(now())
+}
+
+model SongSuggestion {
+  id        Int      @id @default(autoincrement())
+  song      String
+  createdAt DateTime @default(now())
+}
