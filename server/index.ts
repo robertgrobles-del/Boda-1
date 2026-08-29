@@ -6,6 +6,9 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 
+// Carga `.env` (lo que también lee la CLI de Prisma) y, por compatibilidad,
+// `.env.backend` sin sobreescribir lo ya definido.
+dotenv.config();
 dotenv.config({ path: './.env.backend' });
 
 const prisma = new PrismaClient();

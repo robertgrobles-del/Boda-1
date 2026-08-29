@@ -35,15 +35,15 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
       id="inicio"
       className="relative flex min-h-[100svh] w-full flex-col overflow-hidden bg-stone-900"
     >
-      {/* Foto de fondo (LCP) */}
+      {/* Foto de fondo (LCP) - Desplazada hacia arriba (70%) para mejor encuadre */}
       <div className="absolute inset-0 z-0">
         <img
           {...responsiveImg(PHOTOS.heroBackground, '100vw')}
           alt=""
           fetchPriority="high"
-          className="h-full w-full object-cover object-center"
+          className="h-full w-full object-cover object-[center_80%]"
         />
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" />
+        {/* <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" /> */}
       </div>
 
       {/* Círculos decorativos (desktop) */}
@@ -70,13 +70,13 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
               <div className="h-[1px] w-10 bg-olive/60 md:w-14 lg:hidden" />
             </div>
 
-            <h2 className="mb-4 w-full px-2 font-signature text-[15vw] leading-[1.1] text-white sm:text-7xl md:mb-12 md:text-8xl lg:text-[100px] xl:text-[120px] max-[480px]:text-[18vw]">
+            <h2 className="mb-1 w-full px-2 font-signature text-[15vw] leading-[1.1] text-white sm:text-7xl md:mb-12 md:text-8xl lg:text-[100px] xl:text-[120px] max-[480px]:text-[18vw]">
               Stephanie <br />
               <span className="font-serif text-[10vw] text-cream/90 sm:text-5xl lg:text-7xl max-[480px]:text-[12vw]">&amp;</span> Daniel
             </h2>
 
             {/* Foto de novios en formato arco, visible solo en dispositivos móviles (reducida en móvil para ahorrar espacio vertical) */}
-            <div className="mx-auto mb-4 block h-40 w-32 overflow-hidden rounded-t-full border-4 border-white/30 shadow-2xl md:h-60 md:w-48 lg:hidden">
+            <div className="mx-auto mb-4 -mt-4 block h-40 w-32 overflow-hidden rounded-t-full border-4 border-white/30 shadow-2xl md:h-60 md:w-48 md:mt-0 lg:hidden">
               <img
                 src={PHOTOS.heroArch}
                 alt="Stephanie y Daniel"

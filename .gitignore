@@ -24,6 +24,9 @@ dist-ssr
 *.sw?
 
 # Backend & DB
+.env
+.env.*
+!.env.example
 .env.backend
 prisma/dev.db
 prisma/dev.db-journal

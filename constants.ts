@@ -77,7 +77,12 @@ export const GIFT = {
 
 export const API_CONFIG = {
     cedulaValidationBaseUrl: "https://api.digital.gob.do/v3/cedulas/",
-    backendUrl: "http://localhost:3001", // Cambiar por la URL de producción (Railway, etc.)
+    // En producción el backend vive en el mismo dominio bajo /api (ver vercel.json),
+    // así que se usan rutas relativas. En local apunta al servidor de `npm run backend`.
+    // Se puede forzar con la variable de entorno VITE_API_URL.
+    backendUrl:
+        (import.meta.env.VITE_API_URL as string | undefined) ??
+        (import.meta.env.PROD ? "" : "http://localhost:3001"),
 };
 
 // --- Calendario -------------------------------------------------------------
