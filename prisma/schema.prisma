@@ -13,16 +13,16 @@ datasource db {
 }
 
 model RSVP {
-  id           Int      @id @default(autoincrement())
-  name         String
-  email        String
-  phone        String?  // Teléfono del invitado
-  attending    Boolean
-  guestsCount  Int
-  dietary      String?
-  message      String?
-  cedulas      String   // Almacenado como JSON string o valores separados por comas
-  createdAt    DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String
+  phone       String? // Teléfono del invitado
+  attending   Boolean
+  guestsCount Int
+  dietary     String?
+  message     String?
+  cedulas     String // Almacenado como JSON string o valores separados por comas
+  createdAt   DateTime @default(now())
 }
 
 model SongSuggestion {

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ChevronRight, MapPin, Calendar } from 'lucide-react';
 import { responsiveImg } from '../utils/images';
 import { PHOTOS } from '../constants';
@@ -75,13 +75,20 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
               <span className="font-serif text-[10vw] text-cream/90 sm:text-5xl lg:text-7xl max-[480px]:text-[12vw]">&amp;</span> Daniel
             </h2>
 
-            {/* Foto de novios en formato arco, visible solo en dispositivos móviles (reducida en móvil para ahorrar espacio vertical) */}
-            <div className="mx-auto mb-4 -mt-4 block h-40 w-32 overflow-hidden rounded-t-full border-4 border-white/30 shadow-2xl md:h-60 md:w-48 md:mt-0 lg:hidden">
-              <img
-                src={PHOTOS.heroArch}
-                alt="Stephanie y Daniel"
-                className="h-full w-full object-cover object-center"
-              />
+            {/* Foto de novios en formato arco, visible solo en dispositivos móviles (rota automáticamente entre las fotos) */}
+            <div className="mx-auto mb-4 -mt-4 block h-40 w-32 overflow-hidden rounded-t-full border-4 border-white/30 shadow-2xl md:h-60 md:w-48 md:mt-0 lg:hidden relative">
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={images[rotationIndex]}
+                  src={images[rotationIndex]}
+                  alt="Stephanie y Daniel"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 1 }}
+                  className="absolute inset-0 h-full w-full object-cover object-center"
+                />
+              </AnimatePresence>
             </div>
 
             <div className="mb-4 flex flex-col items-center space-y-2 md:mb-14 md:flex-row md:space-x-8 md:space-y-0 lg:items-start max-[480px]:space-y-2">
