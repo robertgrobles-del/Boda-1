@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, ChevronDown, Users, AlertCircle } from 'lucide-react';
 import { ThankYou } from './ThankYou';
 import { API_CONFIG } from '../constants';
+import { useToast } from './Toast';
 
 interface RSVPFormProps {
   id: string;
@@ -11,11 +12,14 @@ interface RSVPFormProps {
 }
 
 export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
+  const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
+    pin: '',
     attending: 'yes',
     guests: '1 Invitado',
     dietary: '',
@@ -84,7 +88,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
     }
 
     if (formData.attending === 'yes' && cedulaStatus.some(s => s !== 'valid')) {
-      alert('Por favor verifique que todas las cédulas sean válidas.');
+      toast('Verifica que todas las cédulas estén completas y sean válidas.', 'error');
       return;
     }
 
@@ -100,12 +104,15 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
         })
       });
 
-      if (!response.ok) throw new Error('Error en el envío');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error en el envío');
+      }
 
       setSubmitted(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting RSVP:', error);
-      alert('Hubo un error al enviar tu confirmación. Por favor intenta de nuevo.');
+      toast(error.message || 'Hubo un error al enviar tu confirmación. Intenta de nuevo.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -140,7 +147,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
         initial={isModal ? {} : { opacity: 0, y: 30 }}
         whileInView={isModal ? {} : { opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className={`bg-white rounded-[2rem] border-4 border-[#b35a44]/10 ${isModal ? '' : 'shadow-2xl p-6 md:p-12 max-w-xl mx-auto overflow-hidden max-[480px]:p-8'}`}
+        className={`bg-white rounded-[2rem] border-4 border-olive/10 ${isModal ? '' : 'shadow-2xl p-6 md:p-12 max-w-xl mx-auto overflow-hidden max-[480px]:p-8'}`}
       >
         <AnimatePresence mode="wait">
           {!submitted ? (
@@ -152,9 +159,9 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
               className={isModal ? 'p-6 md:p-8' : ''}
             >
               <div className="text-center mb-6 md:mb-10">
-                <span className="text-[#b35a44] text-[8px] md:text-[10px] font-bold uppercase tracking-[0.4em] mb-3 md:mb-4 block">CONFIRMACIÓN</span>
-                <h2 className="font-signature text-3xl md:text-5xl text-[#4a5d23] mb-2">Confirma tu Asistencia</h2>
-                <p className="text-stone-400 text-[10px] italic">Por favor confirma antes del 11 de Octubre, 2026.</p>
+                <span className="text-olive text-[8px] md:text-[10px] font-bold uppercase tracking-[0.4em] mb-3 md:mb-4 block">CONFIRMACIÓN</span>
+                <h2 className="font-signature text-3xl md:text-5xl text-olive mb-2">Confirma tu Asistencia</h2>
+                <p className="text-stone-500 text-[11px] italic">Por favor confirma antes del 11 de octubre de 2026.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
@@ -170,21 +177,50 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                   </div>
 
                   <div className="space-y-1 md:space-y-2">
-                    <label className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Nombre Completo</label>
+                    <label htmlFor="rsvp-name" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Nombre Completo</label>
                     <input
+                      id="rsvp-name"
                       required
-                      className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-[#4a5d23] focus:bg-white transition-all text-sm text-stone-700"
+                      className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-olive focus:bg-white transition-all text-sm text-stone-700"
                       placeholder="Tu nombre"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1 md:space-y-2">
+                      <label htmlFor="rsvp-phone" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Teléfono</label>
+                      <input
+                        id="rsvp-phone"
+                        required
+                        type="tel"
+                        className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-olive focus:bg-white transition-all text-sm text-stone-700"
+                        placeholder="Ej: 8095551234"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1 md:space-y-2">
+                      <label htmlFor="rsvp-pin" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">PIN</label>
+                      <input
+                        id="rsvp-pin"
+                        required
+                        type="text"
+                        maxLength={6}
+                        className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-olive focus:bg-white transition-all text-sm text-stone-700 font-mono tracking-widest text-center"
+                        placeholder="XXXX"
+                        value={formData.pin}
+                        onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-1 md:space-y-2">
-                    <label className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Correo Electrónico</label>
+                    <label htmlFor="rsvp-email" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Correo Electrónico</label>
                     <input
+                      id="rsvp-email"
                       required
                       type="email"
-                      className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-[#4a5d23] focus:bg-white transition-all text-sm text-stone-700"
+                      className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-olive focus:bg-white transition-all text-sm text-stone-700"
                       placeholder="tu@email.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -202,7 +238,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                         value="yes"
                         checked={formData.attending === 'yes'}
                         onChange={() => setFormData({ ...formData, attending: 'yes' })}
-                        className="w-4 h-4 accent-[#4a5d23]"
+                        className="w-4 h-4 accent-olive"
                       />
                       <span className="text-xs text-stone-600 group-hover:text-stone-800 transition-colors">Sí, con gusto</span>
                     </label>
@@ -213,7 +249,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                         value="no"
                         checked={formData.attending === 'no'}
                         onChange={() => setFormData({ ...formData, attending: 'no' })}
-                        className="w-4 h-4 accent-[#4a5d23]"
+                        className="w-4 h-4 accent-olive"
                       />
                       <span className="text-xs text-stone-600 group-hover:text-stone-800 transition-colors">Lamentablemente no</span>
                     </label>
@@ -229,9 +265,10 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                       className="space-y-4 overflow-hidden"
                     >
                       <div className="space-y-1 md:space-y-2">
-                        <label className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Número de Invitados</label>
+                        <label htmlFor="rsvp-guests" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Número de Invitados</label>
                         <select
-                          className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-[#4a5d23] focus:bg-white transition-all text-sm text-stone-700 cursor-pointer"
+                          id="rsvp-guests"
+                          className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-olive focus:bg-white transition-all text-sm text-stone-700 cursor-pointer"
                           value={formData.guests}
                           onChange={(e) => setFormData({ ...formData, guests: e.target.value })}
                         >
@@ -244,29 +281,34 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                       <div className="space-y-3">
                         {cedulas.map((cedula, index) => (
                           <div key={index} className="space-y-1 md:space-y-2 relative">
-                            <div className="flex justify-between items-center">
-                              <label className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">
-                                Cédula {cedulas.length > 1 ? `Persona ${index + 1}` : ''}
-                              </label>
-                              <span className={`text-[8px] font-bold uppercase transition-colors px-2 py-0.5 rounded ${cedulaStatus[index] === 'valid' ? 'bg-green-100 text-green-600' :
-                                cedulaStatus[index] === 'invalid' ? 'bg-red-100 text-red-600' :
+                            <label htmlFor={`rsvp-cedula-${index}`} className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">
+                              Cédula {cedulas.length > 1 ? `Persona ${index + 1}` : ''}
+                            </label>
+                            <div className="relative">
+                              <input
+                                id={`rsvp-cedula-${index}`}
+                                required
+                                className={`w-full px-4 py-3 pr-24 border rounded-lg focus:outline-none focus:bg-white transition-all text-sm text-stone-700 ${
+                                  cedulaStatus[index] === 'valid' ? 'border-green-300 bg-green-50/10 focus:border-green-500' :
+                                  cedulaStatus[index] === 'invalid' ? 'border-red-300 bg-red-50/10 focus:border-red-500' :
+                                  'border-stone-100 bg-stone-50 focus:border-olive'
+                                }`}
+                                placeholder="001-0000000-0"
+                                value={cedula}
+                                onChange={(e) => handleCedulaChange(index, e.target.value)}
+                              />
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+                                <span aria-live="polite" className={`text-[8px] font-bold uppercase px-2 py-1 rounded shadow-sm transition-all duration-300 ${
+                                  cedulaStatus[index] === 'valid' ? 'bg-green-100 text-green-700' :
+                                  cedulaStatus[index] === 'invalid' ? 'bg-red-100 text-red-600' :
                                   cedulaStatus[index] === 'loading' ? 'bg-blue-100 text-blue-600 animate-pulse' : 'hidden'
                                 }`}>
-                                {cedulaStatus[index] === 'valid' ? '✓ Válida' :
-                                  cedulaStatus[index] === 'invalid' ? '✕ Inválida' :
-                                    'Validando...'}
-                              </span>
+                                  {cedulaStatus[index] === 'valid' ? '✓ Válida' :
+                                    cedulaStatus[index] === 'invalid' ? '✕ Inválida' :
+                                      'Validando'}
+                                </span>
+                              </div>
                             </div>
-                            <input
-                              required
-                              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:bg-white transition-all text-sm text-stone-700 ${cedulaStatus[index] === 'valid' ? 'border-green-200 bg-green-50/30 focus:border-green-500' :
-                                cedulaStatus[index] === 'invalid' ? 'border-red-200 bg-red-50/30 focus:border-red-500' :
-                                  'border-stone-100 bg-stone-50 focus:border-[#4a5d23]'
-                                }`}
-                              placeholder="001-0000000-0"
-                              value={cedula}
-                              onChange={(e) => handleCedulaChange(index, e.target.value)}
-                            />
                           </div>
                         ))}
                         <p className="text-[10px] text-stone-400 italic px-1">
@@ -275,9 +317,10 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                       </div>
 
                       <div className="space-y-1 md:space-y-2">
-                        <label className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Restricciones</label>
+                        <label htmlFor="rsvp-dietary" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Restricciones</label>
                         <input
-                          className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-[#4a5d23] focus:bg-white transition-all text-sm text-stone-700"
+                          id="rsvp-dietary"
+                          className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-olive focus:bg-white transition-all text-sm text-stone-700"
                           placeholder="Alergias (Opcional)"
                           value={formData.dietary}
                           onChange={(e) => setFormData({ ...formData, dietary: e.target.value })}
@@ -290,7 +333,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                 <button
                   type="submit"
                   disabled={isSubmitting || (formData.attending === 'yes' && cedulaStatus.some(s => s === 'loading'))}
-                  className={`w-full py-4 rounded-lg font-bold text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all shadow-lg active:scale-[0.98] ${isSubmitting ? 'bg-stone-400 cursor-wait' : 'bg-[#4a5d23] hover:bg-[#394a1b] text-white'
+                  className={`w-full py-4 rounded-lg font-bold text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all shadow-lg active:scale-[0.98] ${isSubmitting ? 'bg-stone-400 cursor-wait' : 'bg-olive hover:bg-olive-dark text-white'
                     }`}
                 >
                   {isSubmitting ? 'Enviando...' : 'Enviar respuesta'}
@@ -326,7 +369,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
   if (isModal) return content;
 
   return (
-    <section id={id} className="relative py-16 md:py-24 bg-[#b35a44] min-h-screen flex items-center justify-center overflow-hidden">
+    <section id={id} className="relative py-16 md:py-24 bg-olive min-h-screen flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(white_0.8px,transparent_0.8px)] [background-size:24px_24px]"></div>
       </div>

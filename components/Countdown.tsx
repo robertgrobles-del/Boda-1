@@ -1,67 +1,100 @@
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { CountdownTime } from '../types';
 
 interface CountdownProps {
   targetDate: string;
 }
 
+const getRemaining = (targetDate: string): { time: CountdownTime; done: boolean } => {
+  const difference = new Date(targetDate).getTime() - Date.now();
+  if (difference <= 0) {
+    return { time: { days: 0, hours: 0, minutes: 0, seconds: 0 }, done: true };
+  }
+  return {
+    done: false,
+    time: {
+      days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((difference / 1000 / 60) % 60),
+      seconds: Math.floor((difference / 1000) % 60),
+    },
+  };
+};
+
 export const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
-  const [timeLeft, setTimeLeft] = useState<CountdownTime>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [{ time: timeLeft, done }, setState] = useState(() => getRemaining(targetDate));
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      const target = new Date(targetDate).getTime();
-      const now = new Date().getTime();
-      const difference = target - now;
-
-      if (difference > 0) {
-        setTimeLeft({
-          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-          minutes: Math.floor((difference / 1000 / 60) % 60),
-          seconds: Math.floor((difference / 1000) % 60),
-        });
-      } else {
-        clearInterval(timer);
-      }
-    }, 1000);
-    return () => clearInterval(timer);
+    const tick = () => {
+      const next = getRemaining(targetDate);
+      setState(next);
+      if (next.done) window.clearInterval(timer);
+    };
+    const timer = window.setInterval(tick, 1000);
+    tick();
+    return () => window.clearInterval(timer);
   }, [targetDate]);
 
-  const TimeBox = ({ value, label, className = "" }: { value: number, label: string, className?: string }) => (
-    <div className={`flex flex-col items-center group ${className}`}>
+  const TimeBox = ({ value, label }: { value: number; label: string }) => (
+    <div className="flex flex-col items-center">
       <div className="relative mb-3 min-[481px]:mb-6">
-        <div className="w-16 h-16 min-[481px]:w-24 md:w-40 md:h-40 bg-white rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.05)] border border-[#f4ece1] relative z-10 overflow-hidden transform group-hover:scale-105 transition-transform duration-500">
-          <span className="text-xl min-[481px]:text-3xl md:text-6xl font-serif text-[#b35a44] tabular-nums">
+        <div className="relative z-10 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-[#f4ece1] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.05)] min-[481px]:h-24 min-[481px]:w-24 md:h-40 md:w-40">
+          <span className="font-serif text-2xl tabular-nums text-olive min-[481px]:text-3xl md:text-6xl">
             {value.toString().padStart(2, '0')}
           </span>
         </div>
-        {/* Subtle inner shadow/gradient for depth */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-stone-50/50 to-transparent pointer-events-none z-20"></div>
+        <div className="pointer-events-none absolute inset-0 z-20 rounded-full bg-gradient-to-tr from-stone-50/50 to-transparent" />
       </div>
-      <span className="text-[8px] min-[481px]:text-[10px] md:text-[12px] font-bold uppercase tracking-[0.2em] min-[481px]:tracking-[0.3em] text-[#6d5b6b] mt-1">
-        {label === "SECONDS" ? "SEC" : label}
+      <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-[#6d5b6b] min-[481px]:text-[10px] min-[481px]:tracking-[0.3em] md:text-[12px]">
+        {label}
       </span>
     </div>
   );
 
   return (
-    <section className="relative min-h-[40vh] min-[481px]:min-h-[60vh] flex items-center justify-center py-12 min-[481px]:py-24 overflow-hidden bg-[#fdfaf6]">
-      <div className="relative z-10 max-w-5xl mx-auto px-6 w-full text-center">
-        <div className="mb-10 min-[481px]:mb-16 md:mb-20">
-          <h2 className="font-serif text-2xl min-[481px]:text-3xl md:text-5xl lg:text-6xl text-[#b35a44] italic font-medium tracking-tight px-4">
-            Counting down the days until we say "I Do"
-          </h2>
-        </div>
+    <section
+      id="cuenta-regresiva"
+      className="relative flex min-h-[40vh] items-center justify-center overflow-hidden bg-cream py-12 min-[481px]:min-h-[60vh] min-[481px]:py-24"
+    >
+      <div className="relative z-10 mx-auto w-full max-w-5xl px-6 text-center">
+        {done ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="space-y-6"
+          >
+            <span className="block text-[10px] font-bold uppercase tracking-[0.4em] text-olive">
+              Hoy es el día
+            </span>
+            <h2 className="px-4 font-signature text-5xl text-olive md:text-8xl">
+              ¡Hoy nos casamos!
+            </h2>
+            <p className="mx-auto max-w-md font-serif text-base italic text-stone-500 md:text-lg">
+              Gracias por acompañarnos a celebrar este momento.
+            </p>
+          </motion.div>
+        ) : (
+          <>
+            <div className="mb-10 min-[481px]:mb-16 md:mb-20">
+              <span className="mb-3 block text-[10px] font-bold uppercase tracking-[0.5em] text-olive min-[481px]:mb-4 min-[481px]:text-xs">
+                Faltan
+              </span>
+              <h2 className="px-4 font-serif text-2xl font-medium italic tracking-tight text-olive min-[481px]:text-3xl md:text-5xl lg:text-6xl">
+                para nuestro gran día
+              </h2>
+            </div>
 
-        <div className="flex justify-center gap-2 min-[481px]:gap-6 md:gap-12 lg:gap-16">
-          <TimeBox value={timeLeft.days} label="DAYS" />
-          <TimeBox value={timeLeft.hours} label="HOURS" />
-          <TimeBox value={timeLeft.minutes} label="MINUTES" />
-          <TimeBox value={timeLeft.seconds} label="SECONDS" />
-        </div>
+            <div className="flex justify-center gap-2 min-[481px]:gap-6 md:gap-12 lg:gap-16">
+              <TimeBox value={timeLeft.days} label="Días" />
+              <TimeBox value={timeLeft.hours} label="Horas" />
+              <TimeBox value={timeLeft.minutes} label="Min" />
+              <TimeBox value={timeLeft.seconds} label="Seg" />
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

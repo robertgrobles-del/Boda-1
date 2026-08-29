@@ -15,28 +15,28 @@ export const ThankYou: React.FC = () => {
         <motion.div 
           animate={{ scale: [1, 1.2, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="w-24 h-24 md:w-32 md:h-32 hexagon bg-[#4a5d23]/10 flex items-center justify-center mx-auto"
+          className="w-24 h-24 md:w-32 md:h-32 hexagon bg-olive/10 flex items-center justify-center mx-auto"
         >
-          <Heart className="text-[#b35a44]" size={48} fill="currentColor" />
+          <Heart className="text-terracotta" size={48} fill="currentColor" />
         </motion.div>
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-4 -right-4 text-[#4a5d23]"
+          className="absolute -top-4 -right-4 text-olive"
         >
           <Sparkles size={32} />
         </motion.div>
       </div>
 
-      <h2 className="font-serif text-5xl md:text-6xl text-[#1a1a1a] mb-6">¡Gracias por confirmar!</h2>
+      <h2 className="font-serif text-5xl md:text-6xl text-ink mb-6">¡Gracias por confirmar!</h2>
       <p className="text-stone-600 text-lg md:text-xl max-w-md mx-auto leading-relaxed mb-10 italic">
         "Tu presencia es el mejor regalo que podríamos recibir. Estamos ansiosos por compartir este día tan especial contigo."
       </p>
 
       <div className="flex flex-col items-center space-y-4">
-        <div className="w-12 h-px bg-[#4a5d23]/30"></div>
-        <p className="text-[10px] uppercase tracking-[0.5em] font-bold text-[#b35a44]">NOS VEMOS PRONTO</p>
-        <div className="w-12 h-px bg-[#4a5d23]/30"></div>
+        <div className="w-12 h-px bg-olive/30"></div>
+        <p className="text-[10px] uppercase tracking-[0.5em] font-bold text-terracotta">NOS VEMOS PRONTO</p>
+        <div className="w-12 h-px bg-olive/30"></div>
       </div>
 
       <motion.div 
@@ -47,7 +47,7 @@ export const ThankYou: React.FC = () => {
       >
         <button 
           onClick={() => window.location.reload()}
-          className="text-[#4a5d23] text-xs font-bold uppercase tracking-widest hover:underline"
+          className="text-olive text-xs font-bold uppercase tracking-widest hover:underline"
         >
           Volver a ver la invitación
         </button>

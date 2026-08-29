@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "backend": "ts-node server/index.ts",
-    "build": "vite build",
+    "build": "prisma generate && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

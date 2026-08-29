@@ -1,0 +1,18 @@
+{
+  "name": "Stephanie & Daniel - Nuestra Boda",
+  "short_name": "Boda S&D",
+  "description": "Invitación oficial y álbum de recuerdos de la boda de Stephanie & Daniel.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdfaf6",
+  "theme_color": "#4a5d23",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3656/3656821.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -4,7 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stephanie & Daniel - Nuestra Boda</title>
+    <meta name="description" content="Acompáñanos a celebrar la boda de Stephanie & Daniel el 11 de noviembre de 2026 en Santo Domingo, R.D. Confirma tu asistencia.">
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#4a5d23">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Boda S&D">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3656/3656821.png">
+
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        olive: {
+                            DEFAULT: '#4a5d23',
+                            dark: '#3b4c1b',
+                            light: '#f1f4ea',
+                        },
+                        terracotta: {
+                            DEFAULT: '#b35a44',
+                            dark: '#a04d39',
+                        },
+                        cream: '#fdfaf6',
+                        ink: '#1a1a1a',
+                    },
+                    fontFamily: {
+                        serif: ['Playfair Display', 'serif'],
+                        signature: ['Great Vibes', 'cursive'],
+                    }
+                }
+            }
+        }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Great+Vibes&display=swap" rel="stylesheet">
@@ -21,11 +58,33 @@
             background-color: var(--wedding-bg);
             color: var(--wedding-dark);
         }
+        /* Offset para que la barra fija no tape los títulos al navegar */
+        section[id] {
+            scroll-margin-top: 84px;
+        }
+        /* Foco de teclado visible y consistente en todos los controles */
+        :focus-visible {
+            outline: 2px solid var(--wedding-olive);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+        :focus:not(:focus-visible) {
+            outline: none;
+        }
         .font-serif {
             font-family: 'Playfair Display', serif;
         }
         .font-signature {
             font-family: 'Great Vibes', cursive;
+        }
+        /* Bordes de papel rasgado (arriba y abajo) para las bandas de foto */
+        .paper-edge-y {
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' preserveAspectRatio='none'%3E%3Cpath d='M0,16 C60,4 110,24 170,12 C230,2 280,22 340,11 C400,2 460,20 520,10 C555,5 585,14 600,8 L600,588 C540,598 490,578 430,590 C370,600 320,580 260,592 C200,602 150,580 90,592 C55,598 25,588 0,594 Z' fill='%23fff'/%3E%3C/svg%3E");
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' preserveAspectRatio='none'%3E%3Cpath d='M0,16 C60,4 110,24 170,12 C230,2 280,22 340,11 C400,2 460,20 520,10 C555,5 585,14 600,8 L600,588 C540,598 490,578 430,590 C370,600 320,580 260,592 C200,602 150,580 90,592 C55,598 25,588 0,594 Z' fill='%23fff'/%3E%3C/svg%3E");
+            -webkit-mask-size: 100% 100%;
+            mask-size: 100% 100%;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
         }
         .hexagon-mask {
             clip-path: polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%);
@@ -56,7 +115,52 @@
         .animate-slow-pan {
             animation: slow-pan 20s ease-in-out infinite alternate;
         }
-    </style>
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        /* Hojas / pétalos cayendo */
+        @keyframes leaf-fall {
+            0%   { transform: translate3d(0, -6vh, 0) rotate(0deg); }
+            30%  { transform: translate3d(var(--leaf-drift, 24px), 28vh, 0) rotate(calc(var(--leaf-spin, 300deg) * 0.3)); }
+            60%  { transform: translate3d(calc(var(--leaf-drift, 24px) * -1), 60vh, 0) rotate(calc(var(--leaf-spin, 300deg) * 0.6)); }
+            100% { transform: translate3d(0, 112vh, 0) rotate(var(--leaf-spin, 300deg)); }
+        }
+        .leaf-fall {
+            animation-name: leaf-fall;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+            will-change: transform;
+        }
+        .animate-spin-slow {
+            animation: spin-slow 40s linear infinite;
+        }
+        /* Marquee de la galería: se pausa al pasar el cursor o enfocar dentro */
+        @keyframes gallery-marquee {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+        .gallery-marquee-track {
+            animation: gallery-marquee 40s linear infinite;
+            will-change: transform;
+        }
+        .gallery-marquee:hover .gallery-marquee-track,
+        .gallery-marquee:focus-within .gallery-marquee-track,
+        .gallery-marquee-track[data-paused="true"] {
+            animation-play-state: paused;
+        }
+        /* Respeta la preferencia del sistema de reducir movimiento */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+                scroll-behavior: auto !important;
+            }
+            .gallery-marquee-track { animation: none !important; transform: none !important; }
+            .gallery-marquee { overflow-x: auto; }
+        }
+</style>
 <script type="importmap">
 {
   "imports": {
@@ -74,5 +178,14 @@
 <body>
     <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
+                .catch(err => console.error('Error al registrar Service Worker:', err));
+        });
+    }
+</script>
 </body>
 </html>

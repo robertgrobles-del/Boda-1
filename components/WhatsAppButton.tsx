@@ -9,8 +9,16 @@ interface WhatsAppButtonProps {
 export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({ phoneNumber }) => {
   const [isHovered, setIsHovered] = useState(false);
 
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsHovered(true);
+      setTimeout(() => setIsHovered(false), 5000);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="fixed bottom-6 right-6 z-[100] hidden lg:flex items-center group">
+    <div className="fixed bottom-6 right-6 z-[50] flex items-center group">
       <AnimatePresence>
         {isHovered && (
           <motion.div
@@ -19,7 +27,7 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({ phoneNumber }) =
             exit={{ opacity: 0, x: 20 }}
             className="mr-3 bg-white px-4 py-2 rounded-full shadow-xl border border-stone-100"
           >
-            <span className="text-[#4a5d23] text-sm font-bold uppercase tracking-widest whitespace-nowrap">
+            <span className="text-olive text-sm font-bold uppercase tracking-widest whitespace-nowrap">
               ¿Dudas? Pregúntame
             </span>
           </motion.div>

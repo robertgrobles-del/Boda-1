@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Church, Utensils } from 'lucide-react';
+import { SectionHeader } from './SectionHeader';
 
 export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
   const containerVariants = {
@@ -27,18 +28,11 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
       </div>
 
       <div className="max-w-6xl mx-auto relative z-10 w-full">
-        {/* Header Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-16 md:mb-24"
-        >
-          <h2 className="text-4xl md:text-7xl font-signature text-[#4a5d23] mb-4">
-            Cuándo & Dónde
-          </h2>
-          <div className="w-20 h-1 bg-[#b35a44] mx-auto rounded-full"></div>
-        </motion.div>
+        <SectionHeader
+          eyebrow="El gran día"
+          title={<span className="font-signature text-olive">Cuándo &amp; Dónde</span>}
+          className="mb-16 md:mb-24"
+        />
 
         {/* Cards Grid */}
         <motion.div
@@ -51,21 +45,21 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
           {/* Ceremony Card */}
           <motion.div
             variants={itemVariants}
-            className="bg-[#f9fafb] rounded-[2rem] p-8 md:p-12 shadow-sm relative overflow-hidden flex flex-col items-center text-center group h-full"
+            className="bg-[#f9fafb] rounded-[2rem] p-6 sm:p-8 md:p-12 shadow-sm relative overflow-hidden flex flex-col items-center text-center group h-full"
           >
             {/* Decorative Blooms */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#e5e7eb] rounded-bl-full opacity-40 -mr-8 -mt-8"></div>
 
             {/* Icon Container */}
             <div className="relative z-10 mb-8">
-              <div className="w-16 h-16 bg-[#fdfaf6] border border-[#b35a44]/20 rounded-full flex items-center justify-center shadow-sm">
-                <Church size={28} className="text-[#b35a44]" />
+              <div className="w-16 h-16 bg-cream border border-olive/20 rounded-full flex items-center justify-center shadow-sm">
+                <Church size={28} className="text-olive" />
               </div>
             </div>
 
             <div className="relative z-10 space-y-4 mb-8 flex-grow">
-              <h3 className="text-2xl md:text-4xl font-serif italic text-[#1a1a1a]">La Ceremonia</h3>
-              <p className="text-[#4a5d23] font-bold text-[10px] uppercase tracking-[0.2em]">4:00 PM – 5:30 PM</p>
+              <h3 className="text-2xl md:text-4xl font-serif italic text-ink">La Ceremonia</h3>
+              <p className="text-olive font-bold text-[10px] uppercase tracking-[0.2em]">4:00 PM – 5:30 PM</p>
               <p className="text-[#4b5563] text-sm md:text-base leading-relaxed">
                 Acompáñanos a intercambiar votos en la histórica Catedral de Santo Domingo. Por favor llegar 30 minutos antes.
               </p>
@@ -85,7 +79,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
                 href="https://share.google/ui68HRiF4B5XvdeHw"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#b35a44] text-[10px] font-bold uppercase tracking-widest hover:text-[#a04d39] transition-colors"
+                className="inline-block mt-3 rounded-full border border-terracotta/30 px-5 py-2 text-[9px] font-bold uppercase tracking-widest text-terracotta transition-all hover:bg-terracotta hover:text-white active:scale-95"
               >
                 Ver Mapa
               </a>
@@ -97,6 +91,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
                 src="https://images.visitarepublicadominicana.org/Catedral-Primada-de-America.jpg"
                 alt="Catedral Primada de las Américas"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                loading="lazy"
               />
             </div>
           </motion.div>
@@ -104,21 +99,21 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
           {/* Reception Card */}
           <motion.div
             variants={itemVariants}
-            className="bg-[#f9fafb] rounded-[2rem] p-8 md:p-12 shadow-sm relative overflow-hidden flex flex-col items-center text-center group h-full"
+            className="bg-[#f9fafb] rounded-[2rem] p-6 sm:p-8 md:p-12 shadow-sm relative overflow-hidden flex flex-col items-center text-center group h-full"
           >
             {/* Decorative Blooms */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#fee2e2] rounded-bl-full opacity-40 -mr-8 -mt-8"></div>
 
             {/* Icon Container */}
             <div className="relative z-10 mb-8">
-              <div className="w-16 h-16 bg-[#fdfaf6] border border-[#4a5d23]/20 rounded-full flex items-center justify-center shadow-sm">
-                <Utensils size={28} className="text-[#4a5d23]" />
+              <div className="w-16 h-16 bg-cream border border-olive/20 rounded-full flex items-center justify-center shadow-sm">
+                <Utensils size={28} className="text-olive" />
               </div>
             </div>
 
             <div className="relative z-10 space-y-4 mb-8 flex-grow">
-              <h3 className="text-2xl md:text-4xl font-serif italic text-[#1a1a1a]">La Recepción</h3>
-              <p className="text-[#4a5d23] font-bold text-[10px] uppercase tracking-[0.2em]">6:30 PM – Tarde</p>
+              <h3 className="text-2xl md:text-4xl font-serif italic text-ink">La Recepción</h3>
+              <p className="text-olive font-bold text-[10px] uppercase tracking-[0.2em]">6:30 PM – Tarde</p>
               <p className="text-[#4b5563] text-sm md:text-base leading-relaxed">
                 Cena, bebidas y baile bajo las estrellas. Se recomienda vestimenta de cóctel.
               </p>
@@ -128,17 +123,17 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
               <div className="flex items-start justify-center gap-2 mb-2">
                 <MapPin size={18} className="text-[#f67c55] mt-1 flex-shrink-0" />
                 <div className="text-left">
-                  <p className="text-[#1f2937] font-serif font-bold text-sm md:text-base">Centro de Convenciones Sans Soucí</p>
+                  <p className="text-[#1f2937] font-serif font-bold text-sm md:text-base">Club Deportivo Naco</p>
                   <p className="text-[#6b7280] text-xs md:text-sm">
-                    Av. España, Santo Domingo Este
+                    C. Salvador Sturla, Santo Domingo
                   </p>
                 </div>
               </div>
               <a
-                href="https://share.google/deL8oqlJXLx59l10F"
+                href="https://maps.app.goo.gl/prvLNchVxpEeSWnK7"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#b35a44] text-[10px] font-bold uppercase tracking-widest hover:text-[#a04d39] transition-colors"
+                className="inline-block mt-3 rounded-full border border-olive/30 px-5 py-2 text-[9px] font-bold uppercase tracking-widest text-olive transition-all hover:bg-olive hover:text-white active:scale-95"
               >
                 Ver Mapa
               </a>
@@ -147,9 +142,10 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
             {/* Map Placeholder Image */}
             <div className="mt-8 w-full h-48 rounded-2xl overflow-hidden border border-gray-100 shadow-inner">
               <img
-                src="https://sansouci.com.do/wp-content/uploads/2020/12/img-euk-scaled.jpg"
-                alt="Centro de Convenciones de Sans Soucí"
+                src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&q=80&w=800&fm=webp"
+                alt="Club Deportivo Naco"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                loading="lazy"
               />
             </div>
           </motion.div>
