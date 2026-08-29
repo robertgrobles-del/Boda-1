@@ -1,4 +1,4 @@
-
+// Constantes globales de configuración de la boda Stephanie & Daniel.
 // Fecha del evento CON zona horaria de República Dominicana (-04:00).
 // Así la cuenta regresiva es idéntica para invitados en cualquier país.
 // ⚠️ DATOS PENDIENTES DE COMPLETAR ANTES DE PUBLICAR:
