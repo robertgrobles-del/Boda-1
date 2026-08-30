@@ -1,6 +1,6 @@
 # Imágenes de la Preboda
 
-Coloca aquí las imágenes finales de la preboda de Stephanie & Daniel.
+Coloca aquí las imágenes finales de la preboda de Stephanie & Dalvin.
 
 ### Formatos Recomendados:
 - **WebP:** Altamente recomendado para optimizar el rendimiento y velocidad en dispositivos móviles.

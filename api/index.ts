@@ -92,7 +92,7 @@ app.post('/api/rsvp', async (req, res) => {
             const mailOptions = {
                 from: process.env.EMAIL_USER,
                 to: email,
-                subject: '¡Confirmación recibida! - Boda Stephanie & Daniel',
+                subject: '¡Confirmación recibida! - Boda Stephanie & Dalvin',
                 html: `
                     <div style="font-family: serif; padding: 20px; color: #4a5d23;">
                         <h1>¡Hola ${name}!</h1>
@@ -104,7 +104,7 @@ app.post('/api/rsvp', async (req, res) => {
                             <li>Fecha: 7 de Noviembre de 2026</li>
                         </ul>
                         <p>Nos vemos pronto,</p>
-                        <p><em>Stephanie & Daniel</em></p>
+                        <p><em>Stephanie & Dalvin</em></p>
                     </div>
                 `
             };

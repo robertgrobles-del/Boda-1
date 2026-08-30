@@ -54,7 +54,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
             {/* Icon Container */}
             <div className="relative z-10 mb-8">
               <div className="w-16 h-16 bg-cream border border-olive/20 rounded-full flex items-center justify-center shadow-sm">
-                <Church size={28} className="text-olive" />
+                <Church size={28} className="text-terracotta" />
               </div>
             </div>
 
@@ -65,7 +65,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
 
             <div className="relative z-10 w-full pt-8 border-t border-gray-200">
               <div className="flex items-start justify-center gap-2 mb-3">
-                <MapPin size={18} className="text-[#ef4444] mt-1 flex-shrink-0" />
+                <MapPin size={18} className="text-terracotta mt-1 flex-shrink-0" />
                 <div className="text-left">
                   <p className="text-[#1f2937] font-serif font-bold text-sm md:text-base">Catedral Castrense de Santa Bárbara</p>
                   <p className="text-[#6b7280] text-xs md:text-sm">
@@ -120,7 +120,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
             {/* Icon Container */}
             <div className="relative z-10 mb-8">
               <div className="w-16 h-16 bg-cream border border-olive/20 rounded-full flex items-center justify-center shadow-sm">
-                <Utensils size={28} className="text-olive" />
+                <Utensils size={28} className="text-terracotta" />
               </div>
             </div>
 
@@ -131,7 +131,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
 
             <div className="relative z-10 w-full pt-8 border-t border-gray-200">
               <div className="flex items-start justify-center gap-2 mb-2">
-                <MapPin size={18} className="text-[#f67c55] mt-1 flex-shrink-0" />
+                <MapPin size={18} className="text-terracotta mt-1 flex-shrink-0" />
                 <div className="text-left">
                   <p className="text-[#1f2937] font-serif font-bold text-sm md:text-base">Club Deportivo Naco · Salón Montás</p>
                   <p className="text-[#6b7280] text-xs md:text-sm">

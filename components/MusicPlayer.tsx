@@ -234,7 +234,7 @@ export const MusicPlayer: React.FC = () => {
               <button onClick={toggle} disabled={disabled} aria-label={playing ? 'Pausar' : 'Reproducir'} aria-pressed={playing} className={`${btn} h-12 w-12`}>
                 {playing ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
               </button>
-              <span aria-label="Repetición activada" title="En repetición" className="text-olive">
+              <span aria-label="Repetición activada" title="En repetición" className="text-terracotta">
                 <Repeat size={18} />
               </span>
             </div>

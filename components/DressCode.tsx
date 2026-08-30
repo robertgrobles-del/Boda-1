@@ -35,7 +35,7 @@ export const DressCode: React.FC = () => {
             className="flex flex-col items-center p-6 text-center min-[481px]:p-10"
           >
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#f1f4ea] min-[481px]:mb-8 min-[481px]:h-20 min-[481px]:w-20">
-              <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-olive min-[481px]:h-10 min-[481px]:w-10" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-terracotta min-[481px]:h-10 min-[481px]:w-10" stroke="currentColor" strokeWidth="1.5">
                 <path d="M12 21a2 2 0 1 1 0-4 2 2 0 0 1 0 4ZM12 2v2m0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 6v7" strokeLinecap="round" />
                 <path d="M4 11s2 6 8 6 8-6 8-6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -54,7 +54,7 @@ export const DressCode: React.FC = () => {
             className="flex flex-col items-center p-6 text-center min-[481px]:p-10"
           >
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#f1f4ea] min-[481px]:mb-8 min-[481px]:h-20 min-[481px]:w-20">
-              <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-olive min-[481px]:h-10 min-[481px]:w-10" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-terracotta min-[481px]:h-10 min-[481px]:w-10" stroke="currentColor" strokeWidth="1.5">
                 <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
                 <circle cx="7.5" cy="10.5" r="1.5" fill="currentColor" />
                 <circle cx="12" cy="7.5" r="1.5" fill="currentColor" />

@@ -218,7 +218,7 @@ export const MemoriesPage: React.FC = () => {
           <ChevronLeft size={24} />
         </button>
         <div className="text-center flex-grow pr-6">
-          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-olive">Stephanie & Daniel</span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-olive">Stephanie & Dalvin</span>
           <h1 className="font-serif text-lg font-bold text-stone-800 leading-tight">Dots Memories</h1>
         </div>
       </header>
@@ -269,8 +269,8 @@ export const MemoriesPage: React.FC = () => {
 
         {/* Footer Accent */}
         <div className="flex items-center justify-center gap-2 text-[10px] text-stone-400 tracking-wider">
-          <Sparkles size={12} className="text-olive" />
-          <span>Dots Memories de Stephanie & Daniel</span>
+          <Sparkles size={12} className="text-terracotta" />
+          <span>Dots Memories de Stephanie & Dalvin</span>
         </div>
       </main>
 

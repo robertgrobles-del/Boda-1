@@ -143,14 +143,14 @@ const App: React.FC = () => {
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-full border border-stone-200 bg-white px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-stone-600 shadow-sm transition-colors hover:bg-stone-50"
               >
-                <Calendar size={14} className="text-olive" /> Google Calendar
+                <Calendar size={14} className="text-terracotta" /> Google Calendar
               </a>
               <a
                 href={buildIcsDataUri()}
                 download="boda-stephanie-daniel.ics"
                 className="flex items-center gap-3 rounded-full border border-stone-200 bg-white px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-stone-600 shadow-sm transition-colors hover:bg-stone-50"
               >
-                <Apple size={14} className="text-olive" /> Apple / Outlook
+                <Apple size={14} className="text-terracotta" /> Apple / Outlook
               </a>
             </div>
             <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.5em] text-stone-400">{EVENT_DATA.displayDate}</p>

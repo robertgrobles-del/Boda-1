@@ -45,7 +45,7 @@ export const Itinerary: React.FC = () => (
             >
               {/* Nodo con ícono */}
               <span className="absolute left-0 top-0 flex h-11 w-11 items-center justify-center rounded-full border border-olive/20 bg-white shadow-sm md:static md:mx-8">
-                <Icon size={18} className="text-olive" />
+                <Icon size={18} className="text-terracotta" />
               </span>
 
               <div className="md:w-[calc(50%-3.75rem)]">

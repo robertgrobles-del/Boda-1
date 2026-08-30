@@ -30,7 +30,7 @@ export const Parents: React.FC = () => (
       transition={{ duration: 0.7 }}
       className="relative z-10 mx-auto max-w-3xl text-center"
     >
-      <svg viewBox="0 0 64 40" className="mx-auto mb-6 h-9 w-16 text-olive/60" fill="none" aria-hidden>
+      <svg viewBox="0 0 64 40" className="mx-auto mb-6 h-9 w-16 text-terracotta/70" fill="none" aria-hidden>
         <circle cx="25" cy="22" r="13" stroke="currentColor" strokeWidth="1.4" />
         <circle cx="39" cy="22" r="13" stroke="currentColor" strokeWidth="1.4" />
         <path d="M22 6l3 5 3-5-3-4-3 4Z" stroke="currentColor" strokeWidth="1.2" />

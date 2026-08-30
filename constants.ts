@@ -106,7 +106,7 @@ export const API_CONFIG = {
 // --- Calendario -------------------------------------------------------------
 // Datos base para generar tanto el enlace de Google como el archivo .ics (Apple/Outlook)
 export const CALENDAR_EVENT = {
-    title: "Boda de Stephanie & Daniel",
+    title: "Boda de Stephanie & Dalvin",
     description: "Celebración de nuestra boda en Santo Domingo, República Dominicana.",
     location: "Catedral Castrense de Santa Bárbara, Santo Domingo",
     // UTC: 17:00 -04:00 => 21:00Z

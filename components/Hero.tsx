@@ -70,9 +70,9 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
               </span>
             </div>
 
-            <h2 className="mb-1 w-full px-2 font-signature text-[15vw] leading-[1.1] text-white sm:text-7xl md:mb-5 md:text-8xl lg:text-[100px] xl:text-[120px] max-[480px]:text-[18vw]">
+            <h2 className="mb-1 w-full px-2 font-signature text-[15vw] leading-[1.1] text-white sm:text-7xl md:mb-5 md:text-8xl lg:text-[100px] xl:text-[118px] max-[480px]:text-[17vw]">
               Stephanie <br />
-              <span className="font-serif text-[10vw] text-cream/90 sm:text-5xl lg:text-7xl max-[480px]:text-[12vw]">&amp;</span> Daniel
+              <span className="font-serif text-[10vw] text-cream/90 sm:text-5xl lg:text-7xl max-[480px]:text-[12vw]">&amp;</span> Dalvin
             </h2>
 
             {/* Foto de novios en formato arco, visible solo en dispositivos móviles (rota automáticamente entre las fotos) */}
@@ -81,7 +81,7 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
                 <motion.img
                   key={images[rotationIndex]}
                   src={images[rotationIndex]}
-                  alt="Stephanie y Daniel"
+                  alt="Stephanie y Dalvin"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -93,12 +93,12 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
 
             <div className="mb-4 flex flex-col items-center space-y-2 md:mb-6 md:flex-row md:space-x-8 md:space-y-0 lg:items-start max-[480px]:space-y-2">
               <div className="flex items-center space-x-3 text-cream/80 max-[480px]:space-x-2">
-                <Calendar size={16} className="text-olive" />
+                <Calendar size={16} className="text-terracotta" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.4em] md:text-sm max-[480px]:tracking-[0.2em]">07 . 11 . 2026</span>
               </div>
               <div className="hidden h-6 w-px bg-white/20 md:block" />
               <div className="flex items-center space-x-3 text-cream/80 max-[480px]:space-x-2">
-                <MapPin size={16} className="text-olive" />
+                <MapPin size={16} className="text-terracotta" />
                 <span className="text-[10px] font-medium uppercase tracking-[0.2em] md:text-sm max-[480px]:tracking-[0.1em]">Santo Domingo, R.D.</span>
               </div>
             </div>
@@ -169,7 +169,7 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
                   className="hexagon-mask absolute h-[360px] w-[360px] overflow-hidden border-8 border-white bg-white shadow-2xl xl:h-[420px] xl:w-[420px]"
                   style={{ zIndex: pos.zIndex }}
                 >
-                  <img alt={`Stephanie y Daniel ${index + 1}`} className="h-full w-full object-cover" src={src} />
+                  <img alt={`Stephanie y Dalvin ${index + 1}`} className="h-full w-full object-cover" src={src} />
                 </motion.div>
               );
             })}

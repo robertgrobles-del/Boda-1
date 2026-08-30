@@ -22,7 +22,7 @@ export const ThankYou: React.FC = () => {
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-4 -right-4 text-olive"
+          className="absolute -top-4 -right-4 text-terracotta"
         >
           <Sparkles size={32} />
         </motion.div>

@@ -124,7 +124,7 @@ export const Guestbook: React.FC<{ id?: string }> = ({ id = 'mensajes' }) => {
               value={text}
               onChange={(e) => setText(e.target.value)}
               className="w-full resize-none rounded-xl border border-stone-200 bg-white px-4 py-3 font-serif text-sm italic text-stone-700 transition-colors focus:border-olive focus:outline-none"
-              placeholder="Un consejo, un recuerdo o un buen deseo para Stephanie & Daniel…"
+              placeholder="Un consejo, un recuerdo o un buen deseo para Stephanie & Dalvin…"
             />
           </div>
           <button
@@ -149,7 +149,7 @@ export const Guestbook: React.FC<{ id?: string }> = ({ id = 'mensajes' }) => {
                   animate={{ opacity: 1, y: 0 }}
                   className="break-inside-avoid rounded-2xl border border-stone-100 bg-white p-5 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.25)]"
                 >
-                  <Quote size={16} className="mb-2 text-olive/40" />
+                  <Quote size={16} className="mb-2 text-terracotta/50" />
                   <blockquote className="font-serif text-sm italic leading-relaxed text-stone-600">{m.message}</blockquote>
                   <figcaption className="mt-3 flex items-center justify-between border-t border-stone-100 pt-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-olive">{m.name}</span>

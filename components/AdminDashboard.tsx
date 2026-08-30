@@ -381,7 +381,7 @@ export const AdminDashboard: React.FC = () => {
               <Key className="text-[#4a5d23]" size={28} />
             </div>
             <h1 className="font-serif text-2xl text-stone-800 font-bold mb-1">Acceso Administrativo</h1>
-            <p className="text-stone-500 text-xs italic font-serif">Stephanie & Daniel - Boda 2026</p>
+            <p className="text-stone-500 text-xs italic font-serif">Stephanie & Dalvin - Boda 2026</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -419,7 +419,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-200">
           <div>
             <h1 className="font-serif text-3xl font-bold text-stone-800 md:text-4xl">Panel de Administración</h1>
-            <p className="text-stone-500 text-xs italic font-serif mt-1">Stephanie & Daniel · Control de RSVP & Seguridad de Lista</p>
+            <p className="text-stone-500 text-xs italic font-serif mt-1">Stephanie & Dalvin · Control de RSVP & Seguridad de Lista</p>
           </div>
           <div className="flex items-center gap-4">
             <button

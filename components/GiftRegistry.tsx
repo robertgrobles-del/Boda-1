@@ -37,7 +37,7 @@ const CopyRow: React.FC<{ label: string; display: string; copyValue: string }> =
         <span className="block text-[9px] font-bold uppercase tracking-[0.15em] text-stone-400">{label}</span>
         <span className="font-mono text-sm tracking-tight text-stone-700">{display}</span>
       </span>
-      {copied ? <Check size={15} className="shrink-0 text-olive" /> : <Copy size={15} className="shrink-0 text-stone-400" />}
+      {copied ? <Check size={15} className="shrink-0 text-terracotta" /> : <Copy size={15} className="shrink-0 text-stone-400" />}
     </button>
   );
 };
@@ -69,7 +69,7 @@ export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
             rel="noopener noreferrer"
             className="group flex flex-col items-center gap-5 rounded-[2rem] border border-stone-100 bg-white p-8 text-center shadow-[0_15px_40px_rgba(0,0,0,0.03)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_30px_60px_rgba(0,0,0,0.07)] sm:flex-row sm:text-left md:p-10"
           >
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#f1f4ea] text-olive">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#f1f4ea] text-terracotta">
               <Store size={26} />
             </div>
             <div className="flex-grow">
@@ -91,7 +91,7 @@ export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
                 className="flex flex-col rounded-[2rem] border border-stone-100 bg-white p-7 text-left shadow-[0_15px_40px_rgba(0,0,0,0.03)] md:p-8"
               >
                 <div className="mb-5 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f1f4ea] text-olive">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f1f4ea] text-terracotta">
                     <Landmark size={20} />
                   </div>
                   <div>

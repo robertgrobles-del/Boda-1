@@ -184,17 +184,17 @@ export const UnifiedGallery: React.FC<{ id: string }> = ({ id }) => {
                             className="-rotate-3 overflow-hidden rounded-3xl border-4 border-white shadow-xl"
                             aria-label="Ampliar foto"
                         >
-                            <GalleryImage src={galleryImages[0]} alt="Stephanie y Daniel" />
+                            <GalleryImage src={galleryImages[0]} alt="Stephanie y Dalvin" />
                         </button>
                         <button
                             onClick={() => setLightboxIndex(1)}
                             className="mt-12 rotate-3 overflow-hidden rounded-3xl border-4 border-white shadow-xl"
                             aria-label="Ampliar foto"
                         >
-                            <GalleryImage src={galleryImages[1]} alt="Stephanie y Daniel" />
+                            <GalleryImage src={galleryImages[1]} alt="Stephanie y Dalvin" />
                         </button>
                         <div className="absolute left-1/2 top-1/2 z-20 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-xl">
-                            <Instagram className="text-olive" size={20} />
+                            <Instagram className="text-terracotta" size={20} />
                         </div>
                     </motion.div>
                 </div>
