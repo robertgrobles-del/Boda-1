@@ -12,7 +12,7 @@ export const EVENT_DATA = {
     displayDate: "11 DE NOVIEMBRE 2026",
     hashtag: "#StephanieDanielTwilight",
     estYear: "2022",
-    whatsapp: "18090000000", // PLACEHOLDER — RD: 1 + 809/829/849 + 7 dígitos, sin "+"
+    whatsapp: "18299234460", // PLACEHOLDER — RD: 1 + 809/829/849 + 7 dígitos, sin "+"
 };
 
 // Padres y padrinos — sección "Con la bendición de Dios y nuestros padres".
@@ -58,14 +58,16 @@ export const ITINERARY = [
 ];
 
 // Canción de los novios — reproductor flotante ("Presiona para escuchar nuestra canción").
-// Coloca el mp3 en /public y apunta `audioUrl` a "/nuestra-cancion.mp3".
-// Si `audioUrl` queda vacío el botón enlaza a `externalUrl` (Spotify/YouTube); si ambos
-// están vacíos, el reproductor no se muestra.
+// Opciones (por orden de preferencia):
+//   1. audioUrl:    archivo mp3 en /public  → "/nuestra-cancion.mp3"  (mejor calidad, sin logos)
+//   2. externalUrl: enlace de YouTube       → suena DENTRO de la página, sin abrir YouTube
+//   3. externalUrl: enlace de Spotify/otro  → el botón abre el enlace en otra pestaña
+// Si todo queda vacío, el reproductor no se muestra.
 export const SONG = {
     title: "Nuestra canción",
     artist: "",
-    audioUrl: "", // p.ej. "/nuestra-cancion.mp3"
-    externalUrl: "", // p.ej. "https://open.spotify.com/track/..."
+    audioUrl: "",
+    externalUrl: "", // p.ej. "https://www.youtube.com/watch?v=XXXXXXXXXXX"
 };
 
 // Datos bancarios para la mesa de regalos (una sola fuente de verdad).

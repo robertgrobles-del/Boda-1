@@ -1,46 +1,132 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Play, Music } from 'lucide-react';
+import { Play, Pause, Music } from 'lucide-react';
 import { SONG } from '../constants';
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** Extrae el ID de un enlace de YouTube (watch, youtu.be, embed, shorts, music). */
+const youTubeId = (url: string): string | null => {
+  const m = url.match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/|music\.youtube\.com\/watch\?(?:.*&)?v=)([\w-]{11})/,
+  );
+  return m ? m[1] : null;
+};
+
+let ytApiPromise: Promise<void> | null = null;
+const loadYouTubeApi = (): Promise<void> => {
+  if (ytApiPromise) return ytApiPromise;
+  ytApiPromise = new Promise<void>((resolve) => {
+    if ((window as any).YT?.Player) return resolve();
+    const prev = (window as any).onYouTubeIframeAPIReady;
+    (window as any).onYouTubeIframeAPIReady = () => {
+      prev?.();
+      resolve();
+    };
+    const s = document.createElement('script');
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+  });
+  return ytApiPromise;
+};
 
 /**
  * Reproductor flotante de la canción de los novios.
- * - Móvil: botón sobre el de WhatsApp (abajo a la derecha), nota encima.
- * - Escritorio: botón abajo a la izquierda, nota a la derecha.
- * - Si SONG.audioUrl está vacío usa SONG.externalUrl (Spotify/YouTube).
- *   Si ambos están vacíos, no se renderiza.
+ * - `SONG.audioUrl`  → archivo mp3 en /public (reproducción directa).
+ * - `SONG.externalUrl` con enlace de YouTube → suena dentro de la página (sin abrir YouTube).
+ * - Otro enlace (Spotify, etc.) → botón que abre el enlace en otra pestaña.
+ * - Si todo está vacío, no se muestra.
  */
 export const MusicPlayer: React.FC = () => {
   const reduceMotion = useReducedMotion();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const ytHostRef = useRef<HTMLDivElement>(null);
+  const ytPlayerRef = useRef<any>(null);
+
   const [playing, setPlaying] = useState(false);
   const [hint, setHint] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  const hasAudio = Boolean(SONG.audioUrl);
-  const hasLink = !hasAudio && Boolean(SONG.externalUrl);
+  const ytId = SONG.externalUrl ? youTubeId(SONG.externalUrl) : null;
+  const mode: 'audio' | 'youtube' | 'link' | 'none' = SONG.audioUrl
+    ? 'audio'
+    : ytId
+    ? 'youtube'
+    : SONG.externalUrl
+    ? 'link'
+    : 'none';
+
   const label = [SONG.title, SONG.artist].filter(Boolean).join(' · ') || 'Nuestra canción';
 
+  // Nota flotante de aviso al cargar
   useEffect(() => {
-    if (!hasAudio && !hasLink) return;
+    if (mode === 'none') return;
     const show = setTimeout(() => setHint(true), 3000);
     const hide = setTimeout(() => setHint(false), 10000);
     return () => {
       clearTimeout(show);
       clearTimeout(hide);
     };
-  }, [hasAudio, hasLink]);
+  }, [mode]);
 
-  if (!hasAudio && !hasLink) return null;
+  // Inicializa el reproductor de YouTube (oculto)
+  useEffect(() => {
+    if (mode !== 'youtube' || !ytId) return;
+    let cancelled = false;
+    loadYouTubeApi().then(() => {
+      if (cancelled || !ytHostRef.current) return;
+      ytPlayerRef.current = new (window as any).YT.Player(ytHostRef.current, {
+        videoId: ytId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+          loop: 1,
+          playlist: ytId,
+        },
+        events: {
+          onReady: () => setReady(true),
+          onStateChange: (e: any) => {
+            const S = (window as any).YT.PlayerState;
+            if (e.data === S.PLAYING) setPlaying(true);
+            if (e.data === S.PAUSED || e.data === S.ENDED) setPlaying(false);
+          },
+        },
+      });
+    });
+    return () => {
+      cancelled = true;
+      try {
+        ytPlayerRef.current?.destroy?.();
+      } catch {
+        /* noop */
+      }
+      ytPlayerRef.current = null;
+    };
+  }, [mode, ytId]);
+
+  if (mode === 'none') return null;
 
   const toggle = () => {
     setHint(false);
-    const el = audioRef.current;
-    if (!el) return;
-    if (playing) {
-      el.pause();
-      setPlaying(false);
-    } else {
-      el.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+    if (mode === 'audio') {
+      const el = audioRef.current;
+      if (!el) return;
+      if (playing) {
+        el.pause();
+        setPlaying(false);
+      } else {
+        el.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+      }
+      return;
+    }
+    if (mode === 'youtube') {
+      const p = ytPlayerRef.current;
+      if (!p) return;
+      playing ? p.pauseVideo() : p.playVideo();
     }
   };
 
@@ -58,24 +144,20 @@ export const MusicPlayer: React.FC = () => {
   );
 
   const btnClass =
-    'flex h-14 w-14 items-center justify-center rounded-full bg-olive text-white shadow-2xl transition-colors hover:bg-olive-dark';
+    'flex h-14 w-14 items-center justify-center rounded-full bg-olive text-white shadow-2xl transition-colors hover:bg-olive-dark disabled:opacity-60';
 
   return (
     <div className="fixed bottom-24 right-5 z-[50] flex items-center gap-3 md:bottom-6 md:left-6 md:right-auto">
-      {hasAudio && <audio ref={audioRef} src={SONG.audioUrl} loop preload="none" onEnded={() => setPlaying(false)} />}
+      {mode === 'audio' && (
+        <audio ref={audioRef} src={SONG.audioUrl} loop preload="none" onEnded={() => setPlaying(false)} />
+      )}
+      {mode === 'youtube' && (
+        <div className="pointer-events-none fixed bottom-0 left-0 h-px w-px overflow-hidden opacity-0" aria-hidden>
+          <div ref={ytHostRef} />
+        </div>
+      )}
 
-      {hasAudio ? (
-        <motion.button
-          onClick={toggle}
-          whileHover={{ scale: 1.06 }}
-          whileTap={{ scale: 0.92 }}
-          aria-label={playing ? `Pausar ${label}` : `Reproducir ${label}`}
-          aria-pressed={playing}
-          className={btnClass}
-        >
-          {playing ? <Bars /> : <Play size={20} className="ml-0.5" />}
-        </motion.button>
-      ) : (
+      {mode === 'link' ? (
         <motion.a
           href={SONG.externalUrl}
           target="_blank"
@@ -87,6 +169,18 @@ export const MusicPlayer: React.FC = () => {
         >
           <Music size={20} />
         </motion.a>
+      ) : (
+        <motion.button
+          onClick={toggle}
+          disabled={mode === 'youtube' && !ready}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.92 }}
+          aria-label={playing ? `Pausar ${label}` : `Reproducir ${label}`}
+          aria-pressed={playing}
+          className={btnClass}
+        >
+          {playing ? <Bars /> : <Play size={20} className="ml-0.5" />}
+        </motion.button>
       )}
 
       <AnimatePresence>
