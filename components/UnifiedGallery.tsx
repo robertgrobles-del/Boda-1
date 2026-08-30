@@ -145,7 +145,7 @@ export const UnifiedGallery: React.FC<{ id: string }> = ({ id }) => {
                                 Nuestra historia en fotos
                             </span>
                             <h2 className="text-4xl leading-none md:text-7xl lg:text-8xl">
-                                <span className="block font-signature text-olive">Capturemos los momentos</span>
+                                <span className="block font-signature text-olive">Captura los momentos</span>
                             </h2>
                             <p className="mx-auto max-w-lg font-serif text-sm italic leading-relaxed text-stone-600 md:text-xl lg:mx-0">
                                 "Ayúdanos a coleccionar cada sonrisa. Comparte tus fotos usando nuestro hashtag oficial o envíanoslas directamente."

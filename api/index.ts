@@ -56,6 +56,15 @@ app.post('/api/rsvp', async (req, res) => {
         const guestCount = parseInt(guests.split(' ')[0]) || 1;
         const isAttending = attending === 'yes';
 
+        // Validar límite de invitados permitido
+        const maxAllowed = (allowed as any).maxGuests || 2;
+        if (isAttending && guestCount > maxAllowed) {
+            return res.status(400).json({ 
+                success: false, 
+                error: `La cantidad máxima permitida para tu invitación es de ${maxAllowed} persona(s).` 
+            });
+        }
+
         const result = await prisma.rSVP.create({
             data: {
                 name,
@@ -92,7 +101,7 @@ app.post('/api/rsvp', async (req, res) => {
                         <p><strong>Detalles:</strong></p>
                         <ul>
                             <li>Invitados: ${guestCount}</li>
-                            <li>Fecha: 11 de Noviembre de 2026</li>
+                            <li>Fecha: 7 de Noviembre de 2026</li>
                         </ul>
                         <p>Nos vemos pronto,</p>
                         <p><em>Stephanie & Daniel</em></p>
@@ -274,23 +283,6 @@ app.post('/api/upload', async (req, res) => {
     }
 });
 
-// 2. POST Song Suggestion
-app.post('/api/songs', async (req, res) => {
-    try {
-        const { song } = req.body;
-        if (!song) return res.status(400).json({ error: 'Song is required' });
-
-        const result = await prisma.songSuggestion.create({
-            data: { song }
-        });
-
-        res.status(201).json({ success: true, data: result });
-    } catch (error) {
-        console.error('Song Error:', error);
-        res.status(500).json({ success: false, error: 'Internal Server Error' });
-    }
-});
-
 // 2.5 Guestbook — Libro de mensajes para los novios
 app.post('/api/messages', async (req, res) => {
     try {
@@ -364,25 +356,6 @@ app.get('/api/admin/guests', async (req, res) => {
     }
 });
 
-// 5. GET All Song Suggestions (Admin only)
-app.get('/api/admin/songs', async (req, res) => {
-    const apiKey = req.headers['x-api-key'];
-    const adminKey = process.env.ADMIN_API_KEY;
-
-    if (!adminKey || apiKey !== adminKey) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    try {
-        const songs = await prisma.songSuggestion.findMany({
-            orderBy: { createdAt: 'desc' }
-        });
-        res.json(songs);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch songs' });
-    }
-});
-
 // 6. GET All Allowed Guests (Admin only)
 app.get('/api/admin/allowed', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
@@ -411,20 +384,44 @@ app.post('/api/admin/allowed', async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { phone, pin } = req.body;
+    const { phone, pin, maxGuests } = req.body;
     if (!phone || !pin) {
         return res.status(400).json({ error: 'Phone and PIN are required' });
     }
 
+    const count = parseInt(maxGuests, 10) || 2;
+
     try {
         const result = await prisma.allowedGuest.upsert({
             where: { phone },
-            update: { pin, used: false, usedAt: null },
-            create: { phone, pin }
+            update: { pin, maxGuests: count, used: false, usedAt: null } as any,
+            create: { phone, pin, maxGuests: count } as any
         });
         res.status(201).json(result);
     } catch (error) {
         res.status(500).json({ error: 'Failed to save allowed guest' });
+    }
+});
+
+// 7b. DELETE Allowed Guest (Admin only)
+app.delete('/api/admin/allowed/:id', async (req, res) => {
+    const apiKey = req.headers['x-api-key'];
+    const adminKey = process.env.ADMIN_API_KEY;
+
+    if (!adminKey || apiKey !== adminKey) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid id' });
+    }
+
+    try {
+        await prisma.allowedGuest.delete({ where: { id } });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete allowed guest' });
     }
 });
 

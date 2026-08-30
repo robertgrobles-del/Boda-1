@@ -161,7 +161,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
               <div className="text-center mb-6 md:mb-10">
                 <span className="text-olive text-[8px] md:text-[10px] font-bold uppercase tracking-[0.4em] mb-3 md:mb-4 block">CONFIRMACIÓN</span>
                 <h2 className="font-signature text-3xl md:text-5xl text-olive mb-2">Confirma tu Asistencia</h2>
-                <p className="text-stone-500 text-[11px] italic">Por favor confirma antes del 11 de octubre de 2026.</p>
+                <p className="text-stone-500 text-[11px] italic">Por favor confirma antes del 7 de octubre de 2026.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">

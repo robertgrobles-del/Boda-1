@@ -80,10 +80,10 @@ export const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
           <>
             <div className="mb-10 min-[481px]:mb-16 md:mb-20">
               <span className="mb-3 block text-[10px] font-bold uppercase tracking-[0.5em] text-olive min-[481px]:mb-4 min-[481px]:text-xs">
-                Faltan
+                Cuenta regresiva
               </span>
               <h2 className="px-4 font-serif text-2xl font-medium italic tracking-tight text-olive min-[481px]:text-3xl md:text-5xl lg:text-6xl">
-                para nuestro gran día
+                para el "¡Sí, acepto!"
               </h2>
             </div>
 

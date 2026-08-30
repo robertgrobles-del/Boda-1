@@ -1,16 +1,15 @@
-// Constantes globales de configuración de la boda Stephanie & Daniel.
+// Constantes globales de configuración de la boda Stephanie & Dalvin.
 // Fecha del evento CON zona horaria de República Dominicana (-04:00).
 // Así la cuenta regresiva es idéntica para invitados en cualquier país.
-// ⚠️ DATOS PENDIENTES DE COMPLETAR ANTES DE PUBLICAR:
+// ⚠️ DATOS PENDIENTES DE VERIFICAR ANTES DE PUBLICAR:
 //    - EVENT_DATA.whatsapp        (número real, formato internacional sin +)
-//    - GIFT.accountNumber         (cuenta bancaria real)
-//    - REGISTRY_URLS              (enlaces reales de Amazon / Casa Cuesta)
-//    - PHOTO_UPLOAD_URL           (álbum compartido, opcional)
-//    - API_CONFIG.backendUrl      (URL del backend en producción)
+//    - FAMILY                     (nombres reales de padres / padrinos)
+//    - SONG                       (enlace de YouTube o mp3 de la canción)
+//    - ITINERARY                  (horas y lugares reales del día)
 export const EVENT_DATA = {
-    date: "2026-11-11T16:00:00-04:00",
-    displayDate: "11 DE NOVIEMBRE 2026",
-    hashtag: "#StephanieDanielTwilight",
+    date: "2026-11-07T17:00:00-04:00",
+    displayDate: "7 DE NOVIEMBRE 2026",
+    hashtag: "#Stephanie&Dalvin",
     estYear: "2022",
     whatsapp: "18299234460", // PLACEHOLDER — RD: 1 + 809/829/849 + 7 dígitos, sin "+"
 };
@@ -50,10 +49,10 @@ export const PHOTOS = {
 
 // Itinerario del día de la boda. `icon`: church | cocktail | dinner | party | send-off | rings | photo.
 export const ITINERARY = [
-    { time: "4:00 PM", title: "Ceremonia religiosa", detail: "Catedral Primada de las Américas", icon: "church" as const },
-    { time: "5:30 PM", title: "Cóctel de bienvenida", detail: "Jardín · música en vivo", icon: "cocktail" as const },
-    { time: "7:00 PM", title: "Recepción y cena", detail: "Centro de Convenciones Sans Souci", icon: "dinner" as const },
-    { time: "9:00 PM", title: "Primer baile y fiesta", detail: "¡Que empiece la celebración!", icon: "party" as const },
+    { time: "5:00 PM", title: "Ceremonia religiosa", detail: "Catedral Castrense de Santa Bárbara", icon: "church" as const },
+    { time: "6:30 PM", title: "Cóctel de bienvenida", detail: "Club Deportivo Naco · Salón Montás", icon: "cocktail" as const },
+    { time: "7:30 PM", title: "Recepción y cena", detail: "Club Deportivo Naco · Salón Montás", icon: "dinner" as const },
+    { time: "9:30 PM", title: "Primer baile y fiesta", detail: "¡Que empiece la celebración!", icon: "party" as const },
     { time: "2:00 AM", title: "Despedida", detail: "Último brindis y cotillón", icon: "send-off" as const },
 ];
 
@@ -65,17 +64,34 @@ export const ITINERARY = [
 // Si todo queda vacío, el reproductor no se muestra.
 export const SONG = {
     title: "Nuestra canción",
-    artist: "",
+    artist: "Lilly Goodman",
     audioUrl: "",
-    externalUrl: "", // p.ej. "https://www.youtube.com/watch?v=XXXXXXXXXXX"
+    externalUrl: "https://www.youtube.com/watch?v=YHOF9OGQWnw", // p.ej. "https://www.youtube.com/watch?v=XXXXXXXXXXX"
 };
 
-// Datos bancarios para la mesa de regalos (una sola fuente de verdad).
-export const GIFT = {
-    bank: "Banco Popular",
-    accountName: "Stephanie & Daniel",
-    accountNumber: "0123 4567 8901 2345", // PLACEHOLDER
+// --- Mesa de regalos --------------------------------------------------------
+export const CASA_CUESTA = {
+    url: "https://listaderegalos.casacuesta.com/Event/Stephanie-DalvinDaniel?utm_source=share",
+    listNumber: "194090",
+    note: "Disponible de forma digital y física",
 };
+
+export const BANK_ACCOUNTS = [
+    {
+        bank: "Banco Popular",
+        type: "Cuenta Corriente",
+        number: "844822163",
+        holder: "Stephanie Reyes",
+        cedula: "402-2683621-7",
+    },
+    {
+        bank: "BanReservas",
+        type: "Cuenta de Ahorro",
+        number: "9607153892",
+        holder: "Dalvin Báez",
+        cedula: "012-0122558-6",
+    },
+];
 
 export const API_CONFIG = {
     cedulaValidationBaseUrl: "https://api.digital.gob.do/v3/cedulas/",
@@ -92,10 +108,10 @@ export const API_CONFIG = {
 export const CALENDAR_EVENT = {
     title: "Boda de Stephanie & Daniel",
     description: "Celebración de nuestra boda en Santo Domingo, República Dominicana.",
-    location: "Santo Domingo, República Dominicana",
-    // UTC: 16:00 -04:00 => 20:00Z
-    startUtc: "20261111T200000Z",
-    endUtc: "20261112T040000Z",
+    location: "Catedral Castrense de Santa Bárbara, Santo Domingo",
+    // UTC: 17:00 -04:00 => 21:00Z
+    startUtc: "20261107T210000Z",
+    endUtc: "20261108T040000Z",
 };
 
 export const CALENDAR_URLS = {
@@ -127,23 +143,17 @@ export const buildIcsDataUri = (): string => {
     return `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
 };
 
-// Enlaces a Google Maps. Los `share.google` cortos pueden caducar; como respaldo
-// se incluye una búsqueda por nombre que siempre funciona.
+// Enlaces a Google Maps.
 export const MAPS_URLS = {
-    ceremony: "https://www.google.com/maps/search/?api=1&query=Catedral+Primada+de+las+Am%C3%A9ricas+Santo+Domingo",
-    reception: "https://www.google.com/maps/search/?api=1&query=Centro+de+Convenciones+Sans+Souci+Santo+Domingo",
+    ceremony: "https://maps.app.goo.gl/WaFNqHx5AjT2VEDk7",
+    ceremonyParking: "https://maps.app.goo.gl/MiDWQpUH42F3vZC67",
+    reception: "https://maps.app.goo.gl/prvLNchVxpEeSWnK7",
 };
 
 export const DRESS_CODE_DETAILS = {
     women: "Vestido Largo.",
     men: "Traje oscuro o Tuxedo.",
     colors: "Tonos neutros y pasteles. Reservado el color blanco y beige para la novia."
-};
-
-// Enlaces de la mesa de regalos. Reemplazar los "#" por las URLs reales.
-export const REGISTRY_URLS = {
-    amazon: "#",       // p.ej. https://www.amazon.com/wedding/registry/XXXXXXXX
-    casaCuesta: "#",   // p.ej. https://tienda.casacuesta.com/lista/382910
 };
 
 // Álbum compartido para que los invitados suban fotos (p.ej. Google Drive, Google Fotos, iCloud, etc.).
@@ -155,7 +165,7 @@ export const PHOTO_UPLOAD_URL = "";
 // Secciones para la navegación (id debe coincidir con el id de cada <section>)
 export const NAV_SECTIONS = [
     { id: "inicio", label: "Inicio" },
-    { id: "historia", label: "Historia" },
+    { id: "historia", label: "Sacramento" },
     { id: "cuenta-regresiva", label: "Cuenta" },
     { id: "detalles", label: "Evento" },
     { id: "galeria", label: "Galería" },

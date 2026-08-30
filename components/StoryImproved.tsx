@@ -28,9 +28,8 @@ export const StoryImproved: React.FC = () => {
 
                     {/* Mobile-only Header (<= 480px) */}
                     <div className="w-full text-left max-[480px]:block hidden mb-4 px-2">
-                        <span className="text-olive text-[10px] font-bold uppercase tracking-[0.4em] block mb-2 opacity-80">CAPÍTULO I</span>
-                        <h2 className="text-5xl leading-tight">
-                            <span className="font-signature text-olive italic">Nuestra Historia</span>
+                        <h2 className="text-4xl sm:text-5xl leading-tight">
+                            <span className="font-signature text-olive italic">La belleza del sacramento</span>
                         </h2>
                     </div>
 
@@ -51,7 +50,7 @@ export const StoryImproved: React.FC = () => {
                                 whileHover={{ scale: 1.1 }}
                                 transition={{ duration: 1.5 }}
                                 src={PHOTOS.story}
-                                alt="Nuestra Historia"
+                                alt="La belleza del sacramento"
                                 className={`w-full h-full object-cover transition-opacity duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
                                 onLoad={() => setIsLoaded(true)}
                                 loading="lazy"
@@ -85,20 +84,22 @@ export const StoryImproved: React.FC = () => {
                         className="w-full lg:w-1/2 space-y-8 lg:space-y-10 order-2 max-[480px]:order-3"
                     >
                         <div className="space-y-4 max-[480px]:hidden text-center lg:text-left">
-                            <span className="text-olive text-[10px] font-bold uppercase tracking-[0.4em] block">CAPÍTULO I</span>
-                            <h2 className="text-6xl md:text-8xl leading-tight">
-                                <span className="font-signature text-olive block">Nuestra</span>
-                                <span className="font-serif italic text-ink">Historia</span>
+                            <h2 className="text-5xl md:text-7xl leading-tight">
+                                <span className="font-signature text-olive block">La belleza del</span>
+                                <span className="font-serif italic text-ink">Sacramento</span>
                             </h2>
                             <div className="w-20 h-1 bg-olive rounded-full mx-auto lg:mx-0"></div>
                         </div>
 
-                        <div className="space-y-6 lg:space-y-8 text-stone-600 text-sm lg:text-xl font-serif italic leading-relaxed text-center lg:text-left">
+                        <div className="space-y-4 lg:space-y-6 text-stone-600 text-xs md:text-base font-serif italic leading-relaxed text-center lg:text-left">
                             <p>
-                                Todo comenzó con un amor compartido por la naturaleza y las mañanas tranquilas de domingo. Lo que empezó como una simple cita para tomar café se convirtió en una vida de aventuras.
+                                «Los esposos, ya no encadenados, sino adornados; ya no impedidos, sino confortados con el lazo de oro del sacramento, deben procurar resueltamente que su unión conyugal, no sólo por la fuerza y la significación del sacramento, sino también por su espíritu y por su conducta de vida, sea siempre imagen, y permanezca ésta viva, de aquella fecundísima unión de Cristo con su Iglesia, que es, en verdad, el misterio venerable de la perfecta caridad.
                             </p>
                             <p>
-                                Los invitamos a acompañarnos donde nuestras raíces son más profundas, rodeados de las personas que nos han ayudado a crecer.
+                                Si ponderamos atentamente y con viva fe, si ilustramos con la debida luz estos eximios bienes del matrimonio —la prole, la fe y el sacramento—, es imposible no admirar la sabiduría, la santidad y la benignidad divina, pues tan ampliamente proveyó no sólo a la dignidad y felicidad de los cónyuges, sino también a la conservación y propagación del género humano, susceptible tan sólo de procurarse con la casta y sagrada unión del vínculo nupcial.»
+                            </p>
+                            <p className="not-italic font-sans text-xs uppercase tracking-[0.2em] text-olive font-semibold pt-1">
+                                — Papa Pío XI, <span className="italic font-serif">Casti Connubii</span>
                             </p>
                         </div>
 

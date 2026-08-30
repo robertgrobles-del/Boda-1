@@ -60,7 +60,7 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
         <div className="flex flex-col items-center space-y-8">
           <div className="flex items-center justify-center space-x-6 text-white/60">
             <div className="h-px w-12 bg-white/20" />
-            <span className="text-[10px] uppercase tracking-[0.4em] md:text-xs">11 . NOV . 26</span>
+            <span className="text-[10px] uppercase tracking-[0.4em] md:text-xs">07 . NOV . 26</span>
             <div className="h-px w-12 bg-white/20" />
           </div>
 

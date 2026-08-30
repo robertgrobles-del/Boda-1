@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useScrolledPast } from '../utils/useScrolledPast';
 
 interface WhatsAppButtonProps {
   phoneNumber: string;
@@ -8,17 +9,23 @@ interface WhatsAppButtonProps {
 
 export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({ phoneNumber }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const visible = useScrolledPast();
 
   React.useEffect(() => {
+    if (!visible) return;
     const timer = setTimeout(() => {
       setIsHovered(true);
       setTimeout(() => setIsHovered(false), 5000);
-    }, 4000);
+    }, 1500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [visible]);
 
   return (
-    <div className="fixed bottom-6 right-6 z-[50] flex items-center group">
+    <div
+      className={`fixed bottom-6 right-6 z-[50] flex items-center group transition-all duration-300 ${
+        visible ? '' : 'pointer-events-none translate-y-6 opacity-0'
+      }`}
+    >
       <AnimatePresence>
         {isHovered && (
           <motion.div

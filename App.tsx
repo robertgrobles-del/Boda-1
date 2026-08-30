@@ -15,7 +15,6 @@ import { DressCode } from './components/DressCode';
 import { NoKids } from './components/NoKids';
 import { WhatsAppButton } from './components/WhatsAppButton';
 import { MusicPlayer } from './components/MusicPlayer';
-import { PlaylistSection } from './components/PlaylistSection';
 import { Gateway } from './components/Gateway';
 import { Nav } from './components/Nav';
 import { ToastProvider } from './components/Toast';
@@ -124,10 +123,7 @@ const App: React.FC = () => {
             <Itinerary />
             <PhotoBand src={PHOTOS.band} quote="No podemos esperar para celebrar contigo" />
             <UnifiedGallery id="galeria" />
-            <div className="lg:grid lg:grid-cols-2">
-              <DressCode />
-              <PlaylistSection />
-            </div>
+            <DressCode />
             <NoKids />
             <GiftRegistry id="regalos" />
             <RSVPForm id="confirmar" />

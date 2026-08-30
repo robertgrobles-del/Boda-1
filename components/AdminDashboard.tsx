@@ -1,8 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Users, CheckCircle, XCircle, Search, Download, Music, Key, LogOut, Smartphone, Plus, MessageSquare, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Users, CheckCircle, XCircle, Search, Download, Key, LogOut,
+  Smartphone, Plus, MessageSquare, Trash2, Send, Copy, ExternalLink, 
+  Sparkles, RefreshCw, Sliders, FileText, Check, Image as ImageIcon,
+  MessageCircle
+} from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
+
+const DEFAULT_WA_TEMPLATE = `💍 *¡Estás cordialmente invitado/a a nuestra boda!* ✨
+Stephanie & Dalvin 🕊️
+
+🗓 *Fecha:* Sábado, 7 de Noviembre de 2026 - 5:00 PM
+⛪ *Ceremonia:* Catedral Castrense de Santa Bárbara
+🎉 *Recepción:* Club Deportivo Naco · Salón Montás
+
+Para confirmar tu asistencia, por favor accede a nuestra web oficial utilizando *este mismo número de teléfono* y tu *PIN exclusivo*:
+
+📲 *Teléfono registrado:* {TELEFONO}
+🔑 *PIN de acceso:* {PIN}
+🎟️ *Pases reservados:* {PASES} persona(s)
+
+🌐 *Confirma tu asistencia en el siguiente enlace:*
+{ENLACE}
+
+🖼️ *Ver invitación digital:*
+{IMAGEN}
+
+¡Esperamos contar con tu grata presencia en este día tan especial! ❤️`;
 
 interface Guest {
   id: number;
@@ -21,6 +47,7 @@ interface AllowedGuest {
   id: number;
   phone: string;
   pin: string;
+  maxGuests?: number;
   used: boolean;
   usedAt: string | null;
   createdAt: string;
@@ -45,10 +72,111 @@ export const AdminDashboard: React.FC = () => {
   const [allowedGuests, setAllowedGuests] = useState<AllowedGuest[]>([]);
   const [newPhone, setNewPhone] = useState('');
   const [newPin, setNewPin] = useState('');
+  const [newMaxGuests, setNewMaxGuests] = useState('2');
   const [searchTerm, setSearchTerm] = useState('');
-  const [songs, setSongs] = useState<{ id: number; song: string; createdAt: string }[]>([]);
   const [messages, setMessages] = useState<{ id: number; name: string; message: string; createdAt: string }[]>([]);
   const [activeView, setActiveView] = useState<'rsvps' | 'allowed' | 'messages'>('rsvps');
+
+  // WhatsApp Template and Sender state
+  const [waTemplate, setWaTemplate] = useState(() => localStorage.getItem('sd_wa_template') || DEFAULT_WA_TEMPLATE);
+  const [waImageUrl, setWaImageUrl] = useState(() => localStorage.getItem('sd_wa_image_url') || `${window.location.origin}/images/Iglesia_Santa_Barbara.webp`);
+  const [autoSendWa, setAutoSendWa] = useState(() => localStorage.getItem('sd_auto_send_wa') !== 'false');
+  const [showTemplateSettings, setShowTemplateSettings] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+
+  // Phone sanitization for WhatsApp
+  const formatPhoneForWhatsApp = (phone: string): string => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 10) {
+      return `1${digits}`;
+    }
+    return digits;
+  };
+
+  // Build rendered message
+  const buildWhatsAppMessage = (phone: string, pin: string, maxGuests?: number): string => {
+    const weddingUrl = `${window.location.origin}/#confirmar`;
+    const count = (maxGuests || 2).toString();
+    return waTemplate
+      .replace(/{TELEFONO}/g, phone)
+      .replace(/{PHONE}/g, phone)
+      .replace(/{PIN}/g, pin)
+      .replace(/{PASES}/g, count)
+      .replace(/{INVITADOS}/g, count)
+      .replace(/{ENLACE}/g, weddingUrl)
+      .replace(/{LINK}/g, weddingUrl)
+      .replace(/{IMAGEN}/g, waImageUrl);
+  };
+
+  // Send WhatsApp
+  const handleSendWhatsApp = (phone: string, pin: string, maxGuests?: number) => {
+    const cleanPhone = formatPhoneForWhatsApp(phone);
+    const msg = buildWhatsAppMessage(phone, pin, maxGuests);
+    const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+    toast(`Abriendo WhatsApp para enviar a ${phone}`, 'success');
+  };
+
+  // Copy message text
+  const handleCopyMessage = async (phone: string, pin: string, id?: number, maxGuests?: number) => {
+    const msg = buildWhatsAppMessage(phone, pin, maxGuests);
+    try {
+      await navigator.clipboard.writeText(msg);
+      if (id !== undefined) {
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2500);
+      }
+      toast('Mensaje de invitación copiado al portapapeles.', 'success');
+    } catch {
+      toast('No se pudo copiar automáticamente.', 'error');
+    }
+  };
+
+  // Generate random PIN
+  const handleGenerateRandomPin = () => {
+    const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+    setNewPin(randomPin);
+  };
+
+  // Delete allowed guest
+  const handleDeleteAllowedGuest = async (id: number) => {
+    if (!window.confirm('¿Eliminar este número de la lista de autorizados?')) return;
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/allowed/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-api-key': apiKey }
+      });
+      if (res.ok) {
+        setAllowedGuests(prev => prev.filter(a => a.id !== id));
+        toast('Número eliminado de la lista.', 'success');
+      } else {
+        toast('Error al eliminar número.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      toast('Error de conexión con el servidor.', 'error');
+    }
+  };
+
+  // Save template
+  const handleSaveTemplate = () => {
+    localStorage.setItem('sd_wa_template', waTemplate);
+    localStorage.setItem('sd_wa_image_url', waImageUrl);
+    localStorage.setItem('sd_auto_send_wa', autoSendWa ? 'true' : 'false');
+    toast('Plantilla de WhatsApp guardada exitosamente.', 'success');
+  };
+
+  // Reset template
+  const handleResetTemplate = () => {
+    if (window.confirm('¿Restablecer la plantilla a los valores por defecto?')) {
+      const defaultImg = `${window.location.origin}/images/Iglesia_Santa_Barbara.webp`;
+      setWaTemplate(DEFAULT_WA_TEMPLATE);
+      setWaImageUrl(defaultImg);
+      localStorage.setItem('sd_wa_template', DEFAULT_WA_TEMPLATE);
+      localStorage.setItem('sd_wa_image_url', defaultImg);
+      toast('Plantilla restablecida por defecto.', 'success');
+    }
+  };
 
   // Check authorization on mount or when key changes
   useEffect(() => {
@@ -66,7 +194,6 @@ export const AdminDashboard: React.FC = () => {
           setIsAuthorized(true);
           localStorage.setItem('sd_admin_key', apiKey);
           fetchGuests();
-          fetchSongs();
           fetchAllowedGuests();
           fetchMessages();
         } else {
@@ -96,20 +223,6 @@ export const AdminDashboard: React.FC = () => {
       }
     } catch (err) {
       console.error('Error fetching guests:', err);
-    }
-  };
-
-  const fetchSongs = async () => {
-    try {
-      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/songs`, {
-        headers: { 'x-api-key': apiKey }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSongs(data);
-      }
-    } catch (err) {
-      console.error('Error fetching songs:', err);
     }
   };
 
@@ -169,7 +282,6 @@ export const AdminDashboard: React.FC = () => {
     setIsAuthorized(false);
     setSummary(null);
     setGuests([]);
-    setSongs([]);
     setAllowedGuests([]);
     setMessages([]);
     localStorage.removeItem('sd_admin_key');
@@ -180,6 +292,10 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!newPhone.trim() || !newPin.trim()) return;
 
+    const currentPhone = newPhone.trim();
+    const currentPin = newPin.trim();
+    const guestsAllowed = parseInt(newMaxGuests, 10) || 2;
+
     try {
       const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/allowed`, {
         method: 'POST',
@@ -187,13 +303,17 @@ export const AdminDashboard: React.FC = () => {
           'Content-Type': 'application/json',
           'x-api-key': apiKey
         },
-        body: JSON.stringify({ phone: newPhone.trim(), pin: newPin.trim() })
+        body: JSON.stringify({ phone: currentPhone, pin: currentPin, maxGuests: guestsAllowed })
       });
 
       if (res.ok) {
         toast('Invitado autorizado con éxito.', 'success');
+        if (autoSendWa) {
+          handleSendWhatsApp(currentPhone, currentPin, guestsAllowed);
+        }
         setNewPhone('');
         setNewPin('');
+        setNewMaxGuests('2');
         fetchAllowedGuests();
       } else {
         toast('Error al registrar invitado.', 'error');
@@ -249,7 +369,7 @@ export const AdminDashboard: React.FC = () => {
   );
 
   const filteredAllowed = allowedGuests.filter(a =>
-    a.phone.includes(searchTerm)
+    a.phone.includes(searchTerm) || a.pin.includes(searchTerm)
   );
 
   if (!isAuthorized) {
@@ -473,136 +593,418 @@ export const AdminDashboard: React.FC = () => {
                 </table>
               </div>
             </div>
-
-            {/* Songs Suggestions */}
-            <div className="bg-white rounded-3xl border border-stone-200/50 shadow-sm p-6 max-w-xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-[#f1f4ea] rounded-full flex items-center justify-center">
-                  <Music className="text-[#4a5d23]" size={20} />
-                </div>
-                <div>
-                  <h2 className="font-serif text-lg font-bold">Playlist Sugerida</h2>
-                  <p className="text-xs text-stone-400">Canciones sugeridas por los invitados</p>
-                </div>
-              </div>
-
-              <div className="divide-y divide-stone-100 max-h-80 overflow-y-auto pr-2">
-                {songs.map((s) => (
-                  <div key={s.id} className="py-3 flex items-center justify-between">
-                    <span className="text-sm font-medium">{s.song}</span>
-                    <span className="text-[10px] font-mono text-stone-400">{new Date(s.createdAt).toLocaleDateString()}</span>
-                  </div>
-                ))}
-                {songs.length === 0 && (
-                  <p className="text-center py-8 text-stone-400 italic text-sm">No hay canciones sugeridas todavía.</p>
-                )}
-              </div>
-            </div>
           </>
         ) : activeView === 'allowed' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            {/* Form to add allowed guest */}
-            <div className="bg-white p-6 rounded-3xl border border-stone-200/50 shadow-sm h-fit">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-[#f1f4ea] rounded-full flex items-center justify-center">
-                  <Smartphone className="text-[#4a5d23]" size={20} />
+          <div className="space-y-8">
+            {/* Top Toolbar / Template Toggle */}
+            <div className="bg-white p-6 rounded-3xl border border-stone-200/50 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center">
+                  <MessageCircle size={22} />
                 </div>
                 <div>
-                  <h2 className="font-serif text-lg font-bold">Autorizar Teléfono</h2>
-                  <p className="text-xs text-stone-400">Registrar un número de invitado y su PIN</p>
+                  <h2 className="font-serif text-lg font-bold text-stone-900">Invitaciones por WhatsApp & PIN</h2>
+                  <p className="text-xs text-stone-400">Control de números autorizados y plantilla de envío personalizado</p>
                 </div>
               </div>
 
-              <form onSubmit={handleAddAllowedGuest} className="space-y-4">
-                <div className="space-y-1">
-                  <label htmlFor="new-phone" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">Número de Teléfono</label>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-xs font-semibold text-stone-600 bg-stone-50 border border-stone-200 px-3.5 py-2 rounded-xl cursor-pointer hover:bg-stone-100 transition-colors">
                   <input
-                    id="new-phone"
-                    type="tel"
-                    required
-                    className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-sm"
-                    placeholder="Ej: 8095551234"
-                    value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
+                    type="checkbox"
+                    checked={autoSendWa}
+                    onChange={(e) => {
+                      setAutoSendWa(e.target.checked);
+                      localStorage.setItem('sd_auto_send_wa', e.target.checked ? 'true' : 'false');
+                    }}
+                    className="accent-[#4a5d23] rounded"
                   />
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="new-pin" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">PIN asignado</label>
-                  <input
-                    id="new-pin"
-                    type="text"
-                    required
-                    maxLength={6}
-                    className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-sm font-mono tracking-widest"
-                    placeholder="Ej: 1234"
-                    value={newPin}
-                    onChange={(e) => setNewPin(e.target.value)}
-                  />
-                </div>
+                  <span>Enviar por WhatsApp al registrar</span>
+                </label>
+
                 <button
-                  type="submit"
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-[#4a5d23] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#3b4c1b] transition-all"
+                  type="button"
+                  onClick={() => setShowTemplateSettings(!showTemplateSettings)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                    showTemplateSettings 
+                      ? 'bg-[#4a5d23] text-white shadow-md' 
+                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
                 >
-                  <Plus size={14} /> Registrar en Lista
+                  <Sliders size={14} />
+                  {showTemplateSettings ? 'Ocultar Plantilla' : 'Editar Plantilla WhatsApp'}
                 </button>
-              </form>
-            </div>
-
-            {/* Allowed Guests List */}
-            <div className="lg:col-span-2 bg-white rounded-3xl border border-stone-200/50 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-stone-100 flex items-center justify-between">
-                <div>
-                  <h3 className="font-serif text-lg font-bold">Teléfonos Autorizados</h3>
-                  <p className="text-xs text-stone-400">Total de invitados que pueden confirmar</p>
-                </div>
-                <div className="relative max-w-xs">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={14} />
-                  <input
-                    type="text"
-                    className="pl-8 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-full focus:outline-none focus:border-[#4a5d23] text-xs w-48"
-                    placeholder="Buscar teléfono..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-stone-50/50 border-b border-stone-100 text-[10px] font-bold uppercase tracking-wider text-stone-500">
-                      <th className="py-4 px-6">Número de Teléfono</th>
-                      <th className="py-4 px-6 text-center">PIN</th>
-                      <th className="py-4 px-6 text-center">Estado del PIN</th>
-                      <th className="py-4 px-6">Confirmación</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100 text-sm">
-                    {filteredAllowed.map((a) => (
-                      <tr key={a.id} className="hover:bg-stone-50/30 transition-colors">
-                        <td className="py-4 px-6 font-mono font-bold text-stone-800">{a.phone}</td>
-                        <td className="py-4 px-6 text-center font-mono tracking-wider">{a.pin}</td>
-                        <td className="py-4 px-6 text-center">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${a.used ? 'bg-stone-100 text-stone-400' : 'bg-green-50 text-green-700'}`}>
-                            {a.used ? 'Desactivado / Usado' : 'Activo'}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6 text-xs text-stone-400 font-mono">
-                          {a.usedAt ? `Usado el: ${new Date(a.usedAt).toLocaleDateString()}` : '-'}
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredAllowed.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="text-center py-12 text-stone-400 italic">No hay teléfonos registrados.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
               </div>
             </div>
 
+            {/* Collapsible / Editable Template Editor */}
+            <AnimatePresence>
+              {showTemplateSettings && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.35 }}
+                  className="overflow-hidden"
+                >
+                  <div className="bg-white p-6 md:p-8 rounded-3xl border-2 border-emerald-100 shadow-lg grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Left: Template Inputs */}
+                    <div className="lg:col-span-7 space-y-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-serif text-lg font-bold text-stone-800 flex items-center gap-2">
+                            <FileText size={18} className="text-[#4a5d23]" />
+                            Plantilla del Mensaje de WhatsApp
+                          </h3>
+                          <p className="text-xs text-stone-500">
+                            Personaliza el mensaje que recibirán tus invitados con su PIN y enlace oficial.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Variables Tags */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                          Etiquetas dinámicas (haz clic para insertar):
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { tag: '{TELEFONO}', label: 'Teléfono' },
+                            { tag: '{PIN}', label: 'PIN Exclusivo' },
+                            { tag: '{PASES}', label: 'Pases Permitidos' },
+                            { tag: '{ENLACE}', label: 'Enlace a la Web' },
+                            { tag: '{IMAGEN}', label: 'URL Imagen' },
+                          ].map((item) => (
+                            <button
+                              key={item.tag}
+                              type="button"
+                              onClick={() => setWaTemplate((prev) => prev + ` ${item.tag} `)}
+                              className="text-[10px] font-mono font-bold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/60 px-2.5 py-1 rounded-lg transition-all"
+                            >
+                              + {item.tag} <span className="text-emerald-600/70 font-sans font-normal">({item.label})</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Template Textarea */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                          Contenido del Mensaje
+                        </label>
+                        <textarea
+                          rows={10}
+                          value={waTemplate}
+                          onChange={(e) => setWaTemplate(e.target.value)}
+                          className="w-full px-4 py-3 border border-stone-200 rounded-2xl text-xs md:text-sm font-mono leading-relaxed focus:outline-none focus:border-[#4a5d23] bg-stone-50/50"
+                          placeholder="Escribe la plantilla de invitación..."
+                        />
+                      </div>
+
+                      {/* Image URL Input */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 flex items-center justify-between">
+                          <span>URL de la Imagen de Invitación</span>
+                          <button
+                            type="button"
+                            onClick={() => setWaImageUrl(`${window.location.origin}/images/Iglesia_Santa_Barbara.webp`)}
+                            className="text-[#4a5d23] hover:underline font-sans normal-case text-[10px]"
+                          >
+                            Usar foto de Santa Bárbara
+                          </button>
+                        </label>
+                        <div className="relative">
+                          <ImageIcon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                          <input
+                            type="url"
+                            value={waImageUrl}
+                            onChange={(e) => setWaImageUrl(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2.5 border border-stone-200 rounded-xl text-xs focus:outline-none focus:border-[#4a5d23]"
+                            placeholder="https://tudominio.com/images/invitacion.webp"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Template Buttons */}
+                      <div className="flex flex-wrap items-center gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={handleSaveTemplate}
+                          className="px-5 py-2.5 bg-[#4a5d23] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#3b4c1b] transition-all shadow-sm flex items-center gap-2"
+                        >
+                          <Check size={14} /> Guardar Cambios
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetTemplate}
+                          className="px-4 py-2.5 border border-stone-200 text-stone-600 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-all flex items-center gap-1.5"
+                        >
+                          <RefreshCw size={13} /> Restablecer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendWhatsApp('8095551234', '1234', 2)}
+                          className="px-4 py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-100 transition-all flex items-center gap-1.5"
+                        >
+                          <Send size={13} /> Probar Mensaje en WhatsApp
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right: Live WhatsApp Bubble Preview */}
+                    <div className="lg:col-span-5 flex flex-col">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 flex items-center gap-1.5">
+                          <MessageCircle size={13} className="text-emerald-600" />
+                          Vista Previa (WhatsApp)
+                        </span>
+                        <span className="text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                          Ejemplo en vivo
+                        </span>
+                      </div>
+
+                      <div className="flex-grow bg-[#efeae2] p-4 md:p-5 rounded-2xl border border-[#d1c7b7] flex flex-col justify-start relative shadow-inner overflow-hidden">
+                        {/* WhatsApp Message Bubble */}
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/60 max-w-full text-xs text-stone-800 space-y-3 relative">
+                          {/* Image preview in bubble */}
+                          {waImageUrl && (
+                            <div className="w-full h-36 rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
+                              <img
+                                src={waImageUrl}
+                                alt="Vista previa de invitación"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // fallback if url fails
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
+
+                          <div className="whitespace-pre-wrap font-sans leading-relaxed text-[11px] text-stone-700">
+                            {buildWhatsAppMessage('829-923-4460', '8421', 2)}
+                          </div>
+
+                          <div className="text-[9px] text-stone-400 text-right font-mono">
+                            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ✓✓
+                          </div>
+                        </div>
+
+                        <p className="mt-3 text-[10px] text-stone-500 text-center italic">
+                          Los valores se sustituirán automáticamente por el número, PIN y pases permitidos de cada invitado.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Form to add allowed guest */}
+              <div className="bg-white p-6 md:p-8 rounded-3xl border border-stone-200/50 shadow-sm h-fit space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#f1f4ea] rounded-full flex items-center justify-center">
+                    <Smartphone className="text-[#4a5d23]" size={20} />
+                  </div>
+                  <div>
+                    <h2 className="font-serif text-lg font-bold">Autorizar Teléfono</h2>
+                    <p className="text-xs text-stone-400">Registrar invitado, PIN y pases asignados</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleAddAllowedGuest} className="space-y-4">
+                  <div className="space-y-1">
+                    <label htmlFor="new-phone" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
+                      Número de Teléfono
+                    </label>
+                    <input
+                      id="new-phone"
+                      type="tel"
+                      required
+                      className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-sm"
+                      placeholder="Ej: 8299234460 o 8095551234"
+                      value={newPhone}
+                      onChange={(e) => setNewPhone(e.target.value)}
+                    />
+                    <p className="text-[10px] text-stone-400">Se usará para WhatsApp y validación en la web.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label htmlFor="new-pin" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
+                          PIN Asignado
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleGenerateRandomPin}
+                          className="text-[9px] font-bold text-[#4a5d23] hover:underline flex items-center gap-0.5"
+                        >
+                          <Sparkles size={10} /> Random
+                        </button>
+                      </div>
+                      <input
+                        id="new-pin"
+                        type="text"
+                        required
+                        maxLength={6}
+                        className="w-full px-3 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-sm font-mono tracking-widest text-center"
+                        placeholder="Ej: 4819"
+                        value={newPin}
+                        onChange={(e) => setNewPin(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="new-max-guests" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
+                        Pases Asignados
+                      </label>
+                      <select
+                        id="new-max-guests"
+                        value={newMaxGuests}
+                        onChange={(e) => setNewMaxGuests(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-xs font-semibold bg-white"
+                      >
+                        <option value="1">1 Pase</option>
+                        <option value="2">2 Pases (Pareja)</option>
+                        <option value="3">3 Pases</option>
+                        <option value="4">4 Pases (Familia)</option>
+                        <option value="5">5 Pases</option>
+                        <option value="6">6 Pases</option>
+                        <option value="8">8 Pases</option>
+                        <option value="10">10 Pases</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#4a5d23] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#3b4c1b] transition-all shadow-md active:scale-95"
+                  >
+                    <Plus size={15} />
+                    {autoSendWa ? 'Registrar y Abrir WhatsApp' : 'Registrar en Lista'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Allowed Guests List */}
+              <div className="lg:col-span-2 bg-white rounded-3xl border border-stone-200/50 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-stone-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-serif text-lg font-bold">Teléfonos Autorizados ({allowedGuests.length})</h3>
+                    <p className="text-xs text-stone-400">Lista de invitados con acceso de confirmación y cupos</p>
+                  </div>
+                  <div className="relative w-full sm:w-auto">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={14} />
+                    <input
+                      type="text"
+                      className="pl-8 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-full focus:outline-none focus:border-[#4a5d23] text-xs w-full sm:w-56"
+                      placeholder="Buscar teléfono o PIN..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-stone-50/50 border-b border-stone-100 text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                        <th className="py-4 px-6">Teléfono</th>
+                        <th className="py-4 px-4 text-center">PIN</th>
+                        <th className="py-4 px-4 text-center">Pases</th>
+                        <th className="py-4 px-4 text-center">Estado</th>
+                        <th className="py-4 px-6 text-center">Acciones WhatsApp</th>
+                        <th className="py-4 px-4 text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 text-sm">
+                      {filteredAllowed.map((a) => (
+                        <tr key={a.id} className="hover:bg-stone-50/40 transition-colors">
+                          <td className="py-4 px-6 font-mono font-bold text-stone-800">
+                            {a.phone}
+                          </td>
+                          <td className="py-4 px-4 text-center font-mono font-bold tracking-widest text-[#4a5d23]">
+                            {a.pin}
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/60 font-sans">
+                              {a.maxGuests || 2} { (a.maxGuests || 2) === 1 ? 'pase' : 'pases' }
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                              a.used 
+                                ? 'bg-stone-100 text-stone-400' 
+                                : 'bg-green-50 text-green-700 border border-green-200/50'
+                            }`}>
+                              {a.used ? 'Confirmado' : 'Activo'}
+                            </span>
+                            {a.usedAt && (
+                              <p className="text-[9px] text-stone-400 font-mono mt-0.5">
+                                {new Date(a.usedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {/* Send WhatsApp Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleSendWhatsApp(a.phone, a.pin, a.maxGuests)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm active:scale-95"
+                                title={`Enviar invitación por WhatsApp a ${a.phone} (${a.maxGuests || 2} pases)`}
+                              >
+                                <Send size={11} />
+                                WhatsApp
+                              </button>
+
+                              {/* Copy text Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleCopyMessage(a.phone, a.pin, a.id, a.maxGuests)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-stone-200 hover:bg-stone-100 text-stone-600 text-[10px] font-medium transition-all active:scale-95"
+                                title="Copiar mensaje personalizado"
+                              >
+                                {copiedId === a.id ? (
+                                  <>
+                                    <Check size={12} className="text-green-600" />
+                                    <span className="text-green-600 font-bold">Copiado</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={12} />
+                                    <span>Copiar</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAllowedGuest(a.id)}
+                              className="text-stone-300 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
+                              title="Eliminar de autorizados"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredAllowed.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="text-center py-12 text-stone-400 italic">
+                            No se encontraron teléfonos registrados.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="bg-white rounded-3xl border border-stone-200/50 shadow-sm overflow-hidden">

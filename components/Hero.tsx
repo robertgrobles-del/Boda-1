@@ -43,7 +43,9 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
           fetchPriority="high"
           className="h-full w-full object-cover object-[center_80%]"
         />
-        {/* <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" /> */}
+        {/* Scrim para legibilidad del texto (más marcado en móvil) */}
+        <div className="absolute inset-0 bg-black/35 md:bg-black/20" />
+        <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-black/70 via-black/30 to-transparent md:h-1/2 md:from-black/45" />
       </div>
 
       {/* Círculos decorativos (desktop) */}
@@ -55,22 +57,20 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
 
       <div className="relative flex h-full flex-grow flex-col items-center overflow-hidden lg:flex-row">
         {/* Texto */}
-        <div className="relative z-20 flex h-full w-full flex-grow flex-col items-center justify-center px-6 pt-16 pb-12 text-center lg:w-1/2 lg:items-start lg:pl-32 lg:pr-12 lg:pt-0 lg:pb-0 lg:text-left">
+        <div className="relative z-20 flex h-full w-full flex-grow flex-col items-center justify-center px-6 pb-12 pt-24 text-center lg:w-1/2 lg:items-start lg:pl-32 lg:pr-12 lg:pb-0 lg:pt-24 lg:text-left">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1.2, ease: "easeOut" }}
             className="relative w-full"
           >
-            <div className="mb-2 flex items-center justify-center gap-4 lg:justify-start md:mb-6">
-              <div className="h-[1px] w-10 bg-olive/60 md:w-14" />
-              <span className="text-sm font-bold uppercase tracking-[0.3em] text-olive font-serif md:text-base max-[480px]:text-xs whitespace-nowrap">
-                Save the date
+            <div className="mb-4 flex justify-center md:mb-8 lg:justify-start">
+              <span className="max-w-[13rem] text-center font-serif text-[9px] font-bold uppercase leading-relaxed tracking-[0.2em] text-white/90 sm:max-w-xs sm:text-[10px] sm:tracking-[0.25em] md:text-[11px] lg:text-left">
+                Aquí comienza el resto de nuestras vidas
               </span>
-              <div className="h-[1px] w-10 bg-olive/60 md:w-14 lg:hidden" />
             </div>
 
-            <h2 className="mb-1 w-full px-2 font-signature text-[15vw] leading-[1.1] text-white sm:text-7xl md:mb-12 md:text-8xl lg:text-[100px] xl:text-[120px] max-[480px]:text-[18vw]">
+            <h2 className="mb-1 w-full px-2 font-signature text-[15vw] leading-[1.1] text-white sm:text-7xl md:mb-5 md:text-8xl lg:text-[100px] xl:text-[120px] max-[480px]:text-[18vw]">
               Stephanie <br />
               <span className="font-serif text-[10vw] text-cream/90 sm:text-5xl lg:text-7xl max-[480px]:text-[12vw]">&amp;</span> Daniel
             </h2>
@@ -91,10 +91,10 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
               </AnimatePresence>
             </div>
 
-            <div className="mb-4 flex flex-col items-center space-y-2 md:mb-14 md:flex-row md:space-x-8 md:space-y-0 lg:items-start max-[480px]:space-y-2">
+            <div className="mb-4 flex flex-col items-center space-y-2 md:mb-6 md:flex-row md:space-x-8 md:space-y-0 lg:items-start max-[480px]:space-y-2">
               <div className="flex items-center space-x-3 text-cream/80 max-[480px]:space-x-2">
                 <Calendar size={16} className="text-olive" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.4em] md:text-sm max-[480px]:tracking-[0.2em]">11 . 11 . 2026</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.4em] md:text-sm max-[480px]:tracking-[0.2em]">07 . 11 . 2026</span>
               </div>
               <div className="hidden h-6 w-px bg-white/20 md:block" />
               <div className="flex items-center space-x-3 text-cream/80 max-[480px]:space-x-2">
@@ -103,8 +103,8 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
               </div>
             </div>
 
-            <p className="mx-auto mb-6 max-w-md px-4 font-serif text-xs italic leading-relaxed text-cream/75 md:mb-12 md:text-lg lg:mx-0 max-[480px]:text-[11px]">
-              "Donde el amor florece, la vida cobra sentido. Únete a nosotros en esta celebración de vida y compromiso."
+            <p className="mx-auto mb-6 max-w-lg px-4 font-serif text-xs italic leading-relaxed text-cream/75 md:mb-12 md:text-base lg:mx-0 max-[480px]:text-[11px]">
+              «Mejor son dos que uno, porque sacan más provecho de su esfuerzo. Pues si caen, el uno levantará a su compañero; pero ¡ay del que está solo!, porque cuando caiga no habrá otro que lo levante» Eclesiastés 4,9-10.
             </p>
 
             <motion.button

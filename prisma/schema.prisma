@@ -25,12 +25,6 @@ model RSVP {
   createdAt   DateTime @default(now())
 }
 
-model SongSuggestion {
-  id        Int      @id @default(autoincrement())
-  song      String
-  createdAt DateTime @default(now())
-}
-
 model GuestMessage {
   id        Int      @id @default(autoincrement())
   name      String
@@ -43,6 +37,7 @@ model AllowedGuest {
   id        Int       @id @default(autoincrement())
   phone     String    @unique
   pin       String
+  maxGuests Int       @default(2) // Cantidad de invitados permitidos para este número
   used      Boolean   @default(false)
   usedAt    DateTime?
   createdAt DateTime  @default(now())

@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Church, Utensils } from 'lucide-react';
+import { MapPin, Church, Utensils, CircleParking } from 'lucide-react';
 import { SectionHeader } from './SectionHeader';
+import { MAPS_URLS } from '../constants';
 
 export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
   const containerVariants = {
@@ -57,39 +58,51 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
               </div>
             </div>
 
-            <div className="relative z-10 space-y-4 mb-8 flex-grow">
-              <h3 className="text-2xl md:text-4xl font-serif italic text-ink">La Ceremonia</h3>
-              <p className="text-olive font-bold text-[10px] uppercase tracking-[0.2em]">4:00 PM – 5:30 PM</p>
-              <p className="text-[#4b5563] text-sm md:text-base leading-relaxed">
-                Acompáñanos a intercambiar votos en la histórica Catedral de Santo Domingo. Por favor llegar 30 minutos antes.
-              </p>
+            <div className="relative z-10 space-y-2 mb-6 flex-grow">
+              <h3 className="text-2xl md:text-4xl font-serif italic text-ink">Ceremonia</h3>
+              <p className="text-olive font-bold text-[10px] uppercase tracking-[0.2em]">5:00 PM</p>
             </div>
 
             <div className="relative z-10 w-full pt-8 border-t border-gray-200">
-              <div className="flex items-start justify-center gap-2 mb-2">
+              <div className="flex items-start justify-center gap-2 mb-3">
                 <MapPin size={18} className="text-[#ef4444] mt-1 flex-shrink-0" />
                 <div className="text-left">
-                  <p className="text-[#1f2937] font-serif font-bold text-sm md:text-base">Catedral Primada de las Américas</p>
+                  <p className="text-[#1f2937] font-serif font-bold text-sm md:text-base">Catedral Castrense de Santa Bárbara</p>
                   <p className="text-[#6b7280] text-xs md:text-sm">
-                    C. Isabel La Católica, Santo Domingo 10210
+                    C. General Gabino Puello, Ciudad Colonial, Santo Domingo
                   </p>
                 </div>
               </div>
-              <a
-                href="https://share.google/ui68HRiF4B5XvdeHw"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-3 rounded-full border border-terracotta/30 px-5 py-2 text-[9px] font-bold uppercase tracking-widest text-terracotta transition-all hover:bg-terracotta hover:text-white active:scale-95"
-              >
-                Ver Mapa
-              </a>
+
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                <a
+                  href={MAPS_URLS.ceremony}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-terracotta px-5 py-2 text-[9px] font-bold uppercase tracking-widest text-white transition-all shadow-sm hover:bg-terracotta/90 active:scale-95"
+                >
+                  <MapPin size={13} />
+                  Ver Ubicación
+                </a>
+
+                <a
+                  href={MAPS_URLS.ceremonyParking}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-olive/30 bg-olive/5 px-4 py-2 text-[9px] font-bold uppercase tracking-wider text-olive transition-all hover:bg-olive hover:text-white active:scale-95"
+                  title="Parqueo más cercano a la iglesia (RD$100 por hora)"
+                >
+                  <CircleParking size={13} />
+                  Parqueo (RD$100/h)
+                </a>
+              </div>
             </div>
 
-            {/* Map Placeholder Image */}
+            {/* Image */}
             <div className="mt-8 w-full h-48 rounded-2xl overflow-hidden border border-gray-100 shadow-inner">
               <img
-                src="https://images.visitarepublicadominicana.org/Catedral-Primada-de-America.jpg"
-                alt="Catedral Primada de las Américas"
+                src="/images/Iglesia_Santa_Barbara.webp"
+                alt="Catedral Castrense de Santa Bárbara"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 loading="lazy"
               />
@@ -111,39 +124,46 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
               </div>
             </div>
 
-            <div className="relative z-10 space-y-4 mb-8 flex-grow">
-              <h3 className="text-2xl md:text-4xl font-serif italic text-ink">La Recepción</h3>
+            <div className="relative z-10 space-y-2 mb-6 flex-grow">
+              <h3 className="text-2xl md:text-4xl font-serif italic text-ink">Recepción</h3>
               <p className="text-olive font-bold text-[10px] uppercase tracking-[0.2em]">6:30 PM – Tarde</p>
-              <p className="text-[#4b5563] text-sm md:text-base leading-relaxed">
-                Cena, bebidas y baile bajo las estrellas. Se recomienda vestimenta de cóctel.
-              </p>
             </div>
 
             <div className="relative z-10 w-full pt-8 border-t border-gray-200">
               <div className="flex items-start justify-center gap-2 mb-2">
                 <MapPin size={18} className="text-[#f67c55] mt-1 flex-shrink-0" />
                 <div className="text-left">
-                  <p className="text-[#1f2937] font-serif font-bold text-sm md:text-base">Club Deportivo Naco</p>
+                  <p className="text-[#1f2937] font-serif font-bold text-sm md:text-base">Club Deportivo Naco · Salón Montás</p>
                   <p className="text-[#6b7280] text-xs md:text-sm">
                     C. Salvador Sturla, Santo Domingo
                   </p>
                 </div>
               </div>
-              <a
-                href="https://maps.app.goo.gl/prvLNchVxpEeSWnK7"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-3 rounded-full border border-olive/30 px-5 py-2 text-[9px] font-bold uppercase tracking-widest text-olive transition-all hover:bg-olive hover:text-white active:scale-95"
-              >
-                Ver Mapa
-              </a>
+
+              {/* Nota de parqueo */}
+              <div className="mt-3 mb-1">
+                <span className="inline-block text-[11px] text-amber-900 font-medium bg-amber-50 border border-amber-200/70 rounded-full py-1 px-3">
+                  ⚠️ Nota: El salón no cuenta con parqueo
+                </span>
+              </div>
+
+              <div className="mt-3">
+                <a
+                  href={MAPS_URLS.reception}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block rounded-full border border-olive/30 px-5 py-2 text-[9px] font-bold uppercase tracking-widest text-olive transition-all hover:bg-olive hover:text-white active:scale-95"
+                >
+                  Ver Mapa
+                </a>
+              </div>
             </div>
 
             {/* Map Placeholder Image */}
             <div className="mt-8 w-full h-48 rounded-2xl overflow-hidden border border-gray-100 shadow-inner">
               <img
                 src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&q=80&w=800&fm=webp"
-                alt="Club Deportivo Naco"
+                alt="Club Deportivo Naco - Salón Montás"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 loading="lazy"
               />
