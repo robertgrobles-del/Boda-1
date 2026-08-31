@@ -30,13 +30,13 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
     <motion.div
       exit={{ opacity: 0, scale: reduceMotion ? 1 : 1.04 }}
       transition={{ duration: 1.1, ease: 'easeInOut' }}
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-stone-900 p-6 text-center"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-stone-900 px-0 py-6 text-center md:p-6"
       role="dialog"
       aria-modal="true"
       aria-label="Bienvenida a la invitación"
     >
-      {/* Foto de fondo — en móvil con 10px de margen a los lados (marco oscuro) */}
-      <div className="absolute inset-x-2.5 inset-y-0 z-0 overflow-hidden sm:inset-0">
+      {/* Foto de fondo */}
+      <div className="absolute inset-0 z-0">
         <img src={PHOTOS.gateway} alt="" className="h-full w-full object-cover object-center" />
         <div className="absolute inset-0 bg-black/45 md:bg-black/40" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
@@ -54,7 +54,7 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.4, ease: 'easeOut' }}
-        className="relative z-20 flex max-w-xl flex-col items-center px-4"
+        className="relative z-20 flex max-w-xl flex-col items-center px-[15px] md:px-4"
       >
         {invitee && (
           <motion.span
@@ -79,7 +79,7 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
 
         <div className="my-8 flex items-center gap-4 text-white/60 md:my-10">
           <span className="h-px w-10 bg-white/25 md:w-16" />
-          <span className="text-[10px] uppercase tracking-[0.45em] md:text-xs">07 · Noviembre · 2026</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.45em] md:text-xs md:font-normal">07 · Noviembre · 2026</span>
           <span className="h-px w-10 bg-white/25 md:w-16" />
         </div>
 
