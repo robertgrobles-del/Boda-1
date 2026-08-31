@@ -242,49 +242,63 @@ app.post('/api/rsvp', async (req, res) => {
 let cachedToken = '';
 let tokenExpiry = 0; // Timestamp en ms
 
-// Helper to sign JWT using RS256 (Native crypto)
-const getGoogleAccessToken = async (serviceAccount: any): Promise<string> => {
-    if (cachedToken && Date.now() < tokenExpiry) {
-        return cachedToken;
-    }
+/** JWT RS256 firmado con la clave privada de la cuenta de servicio (método legacy). */
+const buildServiceAccountBody = async (): Promise<URLSearchParams> => {
+    const raw = (process.env.GOOGLE_SERVICE_ACCOUNT_JSON || '').trim();
+    const jsonStr = raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
+    const sa = JSON.parse(jsonStr);
+    if (typeof sa.private_key === 'string') sa.private_key = sa.private_key.replace(/\\n/g, '\n');
 
     const crypto = await import('crypto');
-    const header = JSON.stringify({ alg: 'RS256', typ: 'JWT' });
-    const payload = JSON.stringify({
-        iss: serviceAccount.client_email,
+    const now = Math.floor(Date.now() / 1000);
+    const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({
+        iss: sa.client_email,
         scope: 'https://www.googleapis.com/auth/drive',
         aud: 'https://oauth2.googleapis.com/token',
-        exp: Math.floor(Date.now() / 1000) + 3600,
-        iat: Math.floor(Date.now() / 1000)
-    });
+        exp: now + 3600,
+        iat: now,
+    })).toString('base64url');
+    const signature = crypto.createSign('RSA-SHA256').update(`${header}.${payload}`).sign(sa.private_key, 'base64url');
+    return new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${header}.${payload}.${signature}` });
+};
 
-    const base64Header = Buffer.from(header).toString('base64url');
-    const base64Payload = Buffer.from(payload).toString('base64url');
-    const signatureInput = `${base64Header}.${base64Payload}`;
+/**
+ * Devuelve un access token de Google Drive.
+ * - Si hay GOOGLE_REFRESH_TOKEN → sube como el usuario dueño (recomendado, cuenta contra sus GB).
+ * - Si no, usa la cuenta de servicio (GOOGLE_SERVICE_ACCOUNT_JSON) — método legacy.
+ */
+const getGoogleAccessToken = async (): Promise<string> => {
+    if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
 
-    const sign = crypto.createSign('RSA-SHA256');
-    sign.update(signatureInput);
-    const signature = sign.sign(serviceAccount.private_key, 'base64url');
+    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
-    const jwt = `${signatureInput}.${signature}`;
+    let body: URLSearchParams;
+    if (refreshToken && clientId && clientSecret) {
+        body = new URLSearchParams({
+            client_id: clientId,
+            client_secret: clientSecret,
+            refresh_token: refreshToken,
+            grant_type: 'refresh_token',
+        });
+    } else if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+        body = await buildServiceAccountBody();
+    } else {
+        throw new Error('Faltan credenciales: GOOGLE_REFRESH_TOKEN (+ CLIENT_ID/SECRET) o GOOGLE_SERVICE_ACCOUNT_JSON');
+    }
 
     const res = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-            assertion: jwt
-        })
+        body,
     });
-
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed to get Google Access Token: ${text}`);
-    }
+    if (!res.ok) throw new Error(`token: ${await res.text()}`);
 
     const data = await res.json();
     cachedToken = data.access_token;
-    tokenExpiry = Date.now() + 3500 * 1000; // Guardar caché por ~58 minutos
+    tokenExpiry = Date.now() + ((data.expires_in ? data.expires_in - 90 : 3000) * 1000);
     return cachedToken;
 };
 
@@ -335,35 +349,16 @@ app.post('/api/upload', async (req, res) => {
         }
 
         const buffer = Buffer.from(base64.split(',')[1] || base64, 'base64');
-        const googleServiceAccountStr = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
         const mainFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+        const hasCreds = Boolean(process.env.GOOGLE_REFRESH_TOKEN || process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
 
-        if (googleServiceAccountStr && mainFolderId) {
-            // Acepta el JSON tal cual o codificado en base64
-            let serviceAccount: any;
-            try {
-                const raw = googleServiceAccountStr.trim();
-                const jsonStr = raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
-                serviceAccount = JSON.parse(jsonStr);
-            } catch {
-                return res.status(500).json({
-                    success: false,
-                    error: 'GOOGLE_SERVICE_ACCOUNT_JSON no es válido. Pega el JSON completo o su versión en base64 (una sola línea).',
-                });
-            }
-            if (typeof serviceAccount.private_key === 'string') {
-                serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-            }
-            if (!serviceAccount.client_email || !serviceAccount.private_key) {
-                return res.status(500).json({ success: false, error: 'La cuenta de servicio no tiene client_email o private_key.' });
-            }
-
+        if (hasCreds && mainFolderId) {
             let accessToken: string;
             try {
-                accessToken = await getGoogleAccessToken(serviceAccount);
+                accessToken = await getGoogleAccessToken();
             } catch (e: any) {
                 console.error('Google auth error:', e?.message);
-                return res.status(502).json({ success: false, error: `No se pudo autenticar con Google: ${String(e?.message || e).slice(0, 200)}` });
+                return res.status(502).json({ success: false, error: `No se pudo autenticar con Google: ${String(e?.message || e).slice(0, 220)}` });
             }
             
             // Resolve correct folder ID (main or subfolder)
@@ -412,7 +407,7 @@ app.post('/api/upload', async (req, res) => {
                 if (errText.includes('File not found') || errText.includes('notFound')) {
                     return res.status(404).json({
                         success: false,
-                        error: 'No se encontró la carpeta (GOOGLE_DRIVE_FOLDER_ID incorrecto o no compartida con la cuenta de servicio).',
+                        error: 'No se encontró la carpeta (GOOGLE_DRIVE_FOLDER_ID incorrecto o sin acceso para esta cuenta).',
                     });
                 }
                 return res.status(502).json({ success: false, error: `Google Drive: ${errText.slice(0, 250)}` });
@@ -421,9 +416,8 @@ app.post('/api/upload', async (req, res) => {
             const data = await response.json();
             return res.status(201).json({ success: true, fileId: data.id });
         } else if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-            // En producción no hay disco donde escribir: hay que configurar Drive
             const faltan = [
-                !googleServiceAccountStr && 'GOOGLE_SERVICE_ACCOUNT_JSON',
+                !process.env.GOOGLE_REFRESH_TOKEN && !process.env.GOOGLE_SERVICE_ACCOUNT_JSON && 'GOOGLE_REFRESH_TOKEN',
                 !mainFolderId && 'GOOGLE_DRIVE_FOLDER_ID',
             ].filter(Boolean).join(' y ');
             return res.status(503).json({
