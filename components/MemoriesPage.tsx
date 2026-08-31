@@ -103,7 +103,10 @@ export const MemoriesPage: React.FC = () => {
           })
         });
 
-        if (!res.ok) throw new Error('Upload failed');
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || 'No se pudo subir el archivo.');
+        }
 
         setUploadProgress(Math.round(((i + 1) / filesToUpload.length) * 100));
       }
@@ -111,9 +114,9 @@ export const MemoriesPage: React.FC = () => {
       setUploadSuccess(true);
       setSelectedFiles([]);
       toast('¡Recuerdo guardado con éxito!', 'success');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast('Error al subir los recuerdos.', 'error');
+      toast(err?.message || 'Error al subir los recuerdos.', 'error');
     } finally {
       setUploading(false);
     }

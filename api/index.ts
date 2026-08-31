@@ -340,14 +340,31 @@ app.post('/api/upload', async (req, res) => {
 
         if (googleServiceAccountStr && mainFolderId) {
             // Acepta el JSON tal cual o codificado en base64
-            const raw = googleServiceAccountStr.trim();
-            const jsonStr = raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
-            const serviceAccount = JSON.parse(jsonStr);
-            // Asegura saltos de línea reales en la clave privada
+            let serviceAccount: any;
+            try {
+                const raw = googleServiceAccountStr.trim();
+                const jsonStr = raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
+                serviceAccount = JSON.parse(jsonStr);
+            } catch {
+                return res.status(500).json({
+                    success: false,
+                    error: 'GOOGLE_SERVICE_ACCOUNT_JSON no es válido. Pega el JSON completo o su versión en base64 (una sola línea).',
+                });
+            }
             if (typeof serviceAccount.private_key === 'string') {
                 serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
             }
-            const accessToken = await getGoogleAccessToken(serviceAccount);
+            if (!serviceAccount.client_email || !serviceAccount.private_key) {
+                return res.status(500).json({ success: false, error: 'La cuenta de servicio no tiene client_email o private_key.' });
+            }
+
+            let accessToken: string;
+            try {
+                accessToken = await getGoogleAccessToken(serviceAccount);
+            } catch (e: any) {
+                console.error('Google auth error:', e?.message);
+                return res.status(502).json({ success: false, error: `No se pudo autenticar con Google: ${String(e?.message || e).slice(0, 200)}` });
+            }
             
             // Resolve correct folder ID (main or subfolder)
             let targetFolderId = mainFolderId;
@@ -389,10 +406,16 @@ app.post('/api/upload', async (req, res) => {
                 if (errText.includes('storageQuotaExceeded') || errText.includes('quota')) {
                     return res.status(507).json({
                         success: false,
-                        error: 'La carpeta de Drive no acepta la subida (cuota de la cuenta de servicio). Usa una Unidad compartida.',
+                        error: 'La carpeta de Drive rechaza la subida por cuota de la cuenta de servicio. Solución: usar una Unidad compartida.',
                     });
                 }
-                throw new Error('Failed to upload to Google Drive');
+                if (errText.includes('File not found') || errText.includes('notFound')) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'No se encontró la carpeta (GOOGLE_DRIVE_FOLDER_ID incorrecto o no compartida con la cuenta de servicio).',
+                    });
+                }
+                return res.status(502).json({ success: false, error: `Google Drive: ${errText.slice(0, 250)}` });
             }
 
             const data = await response.json();
@@ -411,9 +434,9 @@ app.post('/api/upload', async (req, res) => {
             const relativePath = folder ? `/images/preboda/${folder}/${fileName}` : `/images/preboda/${fileName}`;
             return res.status(201).json({ success: true, url: relativePath });
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Upload Error:', error);
-        res.status(500).json({ success: false, error: 'Internal Server Error' });
+        res.status(500).json({ success: false, error: `Error al subir: ${String(error?.message || error).slice(0, 200)}` });
     }
 });
 
