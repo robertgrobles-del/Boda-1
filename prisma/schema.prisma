@@ -39,6 +39,7 @@ model AllowedGuest {
   phone     String    @unique
   pin       String
   name      String? // Nombre del invitado (para el saludo personalizado y el enlace ?invitado=)
+  ceremonyOnly Boolean @default(false) // true = solo invitación a la ceremonia (no a la recepción)
   maxGuests Int       @default(2) // Cupos totales asignados a este número
   usedCount Int       @default(0) // Invitados ya registrados (acumulado en varios RSVP)
   used      Boolean   @default(false) // true cuando usedCount >= maxGuests (o declinó)

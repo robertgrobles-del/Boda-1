@@ -51,6 +51,7 @@ interface AllowedGuest {
   phone: string;
   pin: string;
   name?: string | null;
+  ceremonyOnly?: boolean;
   maxGuests?: number;
   usedCount?: number;
   used: boolean;
@@ -89,6 +90,7 @@ export const AdminDashboard: React.FC = () => {
   const [newPin, setNewPin] = useState('');
   const [newName, setNewName] = useState('');
   const [newMaxGuests, setNewMaxGuests] = useState('2');
+  const [newCeremonyOnly, setNewCeremonyOnly] = useState(false);
   const [aforo, setAforo] = useState(() => localStorage.getItem('sd_aforo') || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [messages, setMessages] = useState<{ id: number; name: string; message: string; createdAt: string }[]>([]);
@@ -103,7 +105,7 @@ export const AdminDashboard: React.FC = () => {
   const [copiedLinkId, setCopiedLinkId] = useState<number | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
   const [editingGuest, setEditingGuest] = useState<AllowedGuest | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', pin: '', maxGuests: '2' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', pin: '', maxGuests: '2', ceremonyOnly: false });
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Phone sanitization for WhatsApp
@@ -123,15 +125,17 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Build rendered message
-  const buildWhatsAppMessage = (phone: string, pin: string, maxGuests?: number, name?: string | null): string => {
+  const buildWhatsAppMessage = (phone: string, pin: string, maxGuests?: number, name?: string | null, ceremonyOnly?: boolean): string => {
     const clean = (name || '').trim();
     const weddingUrl = buildInviteeLink(clean, '#confirmar');
     const count = (maxGuests || 2).toString();
     const saludo = clean ? `Hola ${clean}` : 'Hola';
+    const acceso = ceremonyOnly ? 'Solo ceremonia' : 'Ceremonia y recepción';
     return waTemplate
       .replace(/{SALUDO}/g, saludo)
       .replace(/{NOMBRE}/g, clean)
       .replace(/{INVITADO}/g, clean)
+      .replace(/{ACCESO}/g, acceso)
       .replace(/{TELEFONO}/g, phone)
       .replace(/{PHONE}/g, phone)
       .replace(/{PIN}/g, pin)
@@ -143,9 +147,9 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Send WhatsApp
-  const handleSendWhatsApp = (phone: string, pin: string, maxGuests?: number, name?: string | null) => {
+  const handleSendWhatsApp = (phone: string, pin: string, maxGuests?: number, name?: string | null, ceremonyOnly?: boolean) => {
     const cleanPhone = formatPhoneForWhatsApp(phone);
-    const msg = buildWhatsAppMessage(phone, pin, maxGuests, name);
+    const msg = buildWhatsAppMessage(phone, pin, maxGuests, name, ceremonyOnly);
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
     toast(`Abriendo WhatsApp para enviar a ${name ? name : phone}`, 'success');
@@ -164,8 +168,8 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Copy message text
-  const handleCopyMessage = async (phone: string, pin: string, id?: number, maxGuests?: number, name?: string | null) => {
-    const msg = buildWhatsAppMessage(phone, pin, maxGuests, name);
+  const handleCopyMessage = async (phone: string, pin: string, id?: number, maxGuests?: number, name?: string | null, ceremonyOnly?: boolean) => {
+    const msg = buildWhatsAppMessage(phone, pin, maxGuests, name, ceremonyOnly);
     try {
       await navigator.clipboard.writeText(msg);
       if (id !== undefined) {
@@ -251,6 +255,7 @@ export const AdminDashboard: React.FC = () => {
       phone: a.phone,
       pin: a.pin,
       maxGuests: String(a.maxGuests || 2),
+      ceremonyOnly: !!a.ceremonyOnly,
     });
   };
 
@@ -272,6 +277,7 @@ export const AdminDashboard: React.FC = () => {
           phone: editForm.phone.trim(),
           pin: editForm.pin.trim(),
           maxGuests: parseInt(editForm.maxGuests, 10) || 2,
+          ceremonyOnly: editForm.ceremonyOnly,
           aforo: parseInt(aforo, 10) || 0,
         }),
       });
@@ -451,18 +457,19 @@ export const AdminDashboard: React.FC = () => {
           'Content-Type': 'application/json',
           'x-api-key': apiKey
         },
-        body: JSON.stringify({ phone: currentPhone, pin: currentPin, name: currentName, maxGuests: guestsAllowed, aforo: aforoNum })
+        body: JSON.stringify({ phone: currentPhone, pin: currentPin, name: currentName, maxGuests: guestsAllowed, ceremonyOnly: newCeremonyOnly, aforo: aforoNum })
       });
 
       if (res.ok) {
         toast('Invitado autorizado con éxito.', 'success');
         if (autoSendWa) {
-          handleSendWhatsApp(currentPhone, currentPin, guestsAllowed, currentName);
+          handleSendWhatsApp(currentPhone, currentPin, guestsAllowed, currentName, newCeremonyOnly);
         }
         setNewPhone('');
         setNewPin('');
         setNewName('');
         setNewMaxGuests('2');
+        setNewCeremonyOnly(false);
         fetchAllowedGuests();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -844,6 +851,7 @@ export const AdminDashboard: React.FC = () => {
                           {[
                             { tag: '{SALUDO}', label: 'Hola + Nombre' },
                             { tag: '{NOMBRE}', label: 'Nombre del Invitado' },
+                            { tag: '{ACCESO}', label: 'Solo ceremonia / Ceremonia y recepción' },
                             { tag: '{TELEFONO}', label: 'Teléfono' },
                             { tag: '{PIN}', label: 'PIN Exclusivo' },
                             { tag: '{PASES}', label: 'Pases Permitidos' },
@@ -918,7 +926,7 @@ export const AdminDashboard: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleSendWhatsApp('8095551234', '1234', 2, newName.trim() || 'Familia Pérez')}
+                          onClick={() => handleSendWhatsApp('8095551234', '1234', 2, newName.trim() || 'Familia Pérez', newCeremonyOnly)}
                           className="px-4 py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-100 transition-all flex items-center gap-1.5"
                         >
                           <Send size={13} /> Probar Mensaje en WhatsApp
@@ -957,7 +965,7 @@ export const AdminDashboard: React.FC = () => {
                           )}
 
                           <div className="whitespace-pre-wrap font-sans leading-relaxed text-[11px] text-stone-700">
-                            {buildWhatsAppMessage('829-923-4460', '8421', 2, newName.trim() || 'Familia Pérez')}
+                            {buildWhatsAppMessage('829-923-4460', '8421', 2, newName.trim() || 'Familia Pérez', newCeremonyOnly)}
                           </div>
 
                           <div className="text-[9px] text-stone-400 text-right font-mono">
@@ -1060,6 +1068,18 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                   </div>
 
+                  <label className="flex items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50/60 px-3.5 py-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newCeremonyOnly}
+                      onChange={(e) => setNewCeremonyOnly(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-[#4a5d23]"
+                    />
+                    <span className="text-[11px] leading-snug text-stone-600">
+                      <span className="font-bold text-stone-700">Solo ceremonia</span> — este invitado no está invitado a la recepción.
+                    </span>
+                  </label>
+
                   <button
                     type="submit"
                     className="w-full flex items-center justify-center gap-2 py-3 bg-[#4a5d23] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#3b4c1b] transition-all shadow-md active:scale-95"
@@ -1111,6 +1131,11 @@ export const AdminDashboard: React.FC = () => {
                             ) : (
                               <span className="text-[11px] italic text-stone-300">Sin nombre</span>
                             )}
+                            {a.ceremonyOnly && (
+                              <span className="mt-1 block w-fit rounded-full bg-[#b35a44]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#b35a44]">
+                                Solo ceremonia
+                              </span>
+                            )}
                           </td>
                           <td className="py-4 px-4 font-mono font-bold text-stone-800">
                             {a.phone}
@@ -1149,7 +1174,7 @@ export const AdminDashboard: React.FC = () => {
                               {/* Send WhatsApp Button */}
                               <button
                                 type="button"
-                                onClick={() => handleSendWhatsApp(a.phone, a.pin, a.maxGuests, a.name)}
+                                onClick={() => handleSendWhatsApp(a.phone, a.pin, a.maxGuests, a.name, a.ceremonyOnly)}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm active:scale-95"
                                 title={`Enviar invitación por WhatsApp a ${a.name || a.phone} (${a.maxGuests || 2} pases)`}
                               >
@@ -1160,7 +1185,7 @@ export const AdminDashboard: React.FC = () => {
                               {/* Copy text Button */}
                               <button
                                 type="button"
-                                onClick={() => handleCopyMessage(a.phone, a.pin, a.id, a.maxGuests, a.name)}
+                                onClick={() => handleCopyMessage(a.phone, a.pin, a.id, a.maxGuests, a.name, a.ceremonyOnly)}
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-stone-200 hover:bg-stone-100 text-stone-600 text-[10px] font-medium transition-all active:scale-95"
                                 title="Copiar mensaje personalizado"
                               >
@@ -1406,6 +1431,18 @@ export const AdminDashboard: React.FC = () => {
                     </select>
                   </div>
                 </div>
+
+                <label className="flex items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50/60 px-3.5 py-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.ceremonyOnly}
+                    onChange={(e) => setEditForm((f) => ({ ...f, ceremonyOnly: e.target.checked }))}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#4a5d23]"
+                  />
+                  <span className="text-[11px] leading-snug text-stone-600">
+                    <span className="font-bold text-stone-700">Solo ceremonia</span> — no está invitado a la recepción.
+                  </span>
+                </label>
               </div>
 
               <div className="mt-6 flex gap-3">

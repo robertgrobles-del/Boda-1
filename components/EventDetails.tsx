@@ -162,7 +162,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
             {/* Map Placeholder Image */}
             <div className="mt-8 w-full h-48 rounded-2xl overflow-hidden border border-gray-100 shadow-inner">
               <img
-                src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&q=80&w=800&fm=webp"
+                src="/images/club_naco.webp"
                 alt="Club Deportivo Naco - Salón Montás"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 loading="lazy"

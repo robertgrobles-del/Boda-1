@@ -593,7 +593,7 @@ app.post('/api/admin/allowed', async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { phone, pin, maxGuests, aforo, name } = req.body;
+    const { phone, pin, maxGuests, aforo, name, ceremonyOnly } = req.body;
     if (!phone || !pin) {
         return res.status(400).json({ error: 'Phone and PIN are required' });
     }
@@ -601,6 +601,7 @@ app.post('/api/admin/allowed', async (req, res) => {
     const count = parseInt(maxGuests, 10) || 2;
     const aforoNum = parseInt(aforo, 10) || 0;
     const cleanName = (name && String(name).trim().slice(0, 60)) || null;
+    const ceremonyOnlyBool = ceremonyOnly === true || ceremonyOnly === 'true';
 
     try {
         if (aforoNum > 0) {
@@ -617,8 +618,8 @@ app.post('/api/admin/allowed', async (req, res) => {
 
         const result = await prisma.allowedGuest.upsert({
             where: { phone },
-            update: { pin, maxGuests: count, ...(cleanName !== null ? { name: cleanName } : {}) } as any, // no se reinician los cupos ya usados
-            create: { phone, pin, maxGuests: count, name: cleanName } as any
+            update: { pin, maxGuests: count, ceremonyOnly: ceremonyOnlyBool, ...(cleanName !== null ? { name: cleanName } : {}) } as any, // no se reinician los cupos ya usados
+            create: { phone, pin, maxGuests: count, name: cleanName, ceremonyOnly: ceremonyOnlyBool } as any
         });
         res.status(201).json(result);
     } catch (error) {
@@ -654,7 +655,7 @@ app.put('/api/admin/allowed/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
 
-    const { name, phone, pin, maxGuests, aforo } = req.body;
+    const { name, phone, pin, maxGuests, aforo, ceremonyOnly } = req.body;
 
     try {
         const current = await prisma.allowedGuest.findUnique({ where: { id } }) as any;
@@ -678,6 +679,9 @@ app.put('/api/admin/allowed/:id', async (req, res) => {
         }
         if (name !== undefined) {
             data.name = (name && String(name).trim().slice(0, 60)) || null;
+        }
+        if (ceremonyOnly !== undefined) {
+            data.ceremonyOnly = ceremonyOnly === true || ceremonyOnly === 'true';
         }
         if (maxGuests !== undefined) {
             const parsed = parseInt(maxGuests, 10);
