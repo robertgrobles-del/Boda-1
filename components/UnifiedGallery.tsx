@@ -10,6 +10,10 @@ import { Skeleton } from './Skeleton';
 const galleryImages = PHOTOS.gallery;
 const fullSize = (u: string) => (u.startsWith('http') ? `${u}?auto=format&fit=crop&q=80&w=1600` : u);
 
+// Par de fotos del encabezado ("Captura los momentos"): el novio y la novia.
+const headerPair = ['/images/preboda/imagen_21.jpg', '/images/preboda/imagen_22.jpg'];
+const lightboxImages = [...headerPair, ...galleryImages.map(fullSize)];
+
 // Anchos de tarjeta: ~80vw en móvil, 360px en escritorio
 const CARD_SIZES = '(min-width: 768px) 360px, 80vw';
 
@@ -185,14 +189,14 @@ export const UnifiedGallery: React.FC<{ id: string }> = ({ id }) => {
                             className="-rotate-3 overflow-hidden rounded-3xl border-4 border-white shadow-xl"
                             aria-label="Ampliar foto"
                         >
-                            <GalleryImage src={galleryImages[0]} alt="Stephanie y Dalvin" objectPosition="left center" />
+                            <GalleryImage src={headerPair[0]} alt="Dalvin" objectPosition="center 32%" />
                         </button>
                         <button
                             onClick={() => setLightboxIndex(1)}
                             className="mt-12 rotate-3 overflow-hidden rounded-3xl border-4 border-white shadow-xl"
                             aria-label="Ampliar foto"
                         >
-                            <GalleryImage src={galleryImages[1]} alt="Stephanie y Dalvin" />
+                            <GalleryImage src={headerPair[1]} alt="Stephanie" objectPosition="center 30%" />
                         </button>
                         <div className="absolute left-1/2 top-1/2 z-20 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-xl">
                             <Instagram className="text-terracotta" size={20} />
@@ -211,7 +215,7 @@ export const UnifiedGallery: React.FC<{ id: string }> = ({ id }) => {
                         <motion.button
                             key={i}
                             whileHover={reduceMotion ? undefined : { y: -10 }}
-                            onClick={() => setLightboxIndex(i % galleryImages.length)}
+                            onClick={() => setLightboxIndex((i % galleryImages.length) + headerPair.length)}
                             onFocus={() => setPaused(true)}
                             onBlur={() => setPaused(false)}
                             className="group relative aspect-[4/5] w-[80vw] flex-shrink-0 overflow-hidden rounded-[2.5rem] border-4 border-white shadow-xl md:w-[360px]"
@@ -225,7 +229,7 @@ export const UnifiedGallery: React.FC<{ id: string }> = ({ id }) => {
             </div>
 
             <Lightbox
-                images={galleryImages.map(fullSize)}
+                images={lightboxImages}
                 index={lightboxIndex}
                 onClose={() => setLightboxIndex(null)}
                 onNavigate={setLightboxIndex}
