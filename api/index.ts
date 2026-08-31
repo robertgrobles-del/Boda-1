@@ -182,13 +182,14 @@ app.post('/api/rsvp', async (req, res) => {
             }
         }
 
-        // Nombres oficiales por cédula (uno por invitado)
+        // Nombres oficiales por cédula (uno por invitado) — solo para la lista de invitados
         const guestNames = isAttending ? await Promise.all(cedulaList.map(fetchCedulaName)) : [];
-        const primaryName = guestNames.find(Boolean) || name;
+        // El "Contacto" es el nombre que escribió la persona en el formulario
+        const contactName = (name && String(name).trim()) || guestNames.find(Boolean) || 'Invitado';
 
         const result = await prisma.rSVP.create({
             data: {
-                name: primaryName,
+                name: contactName,
                 email,
                 phone,
                 attending: isAttending,
@@ -217,7 +218,7 @@ app.post('/api/rsvp', async (req, res) => {
                     subject: '¡Confirmación recibida! - Boda Stephanie & Dalvin',
                     html: `
                         <div style="font-family: serif; padding: 20px; color: #4a5d23;">
-                            <h1>¡Hola ${primaryName}!</h1>
+                            <h1>¡Hola ${contactName}!</h1>
                             <p>Hemos recibido tu confirmación para nuestra boda. ¡Estamos muy felices de que nos acompañes!</p>
                             <hr />
                             <p><strong>Invitados registrados (${guestCount}):</strong></p>
@@ -289,10 +290,10 @@ const getGoogleAccessToken = async (serviceAccount: any): Promise<string> => {
 
 // Helper to find or create subfolder inside Google Drive
 const getOrCreateSubfolder = async (accessToken: string, parentId: string, folderName: string): Promise<string> => {
-    const searchUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
-        `name='${folderName}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    const searchUrl = `https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&includeItemsFromAllDrives=true&corpora=allDrives&q=${encodeURIComponent(
+        `name='${folderName.replace(/'/g, "\\'")}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
     )}`;
-    
+
     const searchRes = await fetch(searchUrl, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
@@ -304,7 +305,7 @@ const getOrCreateSubfolder = async (accessToken: string, parentId: string, folde
         }
     }
     
-    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+    const createRes = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -366,7 +367,7 @@ app.post('/api/upload', async (req, res) => {
                 Buffer.from(closeDelimiter)
             ]);
 
-            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -378,6 +379,12 @@ app.post('/api/upload', async (req, res) => {
             if (!response.ok) {
                 const errText = await response.text();
                 console.error('Google Drive upload error:', errText);
+                if (errText.includes('storageQuotaExceeded') || errText.includes('quota')) {
+                    return res.status(507).json({
+                        success: false,
+                        error: 'La carpeta de Drive no acepta la subida (cuota de la cuenta de servicio). Usa una Unidad compartida.',
+                    });
+                }
                 throw new Error('Failed to upload to Google Drive');
             }
 
