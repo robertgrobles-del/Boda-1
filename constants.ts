@@ -7,7 +7,7 @@ export const EVENT_DATA = {
     date: "2026-11-07T17:00:00-04:00",
     displayDate: "7 DE NOVIEMBRE 2026",
     hashtag: "#Stephanie&Dalvin",
-    estYear: "2022",
+    estYear: "2023",
     whatsapp: "18299234460", // Número real (RD: 1 + 829 + 7 dígitos, sin "+")
 };
 
@@ -53,7 +53,7 @@ export const SONG = {
     title: "Nuestra Canción",
     artist: "Este amor - Itala & Janjo",
     audioUrl: "",
-    externalUrl: "https://www.youtube.com/watch?v=bc-LfIbw1WY&list=RDbc-LfIbw1WY", // p.ej. "https://www.youtube.com/watch?v=XXXXXXXXXXX"
+    externalUrl: "https://www.youtube.com/watch?v=bc-LfIbw1WY", // p.ej. "https://www.youtube.com/watch?v=XXXXXXXXXXX"
 };
 
 // --- Mesa de regalos --------------------------------------------------------
