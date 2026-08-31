@@ -31,3 +31,13 @@ dist-ssr
 prisma/dev.db
 prisma/dev.db-journal
 server/dist
+
+# Archivos privados: nunca deben publicarse en el sitio
+_private/
+public/**/*.docx
+public/**/*-*.json
+!public/manifest.json
+credenciales*.json
+*service-account*.json
+*-service-account*.json
+boda-fotos-*.json

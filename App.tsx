@@ -20,15 +20,18 @@ import { Nav } from './components/Nav';
 import { ToastProvider } from './components/Toast';
 import { AdminDashboard } from './components/AdminDashboard';
 import { MemoriesPage } from './components/MemoriesPage';
+import { LegalPage } from './components/LegalPage';
 import { Calendar, Apple } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { EVENT_DATA, PHOTOS, CALENDAR_URLS, buildIcsDataUri } from './constants';
 
-type Route = 'home' | 'admin' | 'memories';
+type Route = 'home' | 'admin' | 'memories' | 'privacidad' | 'terminos';
 
 const routeFromPath = (path: string): Route => {
   if (path === '/admin') return 'admin';
   if (path === '/memories') return 'memories';
+  if (path === '/privacidad') return 'privacidad';
+  if (path === '/terminos') return 'terminos';
   return 'home';
 };
 
@@ -80,6 +83,14 @@ const App: React.FC = () => {
     return (
       <ToastProvider>
         <MemoriesPage />
+      </ToastProvider>
+    );
+  }
+
+  if (currentRoute === 'privacidad' || currentRoute === 'terminos') {
+    return (
+      <ToastProvider>
+        <LegalPage kind={currentRoute} />
       </ToastProvider>
     );
   }
@@ -156,6 +167,11 @@ const App: React.FC = () => {
             <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.5em] text-stone-400">{EVENT_DATA.displayDate}</p>
             <div className="px-4 text-center text-[10px] font-serif italic text-stone-400">
               {EVENT_DATA.hashtag} · Nuestra historia empezó en {EVENT_DATA.estYear}
+            </div>
+            <div className="mt-6 flex items-center gap-4 text-[10px] uppercase tracking-widest text-stone-300">
+              <a href="/privacidad" className="transition-colors hover:text-stone-500">Privacidad</a>
+              <span aria-hidden>·</span>
+              <a href="/terminos" className="transition-colors hover:text-stone-500">Términos</a>
             </div>
           </footer>
         </motion.div>
