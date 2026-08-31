@@ -38,6 +38,7 @@ model AllowedGuest {
   id        Int       @id @default(autoincrement())
   phone     String    @unique
   pin       String
+  name      String? // Nombre del invitado (para el saludo personalizado y el enlace ?invitado=)
   maxGuests Int       @default(2) // Cupos totales asignados a este número
   usedCount Int       @default(0) // Invitados ya registrados (acumulado en varios RSVP)
   used      Boolean   @default(false) // true cuando usedCount >= maxGuests (o declinó)

@@ -593,13 +593,14 @@ app.post('/api/admin/allowed', async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { phone, pin, maxGuests, aforo } = req.body;
+    const { phone, pin, maxGuests, aforo, name } = req.body;
     if (!phone || !pin) {
         return res.status(400).json({ error: 'Phone and PIN are required' });
     }
 
     const count = parseInt(maxGuests, 10) || 2;
     const aforoNum = parseInt(aforo, 10) || 0;
+    const cleanName = (name && String(name).trim().slice(0, 60)) || null;
 
     try {
         if (aforoNum > 0) {
@@ -616,8 +617,8 @@ app.post('/api/admin/allowed', async (req, res) => {
 
         const result = await prisma.allowedGuest.upsert({
             where: { phone },
-            update: { pin, maxGuests: count } as any, // no se reinician los cupos ya usados
-            create: { phone, pin, maxGuests: count } as any
+            update: { pin, maxGuests: count, ...(cleanName !== null ? { name: cleanName } : {}) } as any, // no se reinician los cupos ya usados
+            create: { phone, pin, maxGuests: count, name: cleanName } as any
         });
         res.status(201).json(result);
     } catch (error) {

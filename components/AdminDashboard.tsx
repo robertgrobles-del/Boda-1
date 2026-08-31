@@ -9,7 +9,9 @@ import {
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
 
-const DEFAULT_WA_TEMPLATE = `💍 *¡Estás cordialmente invitado/a a nuestra boda!* ✨
+const DEFAULT_WA_TEMPLATE = `👋 {SALUDO}
+
+💍 *¡Estás cordialmente invitado/a a nuestra boda!* ✨
 Stephanie & Dalvin 🕊️
 
 🗓 *Fecha:* Sábado, 7 de Noviembre de 2026 - 5:00 PM
@@ -48,6 +50,7 @@ interface AllowedGuest {
   id: number;
   phone: string;
   pin: string;
+  name?: string | null;
   maxGuests?: number;
   usedCount?: number;
   used: boolean;
@@ -84,6 +87,7 @@ export const AdminDashboard: React.FC = () => {
   const [allowedGuests, setAllowedGuests] = useState<AllowedGuest[]>([]);
   const [newPhone, setNewPhone] = useState('');
   const [newPin, setNewPin] = useState('');
+  const [newName, setNewName] = useState('');
   const [newMaxGuests, setNewMaxGuests] = useState('2');
   const [aforo, setAforo] = useState(() => localStorage.getItem('sd_aforo') || '');
   const [searchTerm, setSearchTerm] = useState('');
@@ -96,6 +100,7 @@ export const AdminDashboard: React.FC = () => {
   const [autoSendWa, setAutoSendWa] = useState(() => localStorage.getItem('sd_auto_send_wa') !== 'false');
   const [showTemplateSettings, setShowTemplateSettings] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<number | null>(null);
 
   // Phone sanitization for WhatsApp
   const formatPhoneForWhatsApp = (phone: string): string => {
@@ -106,11 +111,23 @@ export const AdminDashboard: React.FC = () => {
     return digits;
   };
 
+  // Enlace personalizado con el saludo (?invitado=Nombre)
+  const buildInviteeLink = (name?: string | null, hash = ''): string => {
+    const base = window.location.origin + '/';
+    const clean = (name || '').trim();
+    return clean ? `${base}?invitado=${encodeURIComponent(clean)}${hash}` : `${base}${hash}`;
+  };
+
   // Build rendered message
-  const buildWhatsAppMessage = (phone: string, pin: string, maxGuests?: number): string => {
-    const weddingUrl = `${window.location.origin}/#confirmar`;
+  const buildWhatsAppMessage = (phone: string, pin: string, maxGuests?: number, name?: string | null): string => {
+    const clean = (name || '').trim();
+    const weddingUrl = buildInviteeLink(clean, '#confirmar');
     const count = (maxGuests || 2).toString();
+    const saludo = clean ? `Hola ${clean}` : 'Hola';
     return waTemplate
+      .replace(/{SALUDO}/g, saludo)
+      .replace(/{NOMBRE}/g, clean)
+      .replace(/{INVITADO}/g, clean)
       .replace(/{TELEFONO}/g, phone)
       .replace(/{PHONE}/g, phone)
       .replace(/{PIN}/g, pin)
@@ -122,17 +139,29 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Send WhatsApp
-  const handleSendWhatsApp = (phone: string, pin: string, maxGuests?: number) => {
+  const handleSendWhatsApp = (phone: string, pin: string, maxGuests?: number, name?: string | null) => {
     const cleanPhone = formatPhoneForWhatsApp(phone);
-    const msg = buildWhatsAppMessage(phone, pin, maxGuests);
+    const msg = buildWhatsAppMessage(phone, pin, maxGuests, name);
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
-    toast(`Abriendo WhatsApp para enviar a ${phone}`, 'success');
+    toast(`Abriendo WhatsApp para enviar a ${name ? name : phone}`, 'success');
+  };
+
+  // Copy personalized link
+  const handleCopyInviteeLink = async (name: string | null | undefined, id: number) => {
+    try {
+      await navigator.clipboard.writeText(buildInviteeLink(name));
+      setCopiedLinkId(id);
+      setTimeout(() => setCopiedLinkId(null), 2500);
+      toast(name ? `Enlace de ${name} copiado.` : 'Enlace copiado (sin nombre).', 'success');
+    } catch {
+      toast('No se pudo copiar el enlace.', 'error');
+    }
   };
 
   // Copy message text
-  const handleCopyMessage = async (phone: string, pin: string, id?: number, maxGuests?: number) => {
-    const msg = buildWhatsAppMessage(phone, pin, maxGuests);
+  const handleCopyMessage = async (phone: string, pin: string, id?: number, maxGuests?: number, name?: string | null) => {
+    const msg = buildWhatsAppMessage(phone, pin, maxGuests, name);
     try {
       await navigator.clipboard.writeText(msg);
       if (id !== undefined) {
@@ -345,6 +374,7 @@ export const AdminDashboard: React.FC = () => {
 
     const currentPhone = newPhone.trim();
     const currentPin = newPin.trim();
+    const currentName = newName.trim();
     const guestsAllowed = parseInt(newMaxGuests, 10) || 2;
     const aforoNum = parseInt(aforo, 10) || 0;
 
@@ -369,16 +399,17 @@ export const AdminDashboard: React.FC = () => {
           'Content-Type': 'application/json',
           'x-api-key': apiKey
         },
-        body: JSON.stringify({ phone: currentPhone, pin: currentPin, maxGuests: guestsAllowed, aforo: aforoNum })
+        body: JSON.stringify({ phone: currentPhone, pin: currentPin, name: currentName, maxGuests: guestsAllowed, aforo: aforoNum })
       });
 
       if (res.ok) {
         toast('Invitado autorizado con éxito.', 'success');
         if (autoSendWa) {
-          handleSendWhatsApp(currentPhone, currentPin, guestsAllowed);
+          handleSendWhatsApp(currentPhone, currentPin, guestsAllowed, currentName);
         }
         setNewPhone('');
         setNewPin('');
+        setNewName('');
         setNewMaxGuests('2');
         fetchAllowedGuests();
       } else {
@@ -431,7 +462,9 @@ export const AdminDashboard: React.FC = () => {
   );
 
   const filteredAllowed = allowedGuests.filter(a =>
-    a.phone.includes(searchTerm) || a.pin.includes(searchTerm)
+    a.phone.includes(searchTerm) ||
+    a.pin.includes(searchTerm) ||
+    (a.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (!isAuthorized) {
@@ -757,10 +790,12 @@ export const AdminDashboard: React.FC = () => {
                         </label>
                         <div className="flex flex-wrap gap-2">
                           {[
+                            { tag: '{SALUDO}', label: 'Hola + Nombre' },
+                            { tag: '{NOMBRE}', label: 'Nombre del Invitado' },
                             { tag: '{TELEFONO}', label: 'Teléfono' },
                             { tag: '{PIN}', label: 'PIN Exclusivo' },
                             { tag: '{PASES}', label: 'Pases Permitidos' },
-                            { tag: '{ENLACE}', label: 'Enlace a la Web' },
+                            { tag: '{ENLACE}', label: 'Enlace personalizado' },
                             { tag: '{IMAGEN}', label: 'URL Imagen' },
                           ].map((item) => (
                             <button
@@ -831,7 +866,7 @@ export const AdminDashboard: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleSendWhatsApp('8095551234', '1234', 2)}
+                          onClick={() => handleSendWhatsApp('8095551234', '1234', 2, newName.trim() || 'Familia Pérez')}
                           className="px-4 py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-100 transition-all flex items-center gap-1.5"
                         >
                           <Send size={13} /> Probar Mensaje en WhatsApp
@@ -870,7 +905,7 @@ export const AdminDashboard: React.FC = () => {
                           )}
 
                           <div className="whitespace-pre-wrap font-sans leading-relaxed text-[11px] text-stone-700">
-                            {buildWhatsAppMessage('829-923-4460', '8421', 2)}
+                            {buildWhatsAppMessage('829-923-4460', '8421', 2, newName.trim() || 'Familia Pérez')}
                           </div>
 
                           <div className="text-[9px] text-stone-400 text-right font-mono">
@@ -879,7 +914,7 @@ export const AdminDashboard: React.FC = () => {
                         </div>
 
                         <p className="mt-3 text-[10px] text-stone-500 text-center italic">
-                          Los valores se sustituirán automáticamente por el número, PIN y pases permitidos de cada invitado.
+                          Los valores se sustituirán automáticamente por el nombre, número, PIN, pases y enlace personalizado de cada invitado.
                         </p>
                       </div>
                     </div>
@@ -902,6 +937,22 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleAddAllowedGuest} className="space-y-4">
+                  <div className="space-y-1">
+                    <label htmlFor="new-name" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
+                      Nombre del Invitado
+                    </label>
+                    <input
+                      id="new-name"
+                      type="text"
+                      maxLength={60}
+                      className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-sm"
+                      placeholder="Ej: Familia Pérez / Juan y María"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                    />
+                    <p className="text-[10px] text-stone-400">Se usa para el saludo personalizado y el enlace <span className="font-mono">?invitado=</span>.</p>
+                  </div>
+
                   <div className="space-y-1">
                     <label htmlFor="new-phone" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
                       Número de Teléfono
@@ -979,7 +1030,7 @@ export const AdminDashboard: React.FC = () => {
                     <input
                       type="text"
                       className="pl-8 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-full focus:outline-none focus:border-[#4a5d23] text-xs w-full sm:w-56"
-                      placeholder="Buscar teléfono o PIN..."
+                      placeholder="Buscar nombre, teléfono o PIN..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -990,8 +1041,10 @@ export const AdminDashboard: React.FC = () => {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-stone-50/50 border-b border-stone-100 text-[10px] font-bold uppercase tracking-wider text-stone-500">
-                        <th className="py-4 px-6">Teléfono</th>
+                        <th className="py-4 px-6">Invitado</th>
+                        <th className="py-4 px-4">Teléfono</th>
                         <th className="py-4 px-4 text-center">PIN</th>
+                        <th className="py-4 px-4 text-center">Pases</th>
                         <th className="py-4 px-4 text-center">Registrados</th>
                         <th className="py-4 px-6 text-center">Acciones WhatsApp</th>
                         <th className="py-4 px-4 text-center"></th>
@@ -1000,7 +1053,14 @@ export const AdminDashboard: React.FC = () => {
                     <tbody className="divide-y divide-stone-100 text-sm">
                       {filteredAllowed.map((a) => (
                         <tr key={a.id} className="hover:bg-stone-50/40 transition-colors">
-                          <td className="py-4 px-6 font-mono font-bold text-stone-800">
+                          <td className="py-4 px-6">
+                            {a.name ? (
+                              <span className="font-semibold text-stone-800">{a.name}</span>
+                            ) : (
+                              <span className="text-[11px] italic text-stone-300">Sin nombre</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 font-mono font-bold text-stone-800">
                             {a.phone}
                           </td>
                           <td className="py-4 px-4 text-center font-mono font-bold tracking-widest text-[#4a5d23]">
@@ -1037,9 +1097,9 @@ export const AdminDashboard: React.FC = () => {
                               {/* Send WhatsApp Button */}
                               <button
                                 type="button"
-                                onClick={() => handleSendWhatsApp(a.phone, a.pin, a.maxGuests)}
+                                onClick={() => handleSendWhatsApp(a.phone, a.pin, a.maxGuests, a.name)}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm active:scale-95"
-                                title={`Enviar invitación por WhatsApp a ${a.phone} (${a.maxGuests || 2} pases)`}
+                                title={`Enviar invitación por WhatsApp a ${a.name || a.phone} (${a.maxGuests || 2} pases)`}
                               >
                                 <Send size={11} />
                                 WhatsApp
@@ -1048,7 +1108,7 @@ export const AdminDashboard: React.FC = () => {
                               {/* Copy text Button */}
                               <button
                                 type="button"
-                                onClick={() => handleCopyMessage(a.phone, a.pin, a.id, a.maxGuests)}
+                                onClick={() => handleCopyMessage(a.phone, a.pin, a.id, a.maxGuests, a.name)}
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-stone-200 hover:bg-stone-100 text-stone-600 text-[10px] font-medium transition-all active:scale-95"
                                 title="Copiar mensaje personalizado"
                               >
@@ -1061,6 +1121,26 @@ export const AdminDashboard: React.FC = () => {
                                   <>
                                     <Copy size={12} />
                                     <span>Copiar</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* Copy personalized link */}
+                              <button
+                                type="button"
+                                onClick={() => handleCopyInviteeLink(a.name, a.id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-stone-200 hover:bg-stone-100 text-stone-600 text-[10px] font-medium transition-all active:scale-95"
+                                title={`Copiar enlace personalizado${a.name ? ` de ${a.name}` : ''}`}
+                              >
+                                {copiedLinkId === a.id ? (
+                                  <>
+                                    <Check size={12} className="text-green-600" />
+                                    <span className="text-green-600 font-bold">Enlace</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ExternalLink size={12} />
+                                    <span>Enlace</span>
                                   </>
                                 )}
                               </button>
@@ -1092,7 +1172,7 @@ export const AdminDashboard: React.FC = () => {
                       ))}
                       {filteredAllowed.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="text-center py-12 text-stone-400 italic">
+                          <td colSpan={7} className="text-center py-12 text-stone-400 italic">
                             No se encontraron teléfonos registrados.
                           </td>
                         </tr>
