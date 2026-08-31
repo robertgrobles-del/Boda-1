@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, CheckCircle, XCircle, Search, Download, Key, LogOut,
   Smartphone, Plus, MessageSquare, Trash2, Send, Copy, ExternalLink,
-  RefreshCw, Sliders, FileText, Check, Image as ImageIcon,
+  RefreshCw, Sliders, FileText, Check,
   MessageCircle, MoreVertical, Pencil, X
 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
@@ -26,9 +26,6 @@ Para confirmar tu asistencia, por favor accede a nuestra web oficial utilizando 
 
 🌐 *Confirma tu asistencia en el siguiente enlace:*
 {ENLACE}
-
-🖼️ *Ver invitación digital:*
-{IMAGEN}
 
 ¡Esperamos contar con tu grata presencia en este día tan especial! ❤️`;
 
@@ -97,8 +94,15 @@ export const AdminDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<'rsvps' | 'allowed' | 'messages'>('rsvps');
 
   // WhatsApp Template and Sender state
-  const [waTemplate, setWaTemplate] = useState(() => localStorage.getItem('sd_wa_template') || DEFAULT_WA_TEMPLATE);
-  const [waImageUrl, setWaImageUrl] = useState(() => localStorage.getItem('sd_wa_image_url') || `${window.location.origin}/images/Iglesia_Santa_Barbara.webp`);
+  const [waTemplate, setWaTemplate] = useState(() => {
+    const saved = localStorage.getItem('sd_wa_template');
+    if (!saved) return DEFAULT_WA_TEMPLATE;
+    // Migración: se eliminó la imagen de invitación → quitar restos de plantillas viejas
+    return saved
+      .replace(/^.*(\{IMAGEN\}|Ver invitación digital).*$\n?/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  });
   const [autoSendWa, setAutoSendWa] = useState(() => localStorage.getItem('sd_auto_send_wa') !== 'false');
   const [showTemplateSettings, setShowTemplateSettings] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -142,8 +146,7 @@ export const AdminDashboard: React.FC = () => {
       .replace(/{PASES}/g, count)
       .replace(/{INVITADOS}/g, count)
       .replace(/{ENLACE}/g, weddingUrl)
-      .replace(/{LINK}/g, weddingUrl)
-      .replace(/{IMAGEN}/g, waImageUrl);
+      .replace(/{LINK}/g, weddingUrl);
   };
 
   // Send WhatsApp
@@ -299,7 +302,6 @@ export const AdminDashboard: React.FC = () => {
   // Save template
   const handleSaveTemplate = () => {
     localStorage.setItem('sd_wa_template', waTemplate);
-    localStorage.setItem('sd_wa_image_url', waImageUrl);
     localStorage.setItem('sd_auto_send_wa', autoSendWa ? 'true' : 'false');
     toast('Plantilla de WhatsApp guardada exitosamente.', 'success');
   };
@@ -307,11 +309,8 @@ export const AdminDashboard: React.FC = () => {
   // Reset template
   const handleResetTemplate = () => {
     if (window.confirm('¿Restablecer la plantilla a los valores por defecto?')) {
-      const defaultImg = `${window.location.origin}/images/Iglesia_Santa_Barbara.webp`;
       setWaTemplate(DEFAULT_WA_TEMPLATE);
-      setWaImageUrl(defaultImg);
       localStorage.setItem('sd_wa_template', DEFAULT_WA_TEMPLATE);
-      localStorage.setItem('sd_wa_image_url', defaultImg);
       toast('Plantilla restablecida por defecto.', 'success');
     }
   };
@@ -856,7 +855,6 @@ export const AdminDashboard: React.FC = () => {
                             { tag: '{PIN}', label: 'PIN Exclusivo' },
                             { tag: '{PASES}', label: 'Pases Permitidos' },
                             { tag: '{ENLACE}', label: 'Enlace personalizado' },
-                            { tag: '{IMAGEN}', label: 'URL Imagen' },
                           ].map((item) => (
                             <button
                               key={item.tag}
@@ -882,30 +880,6 @@ export const AdminDashboard: React.FC = () => {
                           className="w-full px-4 py-3 border border-stone-200 rounded-2xl text-xs md:text-sm font-mono leading-relaxed focus:outline-none focus:border-[#4a5d23] bg-stone-50/50"
                           placeholder="Escribe la plantilla de invitación..."
                         />
-                      </div>
-
-                      {/* Image URL Input */}
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 flex items-center justify-between">
-                          <span>URL de la Imagen de Invitación</span>
-                          <button
-                            type="button"
-                            onClick={() => setWaImageUrl(`${window.location.origin}/images/Iglesia_Santa_Barbara.webp`)}
-                            className="text-[#4a5d23] hover:underline font-sans normal-case text-[10px]"
-                          >
-                            Usar foto de Santa Bárbara
-                          </button>
-                        </label>
-                        <div className="relative">
-                          <ImageIcon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                          <input
-                            type="url"
-                            value={waImageUrl}
-                            onChange={(e) => setWaImageUrl(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2.5 border border-stone-200 rounded-xl text-xs focus:outline-none focus:border-[#4a5d23]"
-                            placeholder="https://tudominio.com/images/invitacion.webp"
-                          />
-                        </div>
                       </div>
 
                       {/* Template Buttons */}
@@ -949,21 +923,6 @@ export const AdminDashboard: React.FC = () => {
                       <div className="flex-grow bg-[#efeae2] p-4 md:p-5 rounded-2xl border border-[#d1c7b7] flex flex-col justify-start relative shadow-inner overflow-hidden">
                         {/* WhatsApp Message Bubble */}
                         <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/60 max-w-full text-xs text-stone-800 space-y-3 relative">
-                          {/* Image preview in bubble */}
-                          {waImageUrl && (
-                            <div className="w-full h-36 rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
-                              <img
-                                src={waImageUrl}
-                                alt="Vista previa de invitación"
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  // fallback if url fails
-                                  (e.target as HTMLElement).style.display = 'none';
-                                }}
-                              />
-                            </div>
-                          )}
-
                           <div className="whitespace-pre-wrap font-sans leading-relaxed text-[11px] text-stone-700">
                             {buildWhatsAppMessage('829-923-4460', '8421', 2, newName.trim() || 'Familia Pérez', newCeremonyOnly)}
                           </div>
