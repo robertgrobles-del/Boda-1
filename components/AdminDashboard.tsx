@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   Users, CheckCircle, XCircle, Search, Download, Key, LogOut,
-  Smartphone, Plus, MessageSquare, Trash2, Send, Copy, ExternalLink, 
+  Smartphone, Plus, MessageSquare, Trash2, Send, Copy, ExternalLink,
   RefreshCw, Sliders, FileText, Check, Image as ImageIcon,
-  MessageCircle
+  MessageCircle, MoreVertical, Pencil, X
 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
@@ -101,6 +101,10 @@ export const AdminDashboard: React.FC = () => {
   const [showTemplateSettings, setShowTemplateSettings] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [copiedLinkId, setCopiedLinkId] = useState<number | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
+  const [editingGuest, setEditingGuest] = useState<AllowedGuest | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', pin: '', maxGuests: '2' });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Phone sanitization for WhatsApp
   const formatPhoneForWhatsApp = (phone: string): string => {
@@ -235,6 +239,54 @@ export const AdminDashboard: React.FC = () => {
       }
     } catch {
       toast('Error de conexión con el servidor.', 'error');
+    }
+  };
+
+  // Abrir el modal de edición de un teléfono autorizado
+  const openEditGuest = (a: AllowedGuest) => {
+    setMenuOpenId(null);
+    setEditingGuest(a);
+    setEditForm({
+      name: a.name || '',
+      phone: a.phone,
+      pin: a.pin,
+      maxGuests: String(a.maxGuests || 2),
+    });
+  };
+
+  // Guardar cambios de un teléfono autorizado
+  const handleSaveEditGuest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingGuest) return;
+    if (!editForm.phone.trim() || !editForm.pin.trim()) {
+      toast('Teléfono y PIN son obligatorios.', 'error');
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/allowed/${editingGuest.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        body: JSON.stringify({
+          name: editForm.name.trim(),
+          phone: editForm.phone.trim(),
+          pin: editForm.pin.trim(),
+          maxGuests: parseInt(editForm.maxGuests, 10) || 2,
+          aforo: parseInt(aforo, 10) || 0,
+        }),
+      });
+      if (res.ok) {
+        toast('Invitado actualizado.', 'success');
+        setEditingGuest(null);
+        fetchAllowedGuests();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast(err.error || 'No se pudo actualizar.', 'error');
+      }
+    } catch {
+      toast('Error de conexión con el servidor.', 'error');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -1037,7 +1089,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto lg:overflow-x-visible">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-stone-50/50 border-b border-stone-100 text-[10px] font-bold uppercase tracking-wider text-stone-500">
@@ -1147,25 +1199,59 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <div className="flex items-center justify-center gap-1">
-                              {(a.usedCount || 0) > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleResetAllowedGuest(a.id, a.phone)}
-                                  className="text-stone-300 hover:text-[#4a5d23] p-1.5 rounded-full hover:bg-[#f1f4ea] transition-colors"
-                                  title="Reiniciar cupos usados"
-                                >
-                                  <RefreshCw size={14} />
-                                </button>
-                              )}
+                            <div className="relative flex items-center justify-center">
                               <button
                                 type="button"
-                                onClick={() => handleDeleteAllowedGuest(a.id)}
-                                className="text-stone-300 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
-                                title="Eliminar de autorizados"
+                                onClick={() => setMenuOpenId((prev) => (prev === a.id ? null : a.id))}
+                                className={`p-1.5 rounded-full transition-colors ${menuOpenId === a.id ? 'bg-stone-100 text-stone-700' : 'text-stone-400 hover:text-stone-700 hover:bg-stone-100'}`}
+                                title="Acciones"
+                                aria-haspopup="menu"
+                                aria-expanded={menuOpenId === a.id}
                               >
-                                <Trash2 size={15} />
+                                <MoreVertical size={16} />
                               </button>
+
+                              {menuOpenId === a.id && (
+                                <>
+                                  <button
+                                    type="button"
+                                    aria-label="Cerrar menú"
+                                    className="fixed inset-0 z-30 cursor-default"
+                                    onClick={() => setMenuOpenId(null)}
+                                  />
+                                  <div
+                                    role="menu"
+                                    className="absolute right-0 top-9 z-40 w-44 overflow-hidden rounded-xl border border-stone-200 bg-white py-1 text-left shadow-lg"
+                                  >
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => openEditGuest(a)}
+                                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                                    >
+                                      <Pencil size={13} className="text-stone-400" /> Editar datos
+                                    </button>
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      disabled={(a.usedCount || 0) === 0}
+                                      onClick={() => { setMenuOpenId(null); handleResetAllowedGuest(a.id, a.phone); }}
+                                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-300"
+                                    >
+                                      <RefreshCw size={13} className="text-stone-400" /> Reiniciar cupos
+                                    </button>
+                                    <div className="my-1 border-t border-stone-100" />
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => { setMenuOpenId(null); handleDeleteAllowedGuest(a.id); }}
+                                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-red-600 hover:bg-red-50"
+                                    >
+                                      <Trash2 size={13} /> Eliminar
+                                    </button>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1224,6 +1310,125 @@ export const AdminDashboard: React.FC = () => {
         )}
 
       </div>
+
+      {/* Modal: editar teléfono autorizado */}
+      <AnimatePresence>
+        {editingGuest && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+            onClick={() => !savingEdit && setEditingGuest(null)}
+          >
+            <motion.form
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              onSubmit={handleSaveEditGuest}
+              className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl md:p-8"
+            >
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-stone-800">Editar invitado</h3>
+                  <p className="text-xs text-stone-400">
+                    {editingGuest.usedCount ? `${editingGuest.usedCount} ya registrado(s)` : 'Sin registros aún'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => !savingEdit && setEditingGuest(null)}
+                  className="rounded-full p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label htmlFor="edit-name" className="text-[9px] font-bold uppercase tracking-wider text-stone-500">
+                    Nombre del Invitado
+                  </label>
+                  <input
+                    id="edit-name"
+                    type="text"
+                    maxLength={60}
+                    className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm focus:border-[#4a5d23] focus:outline-none"
+                    placeholder="Ej: Familia Pérez"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label htmlFor="edit-phone" className="text-[9px] font-bold uppercase tracking-wider text-stone-500">
+                    Número de Teléfono
+                  </label>
+                  <input
+                    id="edit-phone"
+                    type="tel"
+                    required
+                    className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm focus:border-[#4a5d23] focus:outline-none"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label htmlFor="edit-pin" className="text-[9px] font-bold uppercase tracking-wider text-stone-500">
+                      PIN
+                    </label>
+                    <input
+                      id="edit-pin"
+                      type="text"
+                      required
+                      maxLength={6}
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-center font-mono text-sm tracking-widest focus:border-[#4a5d23] focus:outline-none"
+                      value={editForm.pin}
+                      onChange={(e) => setEditForm((f) => ({ ...f, pin: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="edit-max" className="text-[9px] font-bold uppercase tracking-wider text-stone-500">
+                      Pases Asignados
+                    </label>
+                    <select
+                      id="edit-max"
+                      value={editForm.maxGuests}
+                      onChange={(e) => setEditForm((f) => ({ ...f, maxGuests: e.target.value }))}
+                      className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-xs font-semibold focus:border-[#4a5d23] focus:outline-none"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
+                        <option key={n} value={n}>{n} {n === 1 ? 'Pase' : 'Pases'}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingGuest(null)}
+                  disabled={savingEdit}
+                  className="flex-1 rounded-xl border border-stone-200 py-2.5 text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#4a5d23] py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#3b4c1b] disabled:opacity-50"
+                >
+                  <Check size={14} /> {savingEdit ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

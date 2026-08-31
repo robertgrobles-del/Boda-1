@@ -645,6 +645,66 @@ app.post('/api/admin/allowed/:id/reset', async (req, res) => {
     }
 });
 
+// 7d. PUT Editar un teléfono autorizado (nombre, teléfono, PIN, pases)
+app.put('/api/admin/allowed/:id', async (req, res) => {
+    const apiKey = req.headers['x-api-key'];
+    if (!process.env.ADMIN_API_KEY || apiKey !== process.env.ADMIN_API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+
+    const { name, phone, pin, maxGuests, aforo } = req.body;
+
+    try {
+        const current = await prisma.allowedGuest.findUnique({ where: { id } }) as any;
+        if (!current) return res.status(404).json({ error: 'No existe' });
+
+        const data: any = {};
+
+        if (phone !== undefined) {
+            const cleanPhone = String(phone).trim();
+            if (!cleanPhone) return res.status(400).json({ error: 'El teléfono no puede quedar vacío.' });
+            if (cleanPhone !== current.phone) {
+                const dup = await prisma.allowedGuest.findUnique({ where: { phone: cleanPhone } });
+                if (dup) return res.status(400).json({ error: 'Ya existe otro registro con ese teléfono.' });
+                data.phone = cleanPhone;
+            }
+        }
+        if (pin !== undefined) {
+            const cleanPin = String(pin).trim();
+            if (!cleanPin) return res.status(400).json({ error: 'El PIN no puede quedar vacío.' });
+            data.pin = cleanPin;
+        }
+        if (name !== undefined) {
+            data.name = (name && String(name).trim().slice(0, 60)) || null;
+        }
+        if (maxGuests !== undefined) {
+            const parsed = parseInt(maxGuests, 10);
+            const count = Number.isNaN(parsed) ? (current.maxGuests || 2) : parsed;
+            if (count < (current.usedCount ?? 0)) {
+                return res.status(400).json({ error: `Ya hay ${current.usedCount} registrados; los pases no pueden bajar de ese número.` });
+            }
+            const aforoNum = parseInt(aforo, 10) || 0;
+            if (aforoNum > 0) {
+                const all = await prisma.allowedGuest.findMany();
+                const otros = all.filter((a) => a.id !== id).reduce((s, a) => s + ((a as any).maxGuests || 2), 0);
+                if (otros + count > aforoNum) {
+                    return res.status(400).json({ error: `Se excede el aforo (${aforoNum}). Pases de otros números: ${otros}. Disponibles: ${Math.max(0, aforoNum - otros)}.` });
+                }
+            }
+            data.maxGuests = count;
+            data.used = (current.usedCount ?? 0) >= count;
+        }
+
+        const result = await prisma.allowedGuest.update({ where: { id }, data });
+        res.json(result);
+    } catch (error) {
+        console.error('Edit allowed guest error:', error);
+        res.status(500).json({ error: 'Failed to update allowed guest' });
+    }
+});
+
 // 7b. DELETE Allowed Guest (Admin only)
 app.delete('/api/admin/allowed/:id', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
