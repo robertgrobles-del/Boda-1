@@ -497,10 +497,13 @@ export const AdminDashboard: React.FC = () => {
   const exportGuestsToCSV = () => {
     if (!guests.length) return;
 
-    const headers = ['ID', 'Contacto', 'Email', 'Teléfono', 'Asiste', 'Cantidad', 'Invitados (nombre)', 'Cédulas', 'Restricciones', 'Mensaje', 'Fecha Registro'];
+    const headers = ['ID', 'Contacto', 'Email', 'Teléfono', 'Asiste', 'Cantidad', 'Acceso', 'Invitados (nombre)', 'Cédulas', 'Restricciones', 'Mensaje', 'Fecha Registro'];
+    const digits = (s?: string | null) => (s || '').replace(/\D/g, '');
     const rows = guests.map(g => {
       const cedulas = parseList(g.cedulas).join(' | ');
       const names = parseList(g.guestNames).join(' | ');
+      const allowed = g.phone ? allowedGuests.find(a => a.phone === g.phone || digits(a.phone) === digits(g.phone)) : undefined;
+      const acceso = !allowed ? '' : allowed.ceremonyOnly ? 'Solo ceremonia' : 'Ceremonia y recepción';
       return [
         g.id,
         `"${g.name.replace(/"/g, '""')}"`,
@@ -508,6 +511,7 @@ export const AdminDashboard: React.FC = () => {
         g.phone || '',
         g.attending ? 'SÍ' : 'NO',
         g.guestsCount,
+        acceso,
         `"${names}"`,
         `"${cedulas}"`,
         g.dietary ? `"${g.dietary.replace(/"/g, '""')}"` : 'Ninguna',
@@ -672,6 +676,7 @@ export const AdminDashboard: React.FC = () => {
                       <th className="py-4 px-6">Contacto</th>
                       <th className="py-4 px-6 text-center">Asiste</th>
                       <th className="py-4 px-6 text-center">Cant.</th>
+                      <th className="py-4 px-6 text-center">Acceso</th>
                       <th className="py-4 px-6">Invitados (cédula)</th>
                       <th className="py-4 px-6">Restricciones</th>
                       <th className="py-4 px-6">Mensaje</th>
@@ -683,6 +688,10 @@ export const AdminDashboard: React.FC = () => {
                     {filteredGuests.map((g) => {
                       const parsedCedulas = parseList(g.cedulas);
                       const parsedNames = parseList(g.guestNames);
+                      const digits = (s?: string | null) => (s || '').replace(/\D/g, '');
+                      const allowed = g.phone
+                        ? allowedGuests.find((a) => a.phone === g.phone || digits(a.phone) === digits(g.phone))
+                        : undefined;
 
                       return (
                         <tr key={g.id} className="hover:bg-stone-50/30 transition-colors align-top">
@@ -698,6 +707,19 @@ export const AdminDashboard: React.FC = () => {
                           </td>
                           <td className="py-4 px-6 text-center font-bold text-stone-700">
                             {g.attending ? g.guestsCount : '-'}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            {!allowed ? (
+                              <span className="text-stone-300">-</span>
+                            ) : allowed.ceremonyOnly ? (
+                              <span className="inline-block rounded-full bg-[#b35a44]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#b35a44]">
+                                Solo ceremonia
+                              </span>
+                            ) : (
+                              <span className="inline-block rounded-full bg-[#f1f4ea] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#4a5d23]">
+                                Ceremonia y recepción
+                              </span>
+                            )}
                           </td>
                           <td className="py-4 px-6">
                             {parsedCedulas.length > 0 ? (
@@ -737,7 +759,7 @@ export const AdminDashboard: React.FC = () => {
                     })}
                     {filteredGuests.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="text-center py-12 text-stone-400 italic">No se encontraron invitados.</td>
+                        <td colSpan={9} className="text-center py-12 text-stone-400 italic">No se encontraron invitados.</td>
                       </tr>
                     )}
                   </tbody>
