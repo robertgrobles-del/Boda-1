@@ -92,6 +92,22 @@ app.get('/api/cedula/:cedula', async (req, res) => {
     }
 });
 
+// Estadísticas públicas — contador "X invitados ya confirmaron" en el sitio
+app.get('/api/stats', async (_req, res) => {
+    try {
+        const rows = await prisma.rSVP.findMany({
+            where: { attending: true },
+            select: { guestsCount: true },
+        });
+        const confirmedGuests = rows.reduce((acc, r) => acc + (r.guestsCount || 0), 0);
+        res.set('Cache-Control', 'public, max-age=60');
+        res.json({ confirmedGuests, confirmedParties: rows.length });
+    } catch (error) {
+        console.error('Stats error:', error);
+        res.status(500).json({ confirmedGuests: 0, confirmedParties: 0 });
+    }
+});
+
 // 0. POST RSVP — consultar cupos disponibles para un teléfono + PIN
 app.post('/api/rsvp/check', async (req, res) => {
     try {

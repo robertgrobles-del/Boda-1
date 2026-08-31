@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CountdownTime } from '../types';
+import { API_CONFIG } from '../constants';
 
 interface CountdownProps {
   targetDate: string;
@@ -25,6 +26,20 @@ const getRemaining = (targetDate: string): { time: CountdownTime; done: boolean 
 
 export const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
   const [{ time: timeLeft, done }, setState] = useState(() => getRemaining(targetDate));
+  const [confirmed, setConfirmed] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_CONFIG.backendUrl}/api/stats`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active && d && typeof d.confirmedGuests === 'number') setConfirmed(d.confirmedGuests);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const tick = () => {
@@ -93,6 +108,17 @@ export const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
               <TimeBox value={timeLeft.minutes} label="Min" />
               <TimeBox value={timeLeft.seconds} label="Seg" />
             </div>
+
+            {confirmed !== null && confirmed > 0 && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                className="mt-10 text-[11px] font-bold uppercase tracking-[0.3em] text-terracotta min-[481px]:mt-16 min-[481px]:text-xs"
+              >
+                {confirmed} {confirmed === 1 ? 'invitado ya confirmó' : 'invitados ya confirmaron'}
+              </motion.p>
+            )}
           </>
         )}
       </div>
