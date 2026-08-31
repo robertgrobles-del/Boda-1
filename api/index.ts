@@ -420,8 +420,18 @@ app.post('/api/upload', async (req, res) => {
 
             const data = await response.json();
             return res.status(201).json({ success: true, fileId: data.id });
+        } else if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+            // En producción no hay disco donde escribir: hay que configurar Drive
+            const faltan = [
+                !googleServiceAccountStr && 'GOOGLE_SERVICE_ACCOUNT_JSON',
+                !mainFolderId && 'GOOGLE_DRIVE_FOLDER_ID',
+            ].filter(Boolean).join(' y ');
+            return res.status(503).json({
+                success: false,
+                error: `Falta configurar Google Drive en Vercel: ${faltan}. Agrégala(s) y haz Redeploy.`,
+            });
         } else {
-            // Fallback to local storage (for development)
+            // Fallback a disco local (solo desarrollo)
             const uploadDir = path.join(process.cwd(), 'public', 'images', 'preboda', folder || '');
             if (!fs.existsSync(uploadDir)) {
                 fs.mkdirSync(uploadDir, { recursive: true });
