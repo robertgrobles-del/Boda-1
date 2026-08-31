@@ -10,6 +10,9 @@ import { Skeleton } from './Skeleton';
 const galleryImages = PHOTOS.gallery;
 const fullSize = (u: string) => (u.startsWith('http') ? `${u}?auto=format&fit=crop&q=80&w=1600` : u);
 
+// Foto que se muestra partida en dos mitades en el encabezado ("Captura los momentos")
+const splitImage = '/images/preboda/imagen_2.webp';
+
 // Anchos de tarjeta: ~80vw en móvil, 360px en escritorio
 const CARD_SIZES = '(min-width: 768px) 360px, 80vw';
 
@@ -177,22 +180,35 @@ export const UnifiedGallery: React.FC<{ id: string }> = ({ id }) => {
                         initial={{ opacity: 0, scale: 0.9 }}
                         whileInView={{ opacity: 1, scale: 1 }}
                         viewport={{ once: true }}
-                        className="relative hidden h-[400px] grid-cols-2 gap-4 lg:grid"
+                        className="relative hidden h-[420px] lg:block"
                     >
-                        <button
-                            onClick={() => setLightboxIndex(0)}
-                            className="-rotate-3 overflow-hidden rounded-3xl border-4 border-white shadow-xl"
-                            aria-label="Ampliar foto"
-                        >
-                            <GalleryImage src={galleryImages[0]} alt="Stephanie y Dalvin" />
-                        </button>
-                        <button
-                            onClick={() => setLightboxIndex(1)}
-                            className="mt-12 rotate-3 overflow-hidden rounded-3xl border-4 border-white shadow-xl"
-                            aria-label="Ampliar foto"
-                        >
-                            <GalleryImage src={galleryImages[1]} alt="Stephanie y Dalvin" />
-                        </button>
+                        {/* Una sola foto (imagen_2) partida por la mitad: cada tarjeta muestra su mitad */}
+                        <div className="grid h-full grid-cols-2 overflow-hidden rounded-3xl border-4 border-white shadow-xl">
+                            <button
+                                onClick={() => setLightboxIndex(0)}
+                                className="relative overflow-hidden"
+                                aria-label="Ampliar foto"
+                            >
+                                <img
+                                    src={splitImage}
+                                    alt="Stephanie y Dalvin"
+                                    loading="lazy"
+                                    className="absolute left-0 top-0 h-full w-[200%] max-w-none object-cover"
+                                />
+                            </button>
+                            <button
+                                onClick={() => setLightboxIndex(0)}
+                                className="relative overflow-hidden"
+                                aria-label="Ampliar foto"
+                            >
+                                <img
+                                    src={splitImage}
+                                    alt="Stephanie y Dalvin"
+                                    loading="lazy"
+                                    className="absolute right-0 top-0 h-full w-[200%] max-w-none object-cover"
+                                />
+                            </button>
+                        </div>
                         <div className="absolute left-1/2 top-1/2 z-20 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-xl">
                             <Instagram className="text-terracotta" size={20} />
                         </div>
