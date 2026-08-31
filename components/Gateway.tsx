@@ -35,8 +35,8 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
       aria-modal="true"
       aria-label="Bienvenida a la invitación"
     >
-      {/* Foto de fondo */}
-      <div className="absolute inset-0 z-0">
+      {/* Foto de fondo — en móvil con 10px de margen a los lados (marco oscuro) */}
+      <div className="absolute inset-x-2.5 inset-y-0 z-0 overflow-hidden sm:inset-0">
         <img src={PHOTOS.gateway} alt="" className="h-full w-full object-cover object-center" />
         <div className="absolute inset-0 bg-black/45 md:bg-black/40" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
@@ -61,7 +61,7 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.3, ease: 'easeOut' }}
-            className="mb-4 block font-signature text-3xl text-cream md:mb-5 md:text-4xl"
+            className="mb-4 block font-signature text-4xl text-cream md:mb-5 md:text-4xl"
           >
             ¡Hola, {invitee}!
           </motion.span>
