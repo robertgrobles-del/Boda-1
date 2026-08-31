@@ -136,6 +136,14 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
       return;
     }
 
+    if (formData.attending === 'yes') {
+      const clean = cedulas.map(c => c.replace(/\D/g, '')).filter(Boolean);
+      if (new Set(clean).size !== clean.length) {
+        toast('Hay una cédula repetida en el formulario.', 'error');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {

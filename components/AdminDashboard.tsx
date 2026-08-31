@@ -165,6 +165,31 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Eliminar una confirmación (libera cupos)
+  const handleDeleteGuest = async (id: number, name: string) => {
+    if (!window.confirm(`¿Eliminar la confirmación de "${name}"? Se liberarán sus cupos.`)) return;
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/guests/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-api-key': apiKey },
+      });
+      if (res.ok) {
+        setGuests((prev) => prev.filter((g) => g.id !== id));
+        toast('Confirmación eliminada.', 'success');
+        // refrescar métricas y cupos
+        fetch(`${API_CONFIG.backendUrl}/api/admin/summary`, { headers: { 'x-api-key': apiKey } })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => d && setSummary(d))
+          .catch(() => {});
+        fetchAllowedGuests();
+      } else {
+        toast('No se pudo eliminar.', 'error');
+      }
+    } catch {
+      toast('Error de conexión con el servidor.', 'error');
+    }
+  };
+
   // Reiniciar cupos usados de un teléfono
   const handleResetAllowedGuest = async (id: number, phone: string) => {
     if (!window.confirm(`¿Reiniciar los cupos usados de ${phone}? Volverá a poder registrar desde cero.`)) return;
@@ -546,6 +571,7 @@ export const AdminDashboard: React.FC = () => {
                       <th className="py-4 px-6">Restricciones</th>
                       <th className="py-4 px-6">Mensaje</th>
                       <th className="py-4 px-6">Registro</th>
+                      <th className="py-4 px-4"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100 text-sm">
@@ -591,12 +617,22 @@ export const AdminDashboard: React.FC = () => {
                           <td className="py-4 px-6 text-xs text-stone-400 font-mono">
                             {new Date(g.createdAt).toLocaleDateString()}
                           </td>
+                          <td className="py-4 px-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGuest(g.id, g.name)}
+                              className="text-stone-300 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
+                              title="Eliminar esta confirmación"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
                     {filteredGuests.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="text-center py-12 text-stone-400 italic">No se encontraron invitados.</td>
+                        <td colSpan={8} className="text-center py-12 text-stone-400 italic">No se encontraron invitados.</td>
                       </tr>
                     )}
                   </tbody>

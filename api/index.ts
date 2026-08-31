@@ -156,11 +156,34 @@ app.post('/api/rsvp', async (req, res) => {
             });
         }
 
+        // Cédulas de este envío (solo dígitos)
+        const cedulaList: string[] = (Array.isArray(cedulas) ? cedulas : [])
+            .map((c) => String(c).replace(/\D/g, ''))
+            .filter(Boolean)
+            .slice(0, guestCount);
+
+        if (isAttending && cedulaList.length) {
+            // a) repetidas en el mismo formulario
+            const dup = cedulaList.find((c, i) => cedulaList.indexOf(c) !== i);
+            if (dup) {
+                return res.status(400).json({ success: false, error: `La cédula ${dup} está repetida en el formulario.` });
+            }
+            // b) ya registradas en otra confirmación
+            const previos = await prisma.rSVP.findMany({ where: { attending: true }, select: { cedulas: true } });
+            const registradas = new Set<string>();
+            previos.forEach((r) => {
+                try {
+                    (JSON.parse(r.cedulas) as unknown[]).forEach((c) => registradas.add(String(c).replace(/\D/g, '')));
+                } catch { /* noop */ }
+            });
+            const yaExiste = cedulaList.find((c) => registradas.has(c));
+            if (yaExiste) {
+                return res.status(400).json({ success: false, error: `La cédula ${yaExiste} ya fue registrada en otra confirmación.` });
+            }
+        }
+
         // Nombres oficiales por cédula (uno por invitado)
-        const cedulaList: string[] = Array.isArray(cedulas) ? cedulas : [];
-        const guestNames = isAttending
-            ? await Promise.all(cedulaList.slice(0, guestCount).map(fetchCedulaName))
-            : [];
+        const guestNames = isAttending ? await Promise.all(cedulaList.map(fetchCedulaName)) : [];
         const primaryName = guestNames.find(Boolean) || name;
 
         const result = await prisma.rSVP.create({
@@ -450,6 +473,38 @@ app.get('/api/admin/guests', async (req, res) => {
         res.json(guests);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch guests' });
+    }
+});
+
+// 4b. DELETE una confirmación (Admin) — libera los cupos usados
+app.delete('/api/admin/guests/:id', async (req, res) => {
+    const apiKey = req.headers['x-api-key'];
+    if (!process.env.ADMIN_API_KEY || apiKey !== process.env.ADMIN_API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+
+    try {
+        const rsvp = await prisma.rSVP.findUnique({ where: { id } });
+        if (!rsvp) return res.status(404).json({ error: 'No existe' });
+
+        if (rsvp.attending && rsvp.phone) {
+            const ag = await prisma.allowedGuest.findUnique({ where: { phone: rsvp.phone } });
+            if (ag) {
+                const newUsed = Math.max(0, ((ag as any).usedCount ?? 0) - rsvp.guestsCount);
+                await prisma.allowedGuest.update({
+                    where: { phone: rsvp.phone },
+                    data: { usedCount: newUsed, used: newUsed >= ((ag as any).maxGuests ?? 2) } as any,
+                });
+            }
+        }
+
+        await prisma.rSVP.delete({ where: { id } });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete RSVP error:', error);
+        res.status(500).json({ error: 'Failed to delete guest' });
     }
 });
 
