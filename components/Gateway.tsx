@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { PHOTOS } from '../constants';
+import { getInviteeName } from '../utils/invitee';
 
 interface GatewayProps {
   onEnter: () => void;
@@ -14,6 +15,7 @@ const Corner: React.FC<{ className: string }> = ({ className }) => (
 export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
   const reduceMotion = useReducedMotion();
   const btnRef = useRef<HTMLButtonElement>(null);
+  const invitee = getInviteeName();
 
   useEffect(() => {
     btnRef.current?.focus();
@@ -54,8 +56,19 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
         transition={{ duration: 1.4, ease: 'easeOut' }}
         className="relative z-20 flex max-w-xl flex-col items-center px-4"
       >
+        {invitee && (
+          <motion.span
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.3, ease: 'easeOut' }}
+            className="mb-4 block font-signature text-3xl text-cream md:mb-5 md:text-4xl"
+          >
+            ¡Hola, {invitee}!
+          </motion.span>
+        )}
+
         <span className="mb-5 block text-[10px] font-bold uppercase tracking-[0.55em] text-cream/70 md:mb-7 md:text-xs">
-          Estás invitado a la boda de
+          {invitee ? 'Con cariño te invitamos a la boda de' : 'Estás invitado a la boda de'}
         </span>
 
         <h1 className="font-signature text-6xl leading-[1.05] text-white sm:text-7xl md:text-8xl lg:text-[7.5rem] max-[380px]:text-5xl">
