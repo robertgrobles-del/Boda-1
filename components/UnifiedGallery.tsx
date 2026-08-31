@@ -13,7 +13,7 @@ const fullSize = (u: string) => (u.startsWith('http') ? `${u}?auto=format&fit=cr
 // Anchos de tarjeta: ~80vw en móvil, 360px en escritorio
 const CARD_SIZES = '(min-width: 768px) 360px, 80vw';
 
-const GalleryImage: React.FC<{ src: string; alt: string; sizes?: string; className?: string }> = ({ src, alt, sizes = CARD_SIZES, className }) => {
+const GalleryImage: React.FC<{ src: string; alt: string; sizes?: string; className?: string; objectPosition?: string }> = ({ src, alt, sizes = CARD_SIZES, className, objectPosition }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     return (
         <div className={`relative h-full w-full bg-stone-100 ${className || ''}`}>
@@ -21,6 +21,7 @@ const GalleryImage: React.FC<{ src: string; alt: string; sizes?: string; classNa
             <img
                 {...responsiveImg(src, sizes, [480, 768, 1024])}
                 alt={alt}
+                style={objectPosition ? { objectPosition } : undefined}
                 className={`h-full w-full object-cover transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
                 onLoad={() => setIsLoaded(true)}
                 loading="lazy"
@@ -184,7 +185,7 @@ export const UnifiedGallery: React.FC<{ id: string }> = ({ id }) => {
                             className="-rotate-3 overflow-hidden rounded-3xl border-4 border-white shadow-xl"
                             aria-label="Ampliar foto"
                         >
-                            <GalleryImage src={galleryImages[0]} alt="Stephanie y Dalvin" />
+                            <GalleryImage src={galleryImages[0]} alt="Stephanie y Dalvin" objectPosition="left center" />
                         </button>
                         <button
                             onClick={() => setLightboxIndex(1)}
