@@ -27,6 +27,8 @@ Para confirmar tu asistencia, por favor accede a nuestra web oficial utilizando 
 🌐 *Confirma tu asistencia en el siguiente enlace:*
 {ENLACE}
 
+{NOTA_ACCESO}
+
 ¡Esperamos contar con tu grata presencia en este día tan especial! ❤️`;
 
 interface Guest {
@@ -98,10 +100,13 @@ export const AdminDashboard: React.FC = () => {
     const saved = localStorage.getItem('sd_wa_template');
     if (!saved) return DEFAULT_WA_TEMPLATE;
     // Migración: se eliminó la imagen de invitación → quitar restos de plantillas viejas
-    return saved
+    let t = saved
       .replace(/^.*(\{IMAGEN\}|Ver invitación digital).*$\n?/gm, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
+    // Migración: añadir la nota condicional de "solo ceremonia" si la plantilla no la tiene
+    if (!/\{ACCESO\}|\{NOTA_ACCESO\}/.test(t)) t = `${t}\n\n{NOTA_ACCESO}`;
+    return t;
   });
   const [autoSendWa, setAutoSendWa] = useState(() => localStorage.getItem('sd_auto_send_wa') !== 'false');
   const [showTemplateSettings, setShowTemplateSettings] = useState(false);
@@ -134,11 +139,16 @@ export const AdminDashboard: React.FC = () => {
     const count = (maxGuests || 2).toString();
     const saludo = clean ? `Hola ${clean}` : 'Hola';
     const acceso = ceremonyOnly ? 'Solo ceremonia' : 'Ceremonia y recepción';
-    return waTemplate
+    const notaAcceso = ceremonyOnly
+      ? '🕊️ *Nota importante:* Esta invitación es únicamente para la *ceremonia religiosa*.'
+      : '';
+
+    let out = waTemplate
       .replace(/{SALUDO}/g, saludo)
       .replace(/{NOMBRE}/g, clean)
       .replace(/{INVITADO}/g, clean)
       .replace(/{ACCESO}/g, acceso)
+      .replace(/{NOTA_ACCESO}/g, notaAcceso)
       .replace(/{TELEFONO}/g, phone)
       .replace(/{PHONE}/g, phone)
       .replace(/{PIN}/g, pin)
@@ -146,6 +156,17 @@ export const AdminDashboard: React.FC = () => {
       .replace(/{INVITADOS}/g, count)
       .replace(/{ENLACE}/g, weddingUrl)
       .replace(/{LINK}/g, weddingUrl);
+
+    // Si es "solo ceremonia" y la plantilla no menciona el acceso, añadir la nota automáticamente
+    if (
+      ceremonyOnly &&
+      !/\{ACCESO\}|\{NOTA_ACCESO\}/.test(waTemplate) &&
+      !/solo ceremonia/i.test(waTemplate)
+    ) {
+      out = `${out.trimEnd()}\n\n${notaAcceso}`;
+    }
+
+    return out.replace(/\n{3,}/g, '\n\n').trim();
   };
 
   // Send WhatsApp
@@ -844,6 +865,7 @@ export const AdminDashboard: React.FC = () => {
                             { tag: '{SALUDO}', label: 'Hola + Nombre' },
                             { tag: '{NOMBRE}', label: 'Nombre del Invitado' },
                             { tag: '{ACCESO}', label: 'Solo ceremonia / Ceremonia y recepción' },
+                            { tag: '{NOTA_ACCESO}', label: 'Nota si es solo ceremonia (si no, no aparece)' },
                             { tag: '{TELEFONO}', label: 'Teléfono' },
                             { tag: '{PIN}', label: 'PIN Exclusivo' },
                             { tag: '{PASES}', label: 'Pases Permitidos' },
