@@ -3,9 +3,6 @@
 // Así la cuenta regresiva es idéntica para invitados en cualquier país.
 // ⚠️ DATOS PENDIENTES DE VERIFICAR ANTES DE PUBLICAR:
 //    - EVENT_DATA.whatsapp        (número real, formato internacional sin +)
-//    - FAMILY                     (nombres reales de padres / padrinos)
-//    - SONG                       (enlace de YouTube o mp3 de la canción)
-//    - ITINERARY                  (horas y lugares reales del día)
 export const EVENT_DATA = {
     date: "2026-11-07T17:00:00-04:00",
     displayDate: "7 DE NOVIEMBRE 2026",
@@ -14,12 +11,11 @@ export const EVENT_DATA = {
     whatsapp: "18299234460", // Número real (RD: 1 + 829 + 7 dígitos, sin "+")
 };
 
-// Padres y padrinos — sección "Con la bendición de Dios y nuestros padres".
-// ⚠️ PLACEHOLDER: reemplazar por los nombres reales.
+// Padres — sección "Con la bendición de Dios y nuestros padres".
 export const FAMILY = {
-    brideParents: ["Nombre del padre de la novia", "Nombre de la madre de la novia"],
-    groomParents: ["Nombre del padre del novio", "Nombre de la madre del novio"],
-    padrinos: ["Nombre del padrino", "Nombre de la madrina"],
+    brideParents: ["Damián Hilario Reyes Durán", "Indira Gandhi Pérez de Reyes"],
+    groomParents: ["Manuel Alcibiades Báez Bidó", "Daniela Elvira Lorenzo Céspedes"],
+    padrinos: [] as string[],
 };
 
 // Fotos de la preboda — archivos en /public/images/preboda (imagen_1.webp … imagen_10.webp).
@@ -47,15 +43,6 @@ export const PHOTOS = {
     ],
 };
 
-// Itinerario del día de la boda. `icon`: church | cocktail | dinner | party | send-off | rings | photo.
-export const ITINERARY = [
-    { time: "5:00 PM", title: "Ceremonia religiosa", detail: "Catedral Castrense de Santa Bárbara", icon: "church" as const },
-    { time: "6:30 PM", title: "Cóctel de bienvenida", detail: "Club Deportivo Naco · Salón Montás", icon: "cocktail" as const },
-    { time: "7:30 PM", title: "Recepción y cena", detail: "Club Deportivo Naco · Salón Montás", icon: "dinner" as const },
-    { time: "9:30 PM", title: "Primer baile y fiesta", detail: "¡Que empiece la celebración!", icon: "party" as const },
-    { time: "2:00 AM", title: "Despedida", detail: "Último brindis y cotillón", icon: "send-off" as const },
-];
-
 // Canción de los novios — reproductor flotante ("Presiona para escuchar nuestra canción").
 // Opciones (por orden de preferencia):
 //   1. audioUrl:    archivo mp3 en /public  → "/nuestra-cancion.mp3"  (mejor calidad, sin logos)
@@ -63,10 +50,10 @@ export const ITINERARY = [
 //   3. externalUrl: enlace de Spotify/otro  → el botón abre el enlace en otra pestaña
 // Si todo queda vacío, el reproductor no se muestra.
 export const SONG = {
-    title: "Nuestra canción",
-    artist: "Lilly Goodman",
+    title: "Nuestra Canción",
+    artist: "Este amor - Itala & Janjo",
     audioUrl: "",
-    externalUrl: "https://www.youtube.com/watch?v=YHOF9OGQWnw", // p.ej. "https://www.youtube.com/watch?v=XXXXXXXXXXX"
+    externalUrl: "https://www.youtube.com/watch?v=bc-LfIbw1WY&list=RDbc-LfIbw1WY", // p.ej. "https://www.youtube.com/watch?v=XXXXXXXXXXX"
 };
 
 // --- Mesa de regalos --------------------------------------------------------
@@ -152,9 +139,7 @@ export const MAPS_URLS = {
 };
 
 export const DRESS_CODE_DETAILS = {
-    women: "Vestido Largo.",
-    men: "Traje oscuro o Tuxedo.",
-    colors: "Tonos neutros y pasteles. Reservado el color blanco y beige para la novia."
+    colors: "Inspírate en la paleta de otoño. Reservado el blanco y el beige para la novia."
 };
 
 // Álbum compartido para que los invitados suban fotos (p.ej. Google Drive, Google Fotos, iCloud, etc.).

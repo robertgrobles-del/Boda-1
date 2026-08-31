@@ -13,47 +13,26 @@ interface Category {
 }
 
 const CATEGORIES: Category[] = [
-  { 
-    id: 'preparativos', 
-    name: 'Preparación', 
-    icon: '💄', 
+  {
+    id: 'preparacion',
+    name: 'Preparación',
+    icon: '💄',
     description: 'Maquillaje, vestimenta y momentos previos',
-    coverImage: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=600'
+    coverImage: '/images/preboda/imagen_8.webp'
   },
-  { 
-    id: 'civil', 
-    name: 'Boda Civil', 
-    icon: '✍️', 
-    description: 'Firma de actas y momentos íntimos',
-    coverImage: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&q=80&w=600'
-  },
-  { 
-    id: 'ceremonia', 
-    name: 'Ceremonia', 
-    icon: '⛪', 
+  {
+    id: 'ceremonia',
+    name: 'Ceremonia',
+    icon: '⛪',
     description: 'Intercambio de votos y anillos',
-    coverImage: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?auto=format&fit=crop&q=80&w=600'
+    coverImage: '/images/preboda/imagen_9.webp'
   },
-  { 
-    id: 'recepcion', 
-    name: 'Recepción', 
-    icon: '🍷', 
+  {
+    id: 'recepcion',
+    name: 'Recepción',
+    icon: '🍷',
     description: 'Cena, brindis y momentos especiales',
-    coverImage: 'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&q=80&w=600'
-  },
-  { 
-    id: 'afterparty', 
-    name: 'After Party', 
-    icon: '🕺', 
-    description: 'Bailes, música y la hora loca',
-    coverImage: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=600'
-  },
-  { 
-    id: 'lunademiel', 
-    name: 'Luna de Miel', 
-    icon: '✈️', 
-    description: 'Viajes y aventuras post-boda',
-    coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=600'
+    coverImage: '/images/preboda/imagen_5.webp'
   }
 ];
 

@@ -64,7 +64,7 @@ export const StoryImproved: React.FC = () => {
                         {/* Stats Section ONLY Mobile Overlay (<= 480px) */}
                         <div className="max-[480px]:flex hidden absolute left-1/2 -translate-x-1/2 -bottom-8 z-20 justify-around bg-white/95 backdrop-blur-sm px-6 py-8 rounded-[2rem] shadow-2xl border border-stone-200/50 min-w-[240px]">
                             <div className="text-center px-4">
-                                <span className="text-4xl font-serif text-olive">1,406</span>
+                                <span className="text-4xl font-serif text-olive">1,318</span>
                                 <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-stone-400 mt-2 leading-tight">DÍA DE<br />COMPLICIDAD</p>
                             </div>
                             <div className="w-px h-12 bg-stone-100"></div>
@@ -106,7 +106,7 @@ export const StoryImproved: React.FC = () => {
                         {/* Stats Section (Desktop/Tablet) */}
                         <div className="grid grid-cols-2 gap-12 max-[480px]:hidden">
                             <div className="space-y-2">
-                                <span className="text-5xl md:text-7xl font-serif text-olive">1,406</span>
+                                <span className="text-5xl md:text-7xl font-serif text-olive">1,318</span>
                                 <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-stone-400">Días de complicidad</p>
                             </div>
                             <div className="space-y-2">

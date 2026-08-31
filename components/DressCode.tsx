@@ -42,8 +42,7 @@ export const DressCode: React.FC = () => {
             </div>
             <h3 className="mb-2 text-lg font-bold text-stone-800 min-[481px]:mb-3 min-[481px]:text-xl">Formal / Elegante</h3>
             <p className="max-w-[220px] text-[11px] leading-relaxed text-stone-600 min-[481px]:text-xs">
-              Ellas: Vestido Largo.<br />
-              Ellos: Traje oscuro o Tuxedo.
+              Te esperamos elegante para la ocasión.
             </p>
           </motion.div>
 

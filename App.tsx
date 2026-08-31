@@ -4,7 +4,6 @@ import { StoryImproved } from './components/StoryImproved';
 import { Parents } from './components/Parents';
 import { Countdown } from './components/Countdown';
 import { EventDetails } from './components/EventDetails';
-import { Itinerary } from './components/Itinerary';
 import { PhotoBand } from './components/PhotoBand';
 import { FallingLeaves } from './components/FallingLeaves';
 import { RSVPForm } from './components/RSVPForm';
@@ -131,7 +130,6 @@ const App: React.FC = () => {
             <Parents />
             <Countdown targetDate={EVENT_DATA.date} />
             <EventDetails id="detalles" />
-            <Itinerary />
             <PhotoBand src={PHOTOS.band} quote="No podemos esperar para celebrar contigo" />
             <UnifiedGallery id="galeria" />
             <DressCode />

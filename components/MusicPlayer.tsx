@@ -85,11 +85,13 @@ export const MusicPlayer: React.FC = () => {
       if (cancelled || !ytHostRef.current) return;
       ytPlayerRef.current = new (window as any).YT.Player(ytHostRef.current, {
         videoId: ytId,
-        playerVars: { autoplay: 0, controls: 0, disablekb: 1, modestbranding: 1, rel: 0, playsinline: 1, loop: 1, playlist: ytId },
+        playerVars: { autoplay: 1, controls: 0, disablekb: 1, modestbranding: 1, rel: 0, playsinline: 1, loop: 1, playlist: ytId },
         events: {
           onReady: (e: any) => {
             setReady(true);
             setDur(e.target.getDuration?.() ?? 0);
+            // Reproducción automática al entrar a la invitación (el clic en "Entrar" cuenta como gesto del usuario)
+            try { e.target.playVideo?.(); } catch { /* si el navegador lo bloquea, queda el botón */ }
           },
           onStateChange: (e: any) => {
             const S = (window as any).YT.PlayerState;
