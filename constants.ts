@@ -11,7 +11,7 @@ export const EVENT_DATA = {
     displayDate: "7 DE NOVIEMBRE 2026",
     hashtag: "#Stephanie&Dalvin",
     estYear: "2022",
-    whatsapp: "18299234460", // PLACEHOLDER — RD: 1 + 809/829/849 + 7 dígitos, sin "+"
+    whatsapp: "18299234460", // Número real (RD: 1 + 829 + 7 dígitos, sin "+")
 };
 
 // Padres y padrinos — sección "Con la bendición de Dios y nuestros padres".
