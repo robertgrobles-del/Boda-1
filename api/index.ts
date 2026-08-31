@@ -339,7 +339,14 @@ app.post('/api/upload', async (req, res) => {
         const mainFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
         if (googleServiceAccountStr && mainFolderId) {
-            const serviceAccount = JSON.parse(googleServiceAccountStr);
+            // Acepta el JSON tal cual o codificado en base64
+            const raw = googleServiceAccountStr.trim();
+            const jsonStr = raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
+            const serviceAccount = JSON.parse(jsonStr);
+            // Asegura saltos de línea reales en la clave privada
+            if (typeof serviceAccount.private_key === 'string') {
+                serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+            }
             const accessToken = await getGoogleAccessToken(serviceAccount);
             
             // Resolve correct folder ID (main or subfolder)
