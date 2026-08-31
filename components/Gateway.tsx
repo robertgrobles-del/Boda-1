@@ -77,10 +77,10 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
           Dalvin
         </h1>
 
-        <div className="my-8 flex items-center gap-4 text-white md:my-10 md:text-white/60">
-          <span className="h-px w-10 bg-white/25 md:w-16" />
-          <span className="text-[14px] font-bold uppercase tracking-[0.45em] md:text-xs md:font-normal">07 · Noviembre · 2026</span>
-          <span className="h-px w-10 bg-white/25 md:w-16" />
+        <div className="my-8 flex items-center gap-2 text-white md:my-10 md:gap-4 md:text-white/60">
+          <span className="h-px w-5 shrink-0 bg-white/25 md:w-16" />
+          <span className="whitespace-nowrap text-[14px] font-bold uppercase tracking-[0.25em] md:text-xs md:font-normal md:tracking-[0.45em]">07 · Noviembre · 2026</span>
+          <span className="h-px w-5 shrink-0 bg-white/25 md:w-16" />
         </div>
 
         <p className="mb-9 max-w-md font-serif text-base italic leading-relaxed text-white md:mb-11 md:text-lg md:text-cream/80">
