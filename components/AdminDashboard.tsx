@@ -4,7 +4,7 @@ import {
   Users, CheckCircle, XCircle, Search, Download, Key, LogOut,
   Smartphone, Plus, MessageSquare, Trash2, Send, Copy, ExternalLink,
   RefreshCw, Sliders, FileText, Check,
-  MessageCircle, MoreVertical, Pencil, X
+  MessageCircle, MoreVertical, Pencil, X, ChevronDown
 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
@@ -105,9 +105,8 @@ export const AdminDashboard: React.FC = () => {
   });
   const [autoSendWa, setAutoSendWa] = useState(() => localStorage.getItem('sd_auto_send_wa') !== 'false');
   const [showTemplateSettings, setShowTemplateSettings] = useState(false);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-  const [copiedLinkId, setCopiedLinkId] = useState<number | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
+  const [waMenuOpenId, setWaMenuOpenId] = useState<number | null>(null);
   const [editingGuest, setEditingGuest] = useState<AllowedGuest | null>(null);
   const [editForm, setEditForm] = useState({ name: '', phone: '', pin: '', maxGuests: '2', ceremonyOnly: false });
   const [savingEdit, setSavingEdit] = useState(false);
@@ -159,11 +158,9 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Copy personalized link
-  const handleCopyInviteeLink = async (name: string | null | undefined, id: number) => {
+  const handleCopyInviteeLink = async (name: string | null | undefined) => {
     try {
       await navigator.clipboard.writeText(buildInviteeLink(name));
-      setCopiedLinkId(id);
-      setTimeout(() => setCopiedLinkId(null), 2500);
       toast(name ? `Enlace de ${name} copiado.` : 'Enlace copiado (sin nombre).', 'success');
     } catch {
       toast('No se pudo copiar el enlace.', 'error');
@@ -171,14 +168,10 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Copy message text
-  const handleCopyMessage = async (phone: string, pin: string, id?: number, maxGuests?: number, name?: string | null, ceremonyOnly?: boolean) => {
+  const handleCopyMessage = async (phone: string, pin: string, maxGuests?: number, name?: string | null, ceremonyOnly?: boolean) => {
     const msg = buildWhatsAppMessage(phone, pin, maxGuests, name, ceremonyOnly);
     try {
       await navigator.clipboard.writeText(msg);
-      if (id !== undefined) {
-        setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 2500);
-      }
       toast('Mensaje de invitación copiado al portapapeles.', 'success');
     } catch {
       toast('No se pudo copiar automáticamente.', 'error');
@@ -594,7 +587,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex flex-wrap gap-2 rounded-2xl bg-white p-1.5 border border-stone-200/60 shadow-sm w-fit">
           {([
             ['rsvps', `Confirmaciones${summary ? ` (${summary.totalRSVPs})` : ''}`],
-            ['allowed', `Teléfonos & PIN (${allowedGuests.length})`],
+            ['allowed', `Invitados Autorizados (${allowedGuests.length})`],
             ['messages', `Mensajes (${messages.length})`],
           ] as const).map(([key, label]) => (
             <button
@@ -942,53 +935,53 @@ export const AdminDashboard: React.FC = () => {
               )}
             </AnimatePresence>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="space-y-8">
               {/* Form to add allowed guest */}
-              <div className="bg-white p-6 md:p-8 rounded-3xl border border-stone-200/50 shadow-sm h-fit space-y-6">
+              <div className="bg-white p-6 md:p-8 rounded-3xl border border-stone-200/50 shadow-sm space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-[#f1f4ea] rounded-full flex items-center justify-center">
                     <Smartphone className="text-[#4a5d23]" size={20} />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">Autorizar Teléfono</h2>
-                    <p className="text-xs text-stone-400">Registrar invitado, PIN y pases asignados</p>
+                    <h2 className="text-lg font-bold">Autorizar invitados</h2>
+                    <p className="text-xs text-stone-400">Registrar invitado, teléfono, PIN y pases asignados</p>
                   </div>
                 </div>
 
                 <form onSubmit={handleAddAllowedGuest} className="space-y-4">
-                  <div className="space-y-1">
-                    <label htmlFor="new-name" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
-                      Nombre del Invitado
-                    </label>
-                    <input
-                      id="new-name"
-                      type="text"
-                      maxLength={60}
-                      className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-sm"
-                      placeholder="Ej: Familia Pérez / Juan y María"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                    />
-                    <p className="text-[10px] text-stone-400">Se usa para el saludo personalizado y el enlace <span className="font-mono">?invitado=</span>.</p>
-                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                      <label htmlFor="new-name" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
+                        Nombre del Invitado
+                      </label>
+                      <input
+                        id="new-name"
+                        type="text"
+                        maxLength={60}
+                        className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-sm"
+                        placeholder="Ej: Familia Pérez / Juan y María"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                      />
+                      <p className="text-[10px] text-stone-400">Saludo personalizado y enlace <span className="font-mono">?invitado=</span>.</p>
+                    </div>
 
-                  <div className="space-y-1">
-                    <label htmlFor="new-phone" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
-                      Número de Teléfono
-                    </label>
-                    <input
-                      id="new-phone"
-                      type="tel"
-                      required
-                      className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-sm"
-                      placeholder="Ej: 8299234460 o 8095551234"
-                      value={newPhone}
-                      onChange={(e) => setNewPhone(e.target.value)}
-                    />
-                    <p className="text-[10px] text-stone-400">Se usará para WhatsApp y validación en la web.</p>
-                  </div>
+                    <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                      <label htmlFor="new-phone" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
+                        Número de Teléfono
+                      </label>
+                      <input
+                        id="new-phone"
+                        type="tel"
+                        required
+                        className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-sm"
+                        placeholder="Ej: 8299234460"
+                        value={newPhone}
+                        onChange={(e) => setNewPhone(e.target.value)}
+                      />
+                      <p className="text-[10px] text-stone-400">Para WhatsApp y validación en la web.</p>
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label htmlFor="new-pin" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
                         PIN Asignado
@@ -1027,33 +1020,35 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <label className="flex items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50/60 px-3.5 py-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newCeremonyOnly}
-                      onChange={(e) => setNewCeremonyOnly(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-[#4a5d23]"
-                    />
-                    <span className="text-[11px] leading-snug text-stone-600">
-                      <span className="font-bold text-stone-700">Solo ceremonia</span> — este invitado no está invitado a la recepción.
-                    </span>
-                  </label>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <label className="flex flex-1 items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50/60 px-3.5 py-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newCeremonyOnly}
+                        onChange={(e) => setNewCeremonyOnly(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-[#4a5d23]"
+                      />
+                      <span className="text-[11px] leading-snug text-stone-600">
+                        <span className="font-bold text-stone-700">Solo ceremonia</span> — este invitado no está invitado a la recepción.
+                      </span>
+                    </label>
 
-                  <button
-                    type="submit"
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#4a5d23] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#3b4c1b] transition-all shadow-md active:scale-95"
-                  >
-                    <Plus size={15} />
-                    {autoSendWa ? 'Registrar y Abrir WhatsApp' : 'Registrar en Lista'}
-                  </button>
+                    <button
+                      type="submit"
+                      className="flex items-center justify-center gap-2 py-3 px-8 bg-[#4a5d23] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#3b4c1b] transition-all shadow-md active:scale-95 sm:self-stretch"
+                    >
+                      <Plus size={15} />
+                      {autoSendWa ? 'Registrar y Abrir WhatsApp' : 'Registrar en Lista'}
+                    </button>
+                  </div>
                 </form>
               </div>
 
               {/* Allowed Guests List */}
-              <div className="lg:col-span-2 bg-white rounded-3xl border border-stone-200/50 shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-stone-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="bg-white rounded-3xl border border-stone-200/50 shadow-sm">
+                <div className="p-6 border-b border-stone-100 rounded-t-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-lg font-bold">Teléfonos Autorizados ({allowedGuests.length})</h3>
+                    <h3 className="text-lg font-bold">Invitados Autorizados ({allowedGuests.length})</h3>
                     <p className="text-xs text-stone-400">Lista de invitados con acceso de confirmación y cupos</p>
                   </div>
                   <div className="relative w-full sm:w-auto">
@@ -1068,7 +1063,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto lg:overflow-x-visible">
+                <div className="overflow-x-auto lg:overflow-x-visible [&_tr:last-child_td:first-child]:rounded-bl-[22px] [&_tr:last-child_td:last-child]:rounded-br-[22px]">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-stone-50/50 border-b border-stone-100 text-[10px] font-bold uppercase tracking-wider text-stone-500">
@@ -1077,7 +1072,7 @@ export const AdminDashboard: React.FC = () => {
                         <th className="py-4 px-4 text-center">PIN</th>
                         <th className="py-4 px-4 text-center">Pases</th>
                         <th className="py-4 px-4 text-center">Registrados</th>
-                        <th className="py-4 px-6 text-center">Acciones WhatsApp</th>
+                        <th className="py-4 px-6 text-center">WhatsApp</th>
                         <th className="py-4 px-4 text-center"></th>
                       </tr>
                     </thead>
@@ -1128,58 +1123,59 @@ export const AdminDashboard: React.FC = () => {
                               );
                             })()}
                           </td>
-                          <td className="py-4 px-6 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              {/* Send WhatsApp Button */}
+                          <td className="py-4 px-6">
+                            <div className="relative flex justify-center">
                               <button
                                 type="button"
-                                onClick={() => handleSendWhatsApp(a.phone, a.pin, a.maxGuests, a.name, a.ceremonyOnly)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm active:scale-95"
-                                title={`Enviar invitación por WhatsApp a ${a.name || a.phone} (${a.maxGuests || 2} pases)`}
+                                onClick={() => setWaMenuOpenId((prev) => (prev === a.id ? null : a.id))}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95"
+                                aria-haspopup="menu"
+                                aria-expanded={waMenuOpenId === a.id}
                               >
                                 <Send size={11} />
                                 WhatsApp
+                                <ChevronDown size={12} className={`transition-transform ${waMenuOpenId === a.id ? 'rotate-180' : ''}`} />
                               </button>
 
-                              {/* Copy text Button */}
-                              <button
-                                type="button"
-                                onClick={() => handleCopyMessage(a.phone, a.pin, a.id, a.maxGuests, a.name, a.ceremonyOnly)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-stone-200 hover:bg-stone-100 text-stone-600 text-[10px] font-medium transition-all active:scale-95"
-                                title="Copiar mensaje personalizado"
-                              >
-                                {copiedId === a.id ? (
-                                  <>
-                                    <Check size={12} className="text-green-600" />
-                                    <span className="text-green-600 font-bold">Copiado</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy size={12} />
-                                    <span>Copiar</span>
-                                  </>
-                                )}
-                              </button>
-
-                              {/* Copy personalized link */}
-                              <button
-                                type="button"
-                                onClick={() => handleCopyInviteeLink(a.name, a.id)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-stone-200 hover:bg-stone-100 text-stone-600 text-[10px] font-medium transition-all active:scale-95"
-                                title={`Copiar enlace personalizado${a.name ? ` de ${a.name}` : ''}`}
-                              >
-                                {copiedLinkId === a.id ? (
-                                  <>
-                                    <Check size={12} className="text-green-600" />
-                                    <span className="text-green-600 font-bold">Enlace</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <ExternalLink size={12} />
-                                    <span>Enlace</span>
-                                  </>
-                                )}
-                              </button>
+                              {waMenuOpenId === a.id && (
+                                <>
+                                  <button
+                                    type="button"
+                                    aria-label="Cerrar menú"
+                                    className="fixed inset-0 z-30 cursor-default"
+                                    onClick={() => setWaMenuOpenId(null)}
+                                  />
+                                  <div
+                                    role="menu"
+                                    className="absolute left-1/2 top-9 z-40 w-52 -translate-x-1/2 overflow-hidden rounded-xl border border-stone-200 bg-white py-1 text-left shadow-lg"
+                                  >
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => { setWaMenuOpenId(null); handleSendWhatsApp(a.phone, a.pin, a.maxGuests, a.name, a.ceremonyOnly); }}
+                                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                                    >
+                                      <Send size={13} className="text-emerald-600" /> Enviar por WhatsApp
+                                    </button>
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => { setWaMenuOpenId(null); handleCopyMessage(a.phone, a.pin, a.maxGuests, a.name, a.ceremonyOnly); }}
+                                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                                    >
+                                      <Copy size={13} className="text-stone-400" /> Copiar mensaje
+                                    </button>
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => { setWaMenuOpenId(null); handleCopyInviteeLink(a.name); }}
+                                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                                    >
+                                      <ExternalLink size={13} className="text-stone-400" /> Copiar enlace
+                                    </button>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </td>
                           <td className="py-4 px-4">
