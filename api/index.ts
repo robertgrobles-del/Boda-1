@@ -442,14 +442,27 @@ app.post('/api/admin/allowed', async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { phone, pin, maxGuests } = req.body;
+    const { phone, pin, maxGuests, aforo } = req.body;
     if (!phone || !pin) {
         return res.status(400).json({ error: 'Phone and PIN are required' });
     }
 
     const count = parseInt(maxGuests, 10) || 2;
+    const aforoNum = parseInt(aforo, 10) || 0;
 
     try {
+        if (aforoNum > 0) {
+            const all = await prisma.allowedGuest.findMany();
+            const otros = all
+                .filter((a) => a.phone !== phone)
+                .reduce((s, a) => s + ((a as any).maxGuests || 2), 0);
+            if (otros + count > aforoNum) {
+                return res.status(400).json({
+                    error: `Se excede el aforo (${aforoNum}). Pases ya asignados a otros números: ${otros}. Disponibles: ${Math.max(0, aforoNum - otros)}.`,
+                });
+            }
+        }
+
         const result = await prisma.allowedGuest.upsert({
             where: { phone },
             update: { pin, maxGuests: count } as any, // no se reinician los cupos ya usados

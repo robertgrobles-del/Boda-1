@@ -65,7 +65,7 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
             className="relative w-full"
           >
             <div className="mb-4 flex justify-center md:mb-8 lg:justify-start">
-              <span className="max-w-[13rem] text-center font-serif text-[9px] font-bold uppercase leading-relaxed tracking-[0.2em] text-white/90 sm:max-w-xs sm:text-[10px] sm:tracking-[0.25em] md:text-[11px] lg:text-left">
+              <span className="whitespace-nowrap text-center font-serif text-[8px] font-bold uppercase tracking-[0.18em] text-white/90 sm:text-[9px] sm:tracking-[0.22em] md:text-[10px] lg:text-left">
                 Aquí comienza el resto de nuestras vidas
               </span>
             </div>

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, CheckCircle, XCircle, Search, Download, Key, LogOut,
   Smartphone, Plus, MessageSquare, Trash2, Send, Copy, ExternalLink, 
-  Sparkles, RefreshCw, Sliders, FileText, Check, Image as ImageIcon,
+  RefreshCw, Sliders, FileText, Check, Image as ImageIcon,
   MessageCircle
 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
@@ -85,6 +85,7 @@ export const AdminDashboard: React.FC = () => {
   const [newPhone, setNewPhone] = useState('');
   const [newPin, setNewPin] = useState('');
   const [newMaxGuests, setNewMaxGuests] = useState('2');
+  const [aforo, setAforo] = useState(() => localStorage.getItem('sd_aforo') || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [messages, setMessages] = useState<{ id: number; name: string; message: string; createdAt: string }[]>([]);
   const [activeView, setActiveView] = useState<'rsvps' | 'allowed' | 'messages'>('rsvps');
@@ -142,12 +143,6 @@ export const AdminDashboard: React.FC = () => {
     } catch {
       toast('No se pudo copiar automáticamente.', 'error');
     }
-  };
-
-  // Generate random PIN
-  const handleGenerateRandomPin = () => {
-    const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
-    setNewPin(randomPin);
   };
 
   // Delete allowed guest
@@ -326,6 +321,21 @@ export const AdminDashboard: React.FC = () => {
     const currentPhone = newPhone.trim();
     const currentPin = newPin.trim();
     const guestsAllowed = parseInt(newMaxGuests, 10) || 2;
+    const aforoNum = parseInt(aforo, 10) || 0;
+
+    // Guardrail de aforo (también se valida en el backend)
+    if (aforoNum > 0) {
+      const otros = allowedGuests
+        .filter((a) => a.phone !== currentPhone)
+        .reduce((s, a) => s + (a.maxGuests || 2), 0);
+      if (otros + guestsAllowed > aforoNum) {
+        toast(
+          `Se excede el aforo (${aforoNum}). Ya hay ${otros} pases asignados a otros números — disponibles: ${Math.max(0, aforoNum - otros)}.`,
+          'error',
+        );
+        return;
+      }
+    }
 
     try {
       const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/allowed`, {
@@ -334,7 +344,7 @@ export const AdminDashboard: React.FC = () => {
           'Content-Type': 'application/json',
           'x-api-key': apiKey
         },
-        body: JSON.stringify({ phone: currentPhone, pin: currentPin, maxGuests: guestsAllowed })
+        body: JSON.stringify({ phone: currentPhone, pin: currentPin, maxGuests: guestsAllowed, aforo: aforoNum })
       });
 
       if (res.ok) {
@@ -347,7 +357,8 @@ export const AdminDashboard: React.FC = () => {
         setNewMaxGuests('2');
         fetchAllowedGuests();
       } else {
-        toast('Error al registrar invitado.', 'error');
+        const err = await res.json().catch(() => ({}));
+        toast(err.error || 'Error al registrar invitado.', 'error');
       }
     } catch (err) {
       console.error(err);
@@ -406,8 +417,8 @@ export const AdminDashboard: React.FC = () => {
             <div className="w-16 h-16 bg-[#f1f4ea] rounded-full flex items-center justify-center mb-4">
               <Key className="text-[#4a5d23]" size={28} />
             </div>
-            <h1 className="font-serif text-2xl text-stone-800 font-bold mb-1">Acceso Administrativo</h1>
-            <p className="text-stone-500 text-xs italic font-serif">Stephanie & Dalvin - Boda 2026</p>
+            <h1 className="text-2xl text-stone-800 font-bold mb-1">Acceso Administrativo</h1>
+            <p className="text-stone-500 text-xs italic">Stephanie & Dalvin - Boda 2026</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -444,8 +455,8 @@ export const AdminDashboard: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-200">
           <div>
-            <h1 className="font-serif text-3xl font-bold text-stone-800 md:text-4xl">Panel de Administración</h1>
-            <p className="text-stone-500 text-xs italic font-serif mt-1">Stephanie & Dalvin · Control de RSVP & Seguridad de Lista</p>
+            <h1 className="text-3xl font-bold text-stone-800 md:text-4xl">Panel de Administración</h1>
+            <p className="text-stone-500 text-xs italic mt-1">Stephanie & Dalvin · Control de RSVP & Seguridad de Lista</p>
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -502,7 +513,7 @@ export const AdminDashboard: React.FC = () => {
                       <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${c.bg}`}>{c.icon}</div>
                       <div className="min-w-0">
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-stone-400">{c.label}</span>
-                        <span className="font-serif text-2xl font-bold text-stone-800">{c.value}</span>
+                        <span className="text-2xl font-bold text-stone-800">{c.value}</span>
                       </div>
                     </div>
                   ))}
@@ -545,7 +556,7 @@ export const AdminDashboard: React.FC = () => {
                       return (
                         <tr key={g.id} className="hover:bg-stone-50/30 transition-colors align-top">
                           <td className="py-4 px-6">
-                            <p className="font-serif font-bold text-stone-800">{g.name}</p>
+                            <p className="font-bold text-stone-800">{g.name}</p>
                             <p className="text-xs text-stone-400">{g.email}</p>
                             {g.phone && <p className="text-[10px] font-mono text-stone-400 mt-0.5">{g.phone}</p>}
                           </td>
@@ -602,7 +613,7 @@ export const AdminDashboard: React.FC = () => {
                   <MessageCircle size={22} />
                 </div>
                 <div>
-                  <h2 className="font-serif text-lg font-bold text-stone-900">Invitaciones por WhatsApp & PIN</h2>
+                  <h2 className="text-lg font-bold text-stone-900">Invitaciones por WhatsApp & PIN</h2>
                   <p className="text-xs text-stone-400">Control de números autorizados y plantilla de envío personalizado</p>
                 </div>
               </div>
@@ -636,6 +647,48 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Aforo del evento */}
+            {(() => {
+              const asignados = allowedGuests.reduce((s, a) => s + (a.maxGuests || 2), 0);
+              const aforoNum = parseInt(aforo, 10) || 0;
+              const disp = aforoNum > 0 ? aforoNum - asignados : null;
+              return (
+                <div className="bg-white p-5 rounded-3xl border border-stone-200/50 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <label htmlFor="aforo" className="text-xs font-bold uppercase tracking-wider text-stone-500">Aforo total del evento</label>
+                    <input
+                      id="aforo"
+                      type="number"
+                      min={0}
+                      value={aforo}
+                      onChange={(e) => {
+                        setAforo(e.target.value);
+                        localStorage.setItem('sd_aforo', e.target.value);
+                      }}
+                      placeholder="Ej: 150"
+                      className="w-24 px-3 py-2 border border-stone-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#4a5d23]"
+                    />
+                  </div>
+                  <div className="flex-grow flex flex-wrap items-center gap-x-5 gap-y-1 text-xs">
+                    <span className="text-stone-500">Pases asignados: <strong className="text-stone-800">{asignados}</strong></span>
+                    {aforoNum > 0 && (
+                      <span className={disp! < 0 ? 'text-red-600 font-bold' : 'text-[#4a5d23]'}>
+                        {disp! < 0 ? `¡Excede el aforo por ${-disp!}!` : `Disponibles: ${disp}`}
+                      </span>
+                    )}
+                  </div>
+                  {aforoNum > 0 && (
+                    <div className="w-full sm:w-40 h-2 rounded-full bg-stone-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${asignados > aforoNum ? 'bg-red-400' : 'bg-[#4a5d23]'}`}
+                        style={{ width: `${Math.min(100, (asignados / aforoNum) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Collapsible / Editable Template Editor */}
             <AnimatePresence>
               {showTemplateSettings && (
@@ -651,7 +704,7 @@ export const AdminDashboard: React.FC = () => {
                     <div className="lg:col-span-7 space-y-5">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="font-serif text-lg font-bold text-stone-800 flex items-center gap-2">
+                          <h3 className="text-lg font-bold text-stone-800 flex items-center gap-2">
                             <FileText size={18} className="text-[#4a5d23]" />
                             Plantilla del Mensaje de WhatsApp
                           </h3>
@@ -807,7 +860,7 @@ export const AdminDashboard: React.FC = () => {
                     <Smartphone className="text-[#4a5d23]" size={20} />
                   </div>
                   <div>
-                    <h2 className="font-serif text-lg font-bold">Autorizar Teléfono</h2>
+                    <h2 className="text-lg font-bold">Autorizar Teléfono</h2>
                     <p className="text-xs text-stone-400">Registrar invitado, PIN y pases asignados</p>
                   </div>
                 </div>
@@ -831,18 +884,9 @@ export const AdminDashboard: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <label htmlFor="new-pin" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
-                          PIN Asignado
-                        </label>
-                        <button
-                          type="button"
-                          onClick={handleGenerateRandomPin}
-                          className="text-[9px] font-bold text-[#4a5d23] hover:underline flex items-center gap-0.5"
-                        >
-                          <Sparkles size={10} /> Random
-                        </button>
-                      </div>
+                      <label htmlFor="new-pin" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
+                        PIN Asignado
+                      </label>
                       <input
                         id="new-pin"
                         type="text"
@@ -891,7 +935,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="lg:col-span-2 bg-white rounded-3xl border border-stone-200/50 shadow-sm overflow-hidden">
                 <div className="p-6 border-b border-stone-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="font-serif text-lg font-bold">Teléfonos Autorizados ({allowedGuests.length})</h3>
+                    <h3 className="text-lg font-bold">Teléfonos Autorizados ({allowedGuests.length})</h3>
                     <p className="text-xs text-stone-400">Lista de invitados con acceso de confirmación y cupos</p>
                   </div>
                   <div className="relative w-full sm:w-auto">
@@ -1030,7 +1074,7 @@ export const AdminDashboard: React.FC = () => {
                 <MessageSquare className="text-[#4a5d23]" size={20} />
               </div>
               <div>
-                <h3 className="font-serif text-lg font-bold">Libro de Mensajes</h3>
+                <h3 className="text-lg font-bold">Libro de Mensajes</h3>
                 <p className="text-xs text-stone-400">Deseos y mensajes que dejaron los invitados</p>
               </div>
             </div>
@@ -1039,7 +1083,7 @@ export const AdminDashboard: React.FC = () => {
               {messages.map((m) => (
                 <div key={m.id} className="flex items-start justify-between gap-4 p-6 hover:bg-stone-50/40 transition-colors">
                   <div>
-                    <p className="font-serif italic text-stone-700">"{m.message}"</p>
+                    <p className="italic text-stone-700">"{m.message}"</p>
                     <p className="mt-2 text-[11px] font-bold uppercase tracking-wider text-[#4a5d23]">
                       {m.name}
                       <span className="ml-3 font-normal text-stone-400 normal-case tracking-normal">
