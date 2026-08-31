@@ -49,7 +49,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
             className="bg-[#f9fafb] rounded-[2rem] p-6 sm:p-8 md:p-12 shadow-sm relative overflow-hidden flex flex-col items-center text-center group h-full"
           >
             {/* Decorative Blooms */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#e8c4b8] rounded-bl-full opacity-40 -mr-8 -mt-8"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#d9a58f] rounded-bl-full opacity-40 -mr-8 -mt-8"></div>
 
             {/* Icon Container */}
             <div className="relative z-10 mb-8">
@@ -115,7 +115,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
             className="bg-[#f9fafb] rounded-[2rem] p-6 sm:p-8 md:p-12 shadow-sm relative overflow-hidden flex flex-col items-center text-center group h-full"
           >
             {/* Decorative Blooms */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#e8c4b8] rounded-bl-full opacity-40 -mr-8 -mt-8"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#d9a58f] rounded-bl-full opacity-40 -mr-8 -mt-8"></div>
 
             {/* Icon Container */}
             <div className="relative z-10 mb-8">
