@@ -6,7 +6,8 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 
-// Cargar variables de entorno del backend
+// Cargar variables de entorno (.env es lo que también lee Prisma; .env.backend por compatibilidad)
+dotenv.config();
 dotenv.config({ path: './.env.backend' });
 
 const prisma = new PrismaClient();
@@ -25,7 +26,51 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+// --- Helpers ---------------------------------------------------------------
+
+const CEDULA_API = process.env.CEDULA_API_BASE || 'https://api.digital.gob.do/v3/cedulas/';
+
+/** Devuelve el nombre completo oficial de una cédula, o null si no se pudo. */
+const fetchCedulaName = async (cedula: string): Promise<string | null> => {
+    const clean = String(cedula || '').replace(/\D/g, '');
+    if (clean.length !== 11) return null;
+    try {
+        const r = await fetch(`${CEDULA_API}${clean}`);
+        if (!r.ok) return null;
+        const d: any = await r.json();
+        if (!d || d.valid === false) return null;
+        const name =
+            [d.names, d.firstSurname, d.secondSurname].filter(Boolean).join(' ') ||
+            [d.nombres, d.apellido1, d.apellido2].filter(Boolean).join(' ') ||
+            [d.name, d.lastName].filter(Boolean).join(' ') ||
+            d.fullName || d.nombre || d.nombreCompleto || null;
+        if (!name) console.log('[cedula] respuesta sin nombre reconocible:', JSON.stringify(d).slice(0, 300));
+        return name ? String(name).replace(/\s+/g, ' ').trim() : null;
+    } catch {
+        return null;
+    }
+};
+
 // --- ROUTES ---
+
+// 0. POST RSVP — consultar cupos disponibles para un teléfono + PIN
+app.post('/api/rsvp/check', async (req, res) => {
+    try {
+        const { phone, pin } = req.body;
+        if (!phone || !pin) return res.status(400).json({ success: false, error: 'Teléfono y PIN requeridos.' });
+
+        const allowed = await prisma.allowedGuest.findUnique({ where: { phone } });
+        if (!allowed) return res.status(403).json({ success: false, error: 'Este número no está en la lista de invitados.' });
+        if (allowed.pin !== pin) return res.status(403).json({ success: false, error: 'El PIN ingresado es incorrecto.' });
+
+        const maxGuests = (allowed as any).maxGuests ?? 2;
+        const usedCount = (allowed as any).usedCount ?? 0;
+        res.json({ success: true, maxGuests, usedCount, remaining: Math.max(0, maxGuests - usedCount) });
+    } catch (error) {
+        console.error('RSVP check error:', error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
 
 // 1. POST RSVP
 app.post('/api/rsvp', async (req, res) => {
@@ -36,82 +81,95 @@ app.post('/api/rsvp', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Se requiere teléfono y PIN para confirmar.' });
         }
 
-        // Buscar si el teléfono está invitado
-        const allowed = await prisma.allowedGuest.findUnique({
-            where: { phone }
-        });
+        const allowed = await prisma.allowedGuest.findUnique({ where: { phone } });
 
         if (!allowed) {
             return res.status(403).json({ success: false, error: 'Este número de teléfono no está en la lista de invitados.' });
         }
-
         if (allowed.pin !== pin) {
             return res.status(403).json({ success: false, error: 'El PIN ingresado es incorrecto.' });
         }
 
-        if (allowed.used) {
-            return res.status(403).json({ success: false, error: 'Este PIN ya ha sido utilizado para confirmar asistencia.' });
-        }
-
-        const guestCount = parseInt(guests.split(' ')[0]) || 1;
+        const guestCount = parseInt(String(guests).split(' ')[0]) || 1;
         const isAttending = attending === 'yes';
 
-        // Validar límite de invitados permitido
-        const maxAllowed = (allowed as any).maxGuests || 2;
-        if (isAttending && guestCount > maxAllowed) {
-            return res.status(400).json({ 
-                success: false, 
-                error: `La cantidad máxima permitida para tu invitación es de ${maxAllowed} persona(s).` 
+        const maxAllowed = (allowed as any).maxGuests ?? 2;
+        const alreadyUsed = (allowed as any).usedCount ?? 0;
+        const remaining = maxAllowed - alreadyUsed;
+
+        if (isAttending) {
+            if (remaining <= 0) {
+                return res.status(403).json({
+                    success: false,
+                    error: `Ya registraste los ${maxAllowed} invitado(s) permitidos para este número.`,
+                });
+            }
+            if (guestCount > remaining) {
+                return res.status(400).json({
+                    success: false,
+                    error: `Solo te queda(n) ${remaining} cupo(s) disponible(s) para este número.`,
+                });
+            }
+        } else if (alreadyUsed > 0) {
+            return res.status(403).json({
+                success: false,
+                error: 'Este número ya registró invitados. Si necesitas un cambio, contáctanos.',
             });
         }
 
+        // Nombres oficiales por cédula (uno por invitado)
+        const cedulaList: string[] = Array.isArray(cedulas) ? cedulas : [];
+        const guestNames = isAttending
+            ? await Promise.all(cedulaList.slice(0, guestCount).map(fetchCedulaName))
+            : [];
+        const primaryName = guestNames.find(Boolean) || name;
+
         const result = await prisma.rSVP.create({
             data: {
-                name,
+                name: primaryName,
                 email,
                 phone,
                 attending: isAttending,
                 guestsCount: isAttending ? guestCount : 0,
                 dietary: dietary || null,
                 message: message || null,
-                cedulas: JSON.stringify(cedulas || [])
-            }
+                cedulas: JSON.stringify(cedulaList),
+                guestNames: JSON.stringify(guestNames),
+            } as any,
         });
 
-        // Marcar PIN como usado
+        // Acumular cupos usados
+        const newUsed = isAttending ? alreadyUsed + guestCount : maxAllowed;
         await prisma.allowedGuest.update({
             where: { phone },
-            data: {
-                used: true,
-                usedAt: new Date()
-            }
+            data: { usedCount: newUsed, used: newUsed >= maxAllowed, usedAt: new Date() } as any,
         });
 
-        // Enviar Email de Confirmación
+        // Email de confirmación
         if (isAttending && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-            const mailOptions = {
-                from: process.env.EMAIL_USER,
-                to: email,
-                subject: '¡Confirmación recibida! - Boda Stephanie & Dalvin',
-                html: `
-                    <div style="font-family: serif; padding: 20px; color: #4a5d23;">
-                        <h1>¡Hola ${name}!</h1>
-                        <p>Hemos recibido tu confirmación para nuestra boda. ¡Estamos muy felices de que nos acompañes!</p>
-                        <hr />
-                        <p><strong>Detalles:</strong></p>
-                        <ul>
-                            <li>Invitados: ${guestCount}</li>
-                            <li>Fecha: 7 de Noviembre de 2026</li>
-                        </ul>
-                        <p>Nos vemos pronto,</p>
-                        <p><em>Stephanie & Dalvin</em></p>
-                    </div>
-                `
-            };
-            transporter.sendMail(mailOptions).catch(err => console.error('Email error:', err));
+            const list = guestNames.filter(Boolean).map((n) => `<li>${n}</li>`).join('') || `<li>${guestCount} invitado(s)</li>`;
+            transporter
+                .sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: email,
+                    subject: '¡Confirmación recibida! - Boda Stephanie & Dalvin',
+                    html: `
+                        <div style="font-family: serif; padding: 20px; color: #4a5d23;">
+                            <h1>¡Hola ${primaryName}!</h1>
+                            <p>Hemos recibido tu confirmación para nuestra boda. ¡Estamos muy felices de que nos acompañes!</p>
+                            <hr />
+                            <p><strong>Invitados registrados (${guestCount}):</strong></p>
+                            <ul>${list}</ul>
+                            <p><strong>Fecha:</strong> 7 de Noviembre de 2026</p>
+                            <p>Nos vemos pronto,</p>
+                            <p><em>Stephanie &amp; Dalvin</em></p>
+                        </div>
+                    `,
+                })
+                .catch((err) => console.error('Email error:', err));
         }
 
-        res.status(201).json({ success: true, data: result });
+        res.status(201).json({ success: true, data: result, remaining: Math.max(0, maxAllowed - newUsed) });
     } catch (error) {
         console.error('RSVP Error:', error);
         res.status(500).json({ success: false, error: 'Internal Server Error' });
@@ -394,12 +452,31 @@ app.post('/api/admin/allowed', async (req, res) => {
     try {
         const result = await prisma.allowedGuest.upsert({
             where: { phone },
-            update: { pin, maxGuests: count, used: false, usedAt: null } as any,
+            update: { pin, maxGuests: count } as any, // no se reinician los cupos ya usados
             create: { phone, pin, maxGuests: count } as any
         });
         res.status(201).json(result);
     } catch (error) {
         res.status(500).json({ error: 'Failed to save allowed guest' });
+    }
+});
+
+// 7c. POST Reset a un teléfono autorizado (vuelve a 0 sus cupos usados)
+app.post('/api/admin/allowed/:id/reset', async (req, res) => {
+    const apiKey = req.headers['x-api-key'];
+    if (!process.env.ADMIN_API_KEY || apiKey !== process.env.ADMIN_API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+    try {
+        const result = await prisma.allowedGuest.update({
+            where: { id },
+            data: { usedCount: 0, used: false, usedAt: null } as any,
+        });
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to reset allowed guest' });
     }
 });
 

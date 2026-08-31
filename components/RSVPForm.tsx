@@ -30,6 +30,45 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
   const [cedulas, setCedulas] = useState<string[]>(['']);
   const [cedulaStatus, setCedulaStatus] = useState<('idle' | 'loading' | 'valid' | 'invalid')[]>(['idle']);
 
+  // Cupos disponibles para el teléfono + PIN (se consulta al backend)
+  const [slots, setSlots] = useState<{ remaining: number; maxGuests: number; usedCount: number } | null>(null);
+
+  // Consultar cupos cuando teléfono y PIN están completos
+  useEffect(() => {
+    const phone = formData.phone.replace(/\D/g, '');
+    const pin = formData.pin.trim();
+    if (phone.length < 10 || pin.length < 4) {
+      setSlots(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_CONFIG.backendUrl}/api/rsvp/check`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, pin }),
+        });
+        const data = await res.json();
+        setSlots(res.ok && data.success ? { remaining: data.remaining, maxGuests: data.maxGuests, usedCount: data.usedCount } : null);
+      } catch {
+        setSlots(null);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [formData.phone, formData.pin]);
+
+  // Opciones del selector de invitados, limitadas a los cupos restantes
+  const maxSelectable = slots ? Math.max(1, slots.remaining) : 4;
+  const guestOptions = Array.from({ length: Math.min(maxSelectable, 10) }, (_, i) => `${i + 1} ${i === 0 ? 'Invitado' : 'Invitados'}`);
+
+  // Si los cupos bajan, ajustar la selección
+  useEffect(() => {
+    const current = parseInt(formData.guests.split(' ')[0], 10) || 1;
+    if (slots && current > Math.max(1, slots.remaining)) {
+      setFormData((f) => ({ ...f, guests: `${Math.max(1, slots.remaining)} ${slots.remaining === 1 ? 'Invitado' : 'Invitados'}` }));
+    }
+  }, [slots]);
+
   useEffect(() => {
     const guestCount = parseInt(formData.guests.split(' ')[0]);
     setCedulas(prev => {
@@ -84,6 +123,11 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
     e.preventDefault();
     if (formData.honeypot) {
       console.log('Spam detected');
+      return;
+    }
+
+    if (formData.attending === 'yes' && slots?.remaining === 0) {
+      toast(`Ya registraste los ${slots.maxGuests} cupo(s) permitidos para este número.`, 'error');
       return;
     }
 
@@ -268,14 +312,24 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                         <label htmlFor="rsvp-guests" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Número de Invitados</label>
                         <select
                           id="rsvp-guests"
-                          className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-olive focus:bg-white transition-all text-sm text-stone-700 cursor-pointer"
+                          className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-olive focus:bg-white transition-all text-sm text-stone-700 cursor-pointer disabled:opacity-50"
                           value={formData.guests}
+                          disabled={slots?.remaining === 0}
                           onChange={(e) => setFormData({ ...formData, guests: e.target.value })}
                         >
-                          {['1 Invitado', '2 Invitados', '3 Invitados', '4 Invitados'].map(n => (
+                          {guestOptions.map(n => (
                             <option key={n} value={n}>{n}</option>
                           ))}
                         </select>
+                        {slots && (
+                          <p className={`text-[10px] italic px-1 ${slots.remaining === 0 ? 'text-red-500 font-bold not-italic' : 'text-stone-400'}`}>
+                            {slots.remaining === 0
+                              ? `Ya registraste los ${slots.maxGuests} cupo(s) de este número.`
+                              : slots.usedCount > 0
+                              ? `Te quedan ${slots.remaining} de ${slots.maxGuests} cupos.`
+                              : `Tienes ${slots.maxGuests} cupo(s) para este número.`}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-3">

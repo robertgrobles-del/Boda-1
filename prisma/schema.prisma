@@ -21,7 +21,8 @@ model RSVP {
   guestsCount Int
   dietary     String?
   message     String?
-  cedulas     String // Almacenado como JSON string o valores separados por comas
+  cedulas     String // JSON array de cédulas
+  guestNames  String? // JSON array de nombres oficiales (API de cédula), uno por invitado
   createdAt   DateTime @default(now())
 }
 
@@ -37,8 +38,9 @@ model AllowedGuest {
   id        Int       @id @default(autoincrement())
   phone     String    @unique
   pin       String
-  maxGuests Int       @default(2) // Cantidad de invitados permitidos para este número
-  used      Boolean   @default(false)
+  maxGuests Int       @default(2) // Cupos totales asignados a este número
+  usedCount Int       @default(0) // Invitados ya registrados (acumulado en varios RSVP)
+  used      Boolean   @default(false) // true cuando usedCount >= maxGuests (o declinó)
   usedAt    DateTime?
   createdAt DateTime  @default(now())
 }

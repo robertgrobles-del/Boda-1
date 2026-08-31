@@ -40,6 +40,7 @@ interface Guest {
   dietary: string | null;
   message: string | null;
   cedulas: string;
+  guestNames?: string | null;
   createdAt: string;
 }
 
@@ -48,10 +49,21 @@ interface AllowedGuest {
   phone: string;
   pin: string;
   maxGuests?: number;
+  usedCount?: number;
   used: boolean;
   usedAt: string | null;
   createdAt: string;
 }
+
+const parseList = (raw?: string | null): string[] => {
+  if (!raw) return [];
+  try {
+    const a = JSON.parse(raw);
+    return Array.isArray(a) ? a.filter(Boolean).map(String) : raw ? [raw] : [];
+  } catch {
+    return raw ? [raw] : [];
+  }
+};
 
 interface Summary {
   totalRSVPs: number;
@@ -154,6 +166,25 @@ export const AdminDashboard: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
+      toast('Error de conexión con el servidor.', 'error');
+    }
+  };
+
+  // Reiniciar cupos usados de un teléfono
+  const handleResetAllowedGuest = async (id: number, phone: string) => {
+    if (!window.confirm(`¿Reiniciar los cupos usados de ${phone}? Volverá a poder registrar desde cero.`)) return;
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/allowed/${id}/reset`, {
+        method: 'POST',
+        headers: { 'x-api-key': apiKey },
+      });
+      if (res.ok) {
+        setAllowedGuests((prev) => prev.map((a) => (a.id === id ? { ...a, usedCount: 0, used: false, usedAt: null } : a)));
+        toast('Cupos reiniciados.', 'success');
+      } else {
+        toast('No se pudo reiniciar.', 'error');
+      }
+    } catch {
       toast('Error de conexión con el servidor.', 'error');
     }
   };
@@ -327,16 +358,10 @@ export const AdminDashboard: React.FC = () => {
   const exportGuestsToCSV = () => {
     if (!guests.length) return;
 
-    const headers = ['ID', 'Nombre', 'Email', 'Teléfono', 'Asiste', 'Acompañantes', 'Cédulas', 'Restricciones', 'Mensaje', 'Fecha Registro'];
+    const headers = ['ID', 'Contacto', 'Email', 'Teléfono', 'Asiste', 'Cantidad', 'Invitados (nombre)', 'Cédulas', 'Restricciones', 'Mensaje', 'Fecha Registro'];
     const rows = guests.map(g => {
-      let parsedCedulas = '';
-      try {
-        const arr = JSON.parse(g.cedulas);
-        parsedCedulas = Array.isArray(arr) ? arr.join(' - ') : g.cedulas;
-      } catch {
-        parsedCedulas = g.cedulas;
-      }
-
+      const cedulas = parseList(g.cedulas).join(' | ');
+      const names = parseList(g.guestNames).join(' | ');
       return [
         g.id,
         `"${g.name.replace(/"/g, '""')}"`,
@@ -344,7 +369,8 @@ export const AdminDashboard: React.FC = () => {
         g.phone || '',
         g.attending ? 'SÍ' : 'NO',
         g.guestsCount,
-        `"${parsedCedulas}"`,
+        `"${names}"`,
+        `"${cedulas}"`,
         g.dietary ? `"${g.dietary.replace(/"/g, '""')}"` : 'Ninguna',
         g.message ? `"${g.message.replace(/"/g, '""')}"` : '',
         new Date(g.createdAt).toLocaleDateString()
@@ -438,79 +464,51 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-b border-stone-200 gap-6">
-          <button
-            onClick={() => setActiveView('rsvps')}
-            className={`pb-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
-              activeView === 'rsvps' ? 'border-[#4a5d23] text-[#4a5d23]' : 'border-transparent text-stone-400 hover:text-stone-600'
-            }`}
-          >
-            Confirmaciones (RSVP)
-          </button>
-          <button
-            onClick={() => setActiveView('allowed')}
-            className={`pb-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
-              activeView === 'allowed' ? 'border-[#4a5d23] text-[#4a5d23]' : 'border-transparent text-stone-400 hover:text-stone-600'
-            }`}
-          >
-            Lista de Teléfonos (PINs)
-          </button>
-          <button
-            onClick={() => setActiveView('messages')}
-            className={`pb-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
-              activeView === 'messages' ? 'border-[#4a5d23] text-[#4a5d23]' : 'border-transparent text-stone-400 hover:text-stone-600'
-            }`}
-          >
-            Libro de Mensajes ({messages.length})
-          </button>
+        <div className="flex flex-wrap gap-2 rounded-2xl bg-white p-1.5 border border-stone-200/60 shadow-sm w-fit">
+          {([
+            ['rsvps', `Confirmaciones${summary ? ` (${summary.totalRSVPs})` : ''}`],
+            ['allowed', `Teléfonos & PIN (${allowedGuests.length})`],
+            ['messages', `Mensajes (${messages.length})`],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setActiveView(key)}
+              className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all ${
+                activeView === key ? 'bg-[#4a5d23] text-white shadow' : 'text-stone-500 hover:bg-stone-100'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {activeView === 'rsvps' ? (
           <>
             {/* Metrics Grid */}
-            {summary && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-6 rounded-2xl border border-stone-200/50 shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Users className="text-blue-500" size={24} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">Registrados</span>
-                    <span className="text-2xl font-serif font-bold">{summary.totalRSVPs}</span>
-                  </div>
+            {summary && (() => {
+              const cuposTotal = allowedGuests.reduce((s, a) => s + (a.maxGuests || 2), 0);
+              const cuposUsados = allowedGuests.reduce((s, a) => s + (a.usedCount || 0), 0);
+              const cards = [
+                { icon: <Users size={22} className="text-blue-500" />, bg: 'bg-blue-50', label: 'Confirmaciones', value: summary.totalRSVPs },
+                { icon: <CheckCircle size={22} className="text-green-600" />, bg: 'bg-green-50', label: 'Asistirán', value: <>{summary.totalGuests}<span className="text-xs font-sans text-stone-400"> personas</span></> },
+                { icon: <XCircle size={22} className="text-red-500" />, bg: 'bg-red-50', label: 'Declinaron', value: summary.declined },
+                { icon: <Smartphone size={22} className="text-[#4a5d23]" />, bg: 'bg-[#f1f4ea]', label: 'Teléfonos', value: allowedGuests.length },
+                { icon: <CheckCircle size={22} className="text-amber-600" />, bg: 'bg-amber-50', label: 'Cupos usados', value: <>{cuposUsados}<span className="text-xs font-sans text-stone-400"> / {cuposTotal}</span></> },
+              ];
+              return (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+                  {cards.map((c) => (
+                    <div key={c.label} className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
+                      <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${c.bg}`}>{c.icon}</div>
+                      <div className="min-w-0">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-stone-400">{c.label}</span>
+                        <span className="font-serif text-2xl font-bold text-stone-800">{c.value}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-stone-200/50 shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="text-green-500" size={24} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">Asistirán</span>
-                    <span className="text-2xl font-serif font-bold">{summary.totalGuests} <span className="text-xs text-stone-400">personas</span></span>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-stone-200/50 shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 bg-stone-50 rounded-full flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="text-stone-500" size={24} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">Grupos Sí</span>
-                    <span className="text-2xl font-serif font-bold">{summary.accepted}</span>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-stone-200/50 shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center flex-shrink-0">
-                    <XCircle className="text-red-500" size={24} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">Grupos No</span>
-                    <span className="text-2xl font-serif font-bold">{summary.declined}</span>
-                  </div>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Search Bar */}
             <div className="relative max-w-md">
@@ -530,10 +528,10 @@ export const AdminDashboard: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-stone-50/50 border-b border-stone-100 text-[10px] font-bold uppercase tracking-wider text-stone-500">
-                      <th className="py-4 px-6">Invitado</th>
+                      <th className="py-4 px-6">Contacto</th>
                       <th className="py-4 px-6 text-center">Asiste</th>
-                      <th className="py-4 px-6 text-center">Cantidad</th>
-                      <th className="py-4 px-6">Cédulas</th>
+                      <th className="py-4 px-6 text-center">Cant.</th>
+                      <th className="py-4 px-6">Invitados (cédula)</th>
                       <th className="py-4 px-6">Restricciones</th>
                       <th className="py-4 px-6">Mensaje</th>
                       <th className="py-4 px-6">Registro</th>
@@ -541,15 +539,11 @@ export const AdminDashboard: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-stone-100 text-sm">
                     {filteredGuests.map((g) => {
-                      let parsedCedulas = [];
-                      try {
-                        parsedCedulas = JSON.parse(g.cedulas);
-                      } catch {
-                        parsedCedulas = g.cedulas ? [g.cedulas] : [];
-                      }
+                      const parsedCedulas = parseList(g.cedulas);
+                      const parsedNames = parseList(g.guestNames);
 
                       return (
-                        <tr key={g.id} className="hover:bg-stone-50/30 transition-colors">
+                        <tr key={g.id} className="hover:bg-stone-50/30 transition-colors align-top">
                           <td className="py-4 px-6">
                             <p className="font-serif font-bold text-stone-800">{g.name}</p>
                             <p className="text-xs text-stone-400">{g.email}</p>
@@ -563,13 +557,18 @@ export const AdminDashboard: React.FC = () => {
                           <td className="py-4 px-6 text-center font-bold text-stone-700">
                             {g.attending ? g.guestsCount : '-'}
                           </td>
-                          <td className="py-4 px-6 max-w-[200px] truncate">
+                          <td className="py-4 px-6">
                             {parsedCedulas.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
+                              <ul className="space-y-1.5">
                                 {parsedCedulas.map((c: string, idx: number) => (
-                                  <span key={idx} className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded text-[10px] font-mono">{c}</span>
+                                  <li key={idx} className="leading-tight">
+                                    <span className="block text-xs font-semibold text-stone-700">
+                                      {parsedNames[idx] || <span className="italic text-stone-400">Nombre no disponible</span>}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-stone-400">{c}</span>
+                                  </li>
                                 ))}
-                              </div>
+                              </ul>
                             ) : '-'}
                           </td>
                           <td className="py-4 px-6 text-xs text-stone-600 italic">
@@ -913,8 +912,7 @@ export const AdminDashboard: React.FC = () => {
                       <tr className="bg-stone-50/50 border-b border-stone-100 text-[10px] font-bold uppercase tracking-wider text-stone-500">
                         <th className="py-4 px-6">Teléfono</th>
                         <th className="py-4 px-4 text-center">PIN</th>
-                        <th className="py-4 px-4 text-center">Pases</th>
-                        <th className="py-4 px-4 text-center">Estado</th>
+                        <th className="py-4 px-4 text-center">Registrados</th>
                         <th className="py-4 px-6 text-center">Acciones WhatsApp</th>
                         <th className="py-4 px-4 text-center"></th>
                       </tr>
@@ -934,18 +932,25 @@ export const AdminDashboard: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-4 px-4 text-center">
-                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                              a.used 
-                                ? 'bg-stone-100 text-stone-400' 
-                                : 'bg-green-50 text-green-700 border border-green-200/50'
-                            }`}>
-                              {a.used ? 'Confirmado' : 'Activo'}
-                            </span>
-                            {a.usedAt && (
-                              <p className="text-[9px] text-stone-400 font-mono mt-0.5">
-                                {new Date(a.usedAt).toLocaleDateString()}
-                              </p>
-                            )}
+                            {(() => {
+                              const max = a.maxGuests || 2;
+                              const used = a.usedCount || 0;
+                              const full = used >= max;
+                              return (
+                                <div className="mx-auto w-24">
+                                  <div className="flex items-center justify-between text-[10px] font-bold">
+                                    <span className={full ? 'text-stone-400' : 'text-[#4a5d23]'}>{used}/{max}</span>
+                                    {full && <span className="text-[8px] uppercase text-stone-400">Completo</span>}
+                                  </div>
+                                  <div className="mt-1 h-1.5 w-full rounded-full bg-stone-100 overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full ${full ? 'bg-stone-300' : 'bg-[#4a5d23]'}`}
+                                      style={{ width: `${Math.min(100, (used / max) * 100)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="py-4 px-6 text-center">
                             <div className="flex items-center justify-center gap-2">
@@ -981,15 +986,27 @@ export const AdminDashboard: React.FC = () => {
                               </button>
                             </div>
                           </td>
-                          <td className="py-4 px-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteAllowedGuest(a.id)}
-                              className="text-stone-300 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
-                              title="Eliminar de autorizados"
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center justify-center gap-1">
+                              {(a.usedCount || 0) > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetAllowedGuest(a.id, a.phone)}
+                                  className="text-stone-300 hover:text-[#4a5d23] p-1.5 rounded-full hover:bg-[#f1f4ea] transition-colors"
+                                  title="Reiniciar cupos usados"
+                                >
+                                  <RefreshCw size={14} />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAllowedGuest(a.id)}
+                                className="text-stone-300 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
+                                title="Eliminar de autorizados"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
