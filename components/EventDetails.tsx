@@ -90,10 +90,10 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-full border border-olive/30 bg-olive/5 px-4 py-2 text-[9px] font-bold uppercase tracking-wider text-olive transition-all hover:bg-olive hover:text-white active:scale-95"
-                  title="Parqueo más cercano a la iglesia (RD$100 por hora)"
+                  title="Opción de parqueo recomendada, cerca de la iglesia"
                 >
                   <CircleParking size={13} />
-                  Parqueo (RD$100/h)
+                  Opción de parqueo recomendada
                 </a>
               </div>
             </div>
