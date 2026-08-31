@@ -54,36 +54,36 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.4, ease: 'easeOut' }}
-        className="relative z-20 flex max-w-xl flex-col items-center px-[15px] md:px-4"
+        className="relative z-20 flex max-w-xl flex-col items-center px-[25px] md:px-4"
       >
         {invitee && (
           <motion.span
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.3, ease: 'easeOut' }}
-            className="mb-4 block font-signature text-4xl text-cream md:mb-5 md:text-4xl"
+            className="mb-4 block font-signature text-4xl text-white md:mb-5 md:text-4xl md:text-cream"
           >
             ¡Hola, {invitee}!
           </motion.span>
         )}
 
-        <span className="mb-5 block text-[10px] font-bold uppercase tracking-[0.55em] text-cream/70 md:mb-7 md:text-xs">
+        <span className="mb-5 block text-[10px] font-bold uppercase tracking-[0.55em] text-white md:mb-7 md:text-xs md:text-cream/70">
           {invitee ? 'Con cariño te invitamos a la boda de' : 'Estás invitado a la boda de'}
         </span>
 
         <h1 className="font-signature text-6xl leading-[1.05] text-white sm:text-7xl md:text-8xl lg:text-[7.5rem] max-[380px]:text-5xl">
           Stephanie
-          <span className="mx-3 font-serif text-3xl italic text-cream/80 md:text-5xl">&amp;</span>
+          <span className="mx-3 font-serif text-3xl italic text-white md:text-5xl md:text-cream/80">&amp;</span>
           Dalvin
         </h1>
 
-        <div className="my-8 flex items-center gap-4 text-white/60 md:my-10">
+        <div className="my-8 flex items-center gap-4 text-white md:my-10 md:text-white/60">
           <span className="h-px w-10 bg-white/25 md:w-16" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.45em] md:text-xs md:font-normal">07 · Noviembre · 2026</span>
+          <span className="text-[14px] font-bold uppercase tracking-[0.45em] md:text-xs md:font-normal">07 · Noviembre · 2026</span>
           <span className="h-px w-10 bg-white/25 md:w-16" />
         </div>
 
-        <p className="mb-9 max-w-md font-serif text-base italic leading-relaxed text-cream/80 md:mb-11 md:text-lg">
+        <p className="mb-9 max-w-md font-serif text-base italic leading-relaxed text-white md:mb-11 md:text-lg md:text-cream/80">
           «Mejor son dos que uno… si caen, el uno levantará a su compañero» — Eclesiastés 4,9
         </p>
 
