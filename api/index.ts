@@ -26,32 +26,71 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// --- Helpers ---------------------------------------------------------------
+// --- Helpers · Cédula ------------------------------------------------------
 
-const CEDULA_API = process.env.CEDULA_API_BASE || 'https://api.digital.gob.do/v3/cedulas/';
+const JCE_API = process.env.JCE_CEDULA_API || 'http://190.122.98.11:11080/jce/api/citizen/';
+const DGII_API = 'https://api.digital.gob.do/v3/cedulas/';
 
-/** Devuelve el nombre completo oficial de una cédula, o null si no se pudo. */
-const fetchCedulaName = async (cedula: string): Promise<string | null> => {
+const timeout = (ms: number) => {
+    try { return AbortSignal.timeout(ms); } catch { return undefined; }
+};
+
+/** Consulta una cédula: JCE (con nombre) → DGII → validate. */
+const lookupCedula = async (cedula: string): Promise<{ valid: boolean; name: string | null }> => {
     const clean = String(cedula || '').replace(/\D/g, '');
-    if (clean.length !== 11) return null;
+    if (clean.length !== 11) return { valid: false, name: null };
+
+    // 1. JCE — trae el nombre oficial
     try {
-        const r = await fetch(`${CEDULA_API}${clean}`);
-        if (!r.ok) return null;
+        const r = await fetch(`${JCE_API}${clean}`, { signal: timeout(9000) });
+        if (r.ok) {
+            const d: any = await r.json();
+            const ci = d?.citizenInfo;
+            if (d?.success && ci) {
+                const name = [ci.nombres, ci.apellido1, ci.apellido2].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+                return { valid: true, name: name || null };
+            }
+        }
+    } catch { /* pasa al fallback */ }
+
+    // 2. DGII (por si el JCE no responde)
+    try {
+        const r = await fetch(`${DGII_API}${clean}`, { signal: timeout(9000) });
+        if (r.ok) {
+            const d: any = await r.json();
+            if (d && d.valid !== false) {
+                const name =
+                    [d.names, d.firstSurname, d.secondSurname].filter(Boolean).join(' ') ||
+                    [d.nombres, d.apellido1, d.apellido2].filter(Boolean).join(' ') || null;
+                return { valid: true, name: name ? name.replace(/\s+/g, ' ').trim() : null };
+            }
+        }
+    } catch { /* sigue */ }
+
+    // 3. Solo validez
+    try {
+        const r = await fetch(`${DGII_API}${clean}/validate`, { signal: timeout(6000) });
         const d: any = await r.json();
-        if (!d || d.valid === false) return null;
-        const name =
-            [d.names, d.firstSurname, d.secondSurname].filter(Boolean).join(' ') ||
-            [d.nombres, d.apellido1, d.apellido2].filter(Boolean).join(' ') ||
-            [d.name, d.lastName].filter(Boolean).join(' ') ||
-            d.fullName || d.nombre || d.nombreCompleto || null;
-        if (!name) console.log('[cedula] respuesta sin nombre reconocible:', JSON.stringify(d).slice(0, 300));
-        return name ? String(name).replace(/\s+/g, ' ').trim() : null;
+        return { valid: !!d?.valid, name: null };
     } catch {
-        return null;
+        return { valid: false, name: null };
     }
 };
 
+const fetchCedulaName = async (cedula: string): Promise<string | null> => (await lookupCedula(cedula)).name;
+
 // --- ROUTES ---
+
+// Validación de cédula (proxy — el front no puede llamar al JCE por HTTP directo)
+app.get('/api/cedula/:cedula', async (req, res) => {
+    try {
+        const result = await lookupCedula(req.params.cedula);
+        res.json(result);
+    } catch (error) {
+        console.error('Cédula lookup error:', error);
+        res.status(500).json({ valid: false, name: null });
+    }
+});
 
 // 0. POST RSVP — consultar cupos disponibles para un teléfono + PIN
 app.post('/api/rsvp/check', async (req, res) => {

@@ -29,6 +29,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
 
   const [cedulas, setCedulas] = useState<string[]>(['']);
   const [cedulaStatus, setCedulaStatus] = useState<('idle' | 'loading' | 'valid' | 'invalid')[]>(['idle']);
+  const [cedulaNames, setCedulaNames] = useState<(string | null)[]>([null]);
 
   // Cupos disponibles para el teléfono + PIN (se consulta al backend)
   const [slots, setSlots] = useState<{ remaining: number; maxGuests: number; usedCount: number } | null>(null);
@@ -89,33 +90,32 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
       }
       return newStatus;
     });
+    setCedulaNames(prev => {
+      const a = [...prev];
+      if (guestCount > a.length) return [...a, ...Array(guestCount - a.length).fill(null)];
+      if (guestCount < a.length) return a.slice(0, guestCount);
+      return a;
+    });
   }, [formData.guests]);
 
   const validateCedula = async (index: number, value: string) => {
     const cleanCedula = value.replace(/[^0-9]/g, '');
     if (cleanCedula.length !== 11) {
-      const newStatus = [...cedulaStatus];
-      newStatus[index] = 'idle';
-      setCedulaStatus(newStatus);
+      setCedulaStatus(s => s.map((v, i) => (i === index ? 'idle' : v)));
+      setCedulaNames(n => n.map((v, i) => (i === index ? null : v)));
       return;
     }
 
-    const newStatus = [...cedulaStatus];
-    newStatus[index] = 'loading';
-    setCedulaStatus(newStatus);
+    setCedulaStatus(s => s.map((v, i) => (i === index ? 'loading' : v)));
 
     try {
-      const response = await fetch(`${API_CONFIG.cedulaValidationBaseUrl}${cleanCedula}/validate`);
+      const response = await fetch(`${API_CONFIG.backendUrl}/api/cedula/${cleanCedula}`);
       const data = await response.json();
-
-      const updatedStatus = [...cedulaStatus];
-      updatedStatus[index] = data.valid ? 'valid' : 'invalid';
-      setCedulaStatus(updatedStatus);
+      setCedulaStatus(s => s.map((v, i) => (i === index ? (data.valid ? 'valid' : 'invalid') : v)));
+      setCedulaNames(n => n.map((v, i) => (i === index ? (data.name || null) : v)));
     } catch (error) {
       console.error('Error validating cedula:', error);
-      const updatedStatus = [...cedulaStatus];
-      updatedStatus[index] = 'idle'; // Fallback to idle if API fails
-      setCedulaStatus(updatedStatus);
+      setCedulaStatus(s => s.map((v, i) => (i === index ? 'idle' : v)));
     }
   };
 
@@ -175,13 +175,11 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
     newCedulas[index] = cleanValue;
     setCedulas(newCedulas);
 
-    // Debounce validation? For now simple check on length
     if (cleanValue.replace(/-/g, '').length === 11) {
       validateCedula(index, cleanValue);
     } else {
-      const newStatus = [...cedulaStatus];
-      newStatus[index] = 'idle';
-      setCedulaStatus(newStatus);
+      setCedulaStatus(s => s.map((v, i) => (i === index ? 'idle' : v)));
+      setCedulaNames(n => n.map((v, i) => (i === index ? null : v)));
     }
   };
 
@@ -363,6 +361,9 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                                 </span>
                               </div>
                             </div>
+                            {cedulaNames[index] && (
+                              <p className="px-1 text-[11px] font-semibold text-green-700">✓ {cedulaNames[index]}</p>
+                            )}
                           </div>
                         ))}
                         <p className="text-[10px] text-stone-400 italic px-1">

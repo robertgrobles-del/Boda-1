@@ -94,7 +94,8 @@ export const BANK_ACCOUNTS = [
 ];
 
 export const API_CONFIG = {
-    cedulaValidationBaseUrl: "https://api.digital.gob.do/v3/cedulas/",
+    // La validación de cédula ahora pasa por nuestro backend: GET /api/cedula/:cedula
+    // (consulta al JCE + fallback DGII).
     // En producción el backend vive en el mismo dominio bajo /api (ver vercel.json),
     // así que se usan rutas relativas. En local apunta al servidor de `npm run backend`.
     // Se puede forzar con la variable de entorno VITE_API_URL.
