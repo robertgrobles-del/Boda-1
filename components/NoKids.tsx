@@ -19,11 +19,11 @@ export const NoKids: React.FC = () => {
       transition={{ duration: 0.6 }}
       className="mx-auto flex max-w-xl flex-col items-center gap-3 text-center"
     >
-      <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-olive">Solo adultos</span>
+      <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-olive">Solo adultos en la recepción</span>
       <div className="h-px w-10 bg-olive/30" />
       <p className="text-xs italic leading-relaxed text-stone-500 md:text-sm">
-        Amamos a sus pequeños, pero esta celebración será solo para adultos.
-        Agradecemos que lo tomen en cuenta al organizarse.
+        Los niños son bienvenidos a la ceremonia. La recepción, en cambio, será
+        solo para adultos. Agradecemos que lo tomen en cuenta al organizarse.
       </p>
     </motion.div>
   </section>
