@@ -108,6 +108,33 @@ app.get('/api/stats', async (_req, res) => {
     }
 });
 
+// Enlace ?invitado= : indica si ese invitado es "solo ceremonia" o "ceremonia y recepción"
+app.get('/api/invitee/:slug', async (req, res) => {
+    try {
+        const norm = (s: any) =>
+            String(s || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[̀-ͯ]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+        const target = norm(req.params.slug);
+        if (!target) return res.json({ found: false, ceremonyOnly: false, name: null });
+
+        const all = await prisma.allowedGuest.findMany();
+        const match = all.find((a: any) => a.name && norm(a.name) === target);
+
+        if (!match) return res.json({ found: false, ceremonyOnly: false, name: null });
+
+        res.set('Cache-Control', 'public, max-age=30');
+        res.json({ found: true, ceremonyOnly: !!(match as any).ceremonyOnly, name: (match as any).name });
+    } catch (error) {
+        console.error('Invitee lookup error:', error);
+        res.status(500).json({ found: false, ceremonyOnly: false, name: null });
+    }
+});
+
 // 0. POST RSVP — consultar cupos disponibles para un teléfono + PIN
 app.post('/api/rsvp/check', async (req, res) => {
     try {

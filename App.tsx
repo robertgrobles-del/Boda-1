@@ -20,6 +20,7 @@ import { ToastProvider } from './components/Toast';
 import { AdminDashboard } from './components/AdminDashboard';
 import { MemoriesPage } from './components/MemoriesPage';
 import { LegalPage } from './components/LegalPage';
+import { InviteeProvider } from './components/InviteeContext';
 import { Calendar, Apple } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { EVENT_DATA, PHOTOS, CALENDAR_URLS, buildIcsDataUri } from './constants';
@@ -96,6 +97,7 @@ const App: React.FC = () => {
 
   return (
     <ToastProvider>
+     <InviteeProvider>
       <div className="relative min-h-screen overflow-x-hidden bg-cream selection:bg-olive selection:text-white">
         <AnimatePresence>
           {showGateway && <Gateway onEnter={closeGateway} />}
@@ -174,6 +176,7 @@ const App: React.FC = () => {
           </footer>
         </motion.div>
       </div>
+     </InviteeProvider>
     </ToastProvider>
   );
 };

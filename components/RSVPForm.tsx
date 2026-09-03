@@ -4,6 +4,7 @@ import { Check, X, ChevronDown, Users, AlertCircle } from 'lucide-react';
 import { ThankYou } from './ThankYou';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
+import { useInvitee } from './InviteeContext';
 
 interface RSVPFormProps {
   id: string;
@@ -13,6 +14,7 @@ interface RSVPFormProps {
 
 export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
   const { toast } = useToast();
+  const { isCeremonyOnly } = useInvitee();
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -131,12 +133,12 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
       return;
     }
 
-    if (formData.attending === 'yes' && cedulaStatus.some(s => s !== 'valid')) {
+    if (formData.attending === 'yes' && !isCeremonyOnly && cedulaStatus.some(s => s !== 'valid')) {
       toast('Verifica que todas las cédulas estén completas y sean válidas.', 'error');
       return;
     }
 
-    if (formData.attending === 'yes') {
+    if (formData.attending === 'yes' && !isCeremonyOnly) {
       const clean = cedulas.map(c => c.replace(/\D/g, '')).filter(Boolean);
       if (new Set(clean).size !== clean.length) {
         toast('Hay una cédula repetida en el formulario.', 'error');
@@ -152,7 +154,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          cedulas
+          cedulas: isCeremonyOnly ? [] : cedulas
         })
       });
 
@@ -264,22 +266,24 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                       />
                     </div>
                   </div>
-                  <div className="space-y-1 md:space-y-2">
-                    <label htmlFor="rsvp-email" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Correo Electrónico</label>
-                    <input
-                      id="rsvp-email"
-                      required
-                      type="email"
-                      className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-olive focus:bg-white transition-all text-sm text-stone-700"
-                      placeholder="tu@email.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    />
-                  </div>
+                  {!isCeremonyOnly && (
+                    <div className="space-y-1 md:space-y-2">
+                      <label htmlFor="rsvp-email" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Correo Electrónico</label>
+                      <input
+                        id="rsvp-email"
+                        required
+                        type="email"
+                        className="w-full px-4 py-3 border border-stone-100 bg-stone-50 rounded-lg focus:outline-none focus:border-olive focus:bg-white transition-all text-sm text-stone-700"
+                        placeholder="tu@email.com"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col space-y-3 py-4 border-y border-stone-100">
-                  <span className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">¿Asistirás a la celebración?</span>
+                  <span className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">{isCeremonyOnly ? '¿Asistirás a la ceremonia?' : '¿Asistirás a la celebración?'}</span>
                   <div className="flex justify-start space-x-8 md:space-x-12 ml-1">
                     <label className="flex items-center space-x-2 cursor-pointer group">
                       <input
@@ -338,6 +342,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                         )}
                       </div>
 
+                      {!isCeremonyOnly && (
                       <div className="space-y-3">
                         {cedulas.map((cedula, index) => (
                           <div key={index} className="space-y-1 md:space-y-2 relative">
@@ -378,7 +383,9 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                           * La cédula es un requisito del club de la recepción.
                         </p>
                       </div>
+                      )}
 
+                      {!isCeremonyOnly && (
                       <div className="space-y-1 md:space-y-2">
                         <label htmlFor="rsvp-dietary" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Restricciones</label>
                         <input
@@ -389,13 +396,14 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                           onChange={(e) => setFormData({ ...formData, dietary: e.target.value })}
                         />
                       </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
 
                 <button
                   type="submit"
-                  disabled={isSubmitting || (formData.attending === 'yes' && cedulaStatus.some(s => s === 'loading'))}
+                  disabled={isSubmitting || (formData.attending === 'yes' && !isCeremonyOnly && cedulaStatus.some(s => s === 'loading'))}
                   className={`w-full py-4 rounded-lg font-bold text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all shadow-lg active:scale-[0.98] ${isSubmitting ? 'bg-stone-400 cursor-wait' : 'bg-olive hover:bg-olive-dark text-white'
                     }`}
                 >

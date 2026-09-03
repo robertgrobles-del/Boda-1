@@ -4,8 +4,12 @@ import { motion } from 'framer-motion';
 import { MapPin, Church, Utensils, CircleParking } from 'lucide-react';
 import { SectionHeader } from './SectionHeader';
 import { MAPS_URLS } from '../constants';
+import { useInvitee } from './InviteeContext';
 
 export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
+  const { isCeremonyOnly } = useInvitee();
+  const showReception = !isCeremonyOnly;
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -41,7 +45,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid md:grid-cols-2 gap-8 md:gap-12 max-w-5xl mx-auto"
+          className={`grid gap-8 md:gap-12 mx-auto ${showReception ? 'md:grid-cols-2 max-w-5xl' : 'max-w-md'}`}
         >
           {/* Ceremony Card */}
           <motion.div
@@ -110,6 +114,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
           </motion.div>
 
           {/* Reception Card */}
+          {showReception && (
           <motion.div
             variants={itemVariants}
             className="bg-[#f9fafb] rounded-[2rem] p-6 sm:p-8 md:p-12 shadow-sm relative overflow-hidden flex flex-col items-center text-center group h-full"
@@ -126,7 +131,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
 
             <div className="relative z-10 space-y-2 mb-6 flex-grow">
               <h3 className="text-2xl md:text-4xl font-serif italic text-ink">Recepción</h3>
-              <p className="text-olive font-bold text-[10px] uppercase tracking-[0.2em]">6:30 PM – Tarde</p>
+              <p className="text-olive font-bold text-[10px] uppercase tracking-[0.2em]">7:30 PM</p>
             </div>
 
             <div className="relative z-10 w-full pt-8 border-t border-gray-200">
@@ -169,6 +174,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
               />
             </div>
           </motion.div>
+          )}
         </motion.div>
       </div>
     </section>

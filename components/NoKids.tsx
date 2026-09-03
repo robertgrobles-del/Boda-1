@@ -1,10 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useInvitee } from './InviteeContext';
 
 /**
  * Aviso "Solo adultos" — banda a todo el ancho, centrada.
+ * No se muestra a los invitados que son "solo ceremonia".
  */
-export const NoKids: React.FC = () => (
+export const NoKids: React.FC = () => {
+  const { isCeremonyOnly } = useInvitee();
+  if (isCeremonyOnly) return null;
+
+  return (
   <section className="border-y border-stone-100 bg-white px-6 py-14 md:py-20">
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -21,4 +27,5 @@ export const NoKids: React.FC = () => (
       </p>
     </motion.div>
   </section>
-);
+  );
+};
