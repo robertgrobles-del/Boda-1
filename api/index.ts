@@ -262,12 +262,19 @@ app.post('/api/rsvp', async (req, res) => {
                     String(m.label || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim() === wanted,
                 );
                 if (meta) {
+                    const t = (meta as any).tableNumber;
+                    const existing = await prisma.seatAssignment.findMany({ where: { tableNumber: t } });
+                    const taken = new Set<number>(existing.map((e: any) => e.seatIndex).filter((s: any) => s != null));
+                    let s = 0;
                     for (let i = 0; i < guestCount; i++) {
+                        while (taken.has(s)) s++;
+                        taken.add(s);
                         await prisma.seatAssignment.upsert({
                             where: { personKey: `${result.id}:${i}` },
-                            update: { tableNumber: (meta as any).tableNumber },
-                            create: { personKey: `${result.id}:${i}`, tableNumber: (meta as any).tableNumber },
+                            update: { tableNumber: t, seatIndex: s },
+                            create: { personKey: `${result.id}:${i}`, tableNumber: t, seatIndex: s },
                         });
+                        s++;
                     }
                 }
             } catch (e) {
@@ -887,9 +894,9 @@ app.get('/api/admin/seating', async (req, res) => {
             await prisma.seatAssignment.deleteMany({ where: { id: { in: stale } } });
         }
 
-        const assignments: Record<string, number> = {};
-        rows.filter((x) => validKeys.has(x.personKey)).forEach((x) => {
-            assignments[x.personKey] = x.tableNumber;
+        const assignments: Record<string, { table: number; seat: number | null }> = {};
+        rows.filter((x) => validKeys.has(x.personKey)).forEach((x: any) => {
+            assignments[x.personKey] = { table: x.tableNumber, seat: x.seatIndex ?? null };
         });
 
         const tables: Record<number, string> = {};
@@ -913,9 +920,13 @@ app.post('/api/admin/seating/save', async (req, res) => {
         const validKeys = new Set(people.map((p) => p.key));
 
         const seatRows = Object.entries(assignments || {})
-            .map(([key, t]) => [key, parseInt(String(t), 10)] as [string, number])
-            .filter(([key, t]) => validKeys.has(key) && Number.isFinite(t) && t >= 1)
-            .map(([personKey, tableNumber]) => ({ personKey, tableNumber }));
+            .map(([key, v]: [string, any]) => {
+                const table = parseInt(String(v && typeof v === 'object' ? v.table : v), 10);
+                const rawSeat = v && typeof v === 'object' ? v.seat : null;
+                const seat = rawSeat == null || !Number.isFinite(Number(rawSeat)) ? null : Math.max(0, Math.trunc(Number(rawSeat)));
+                return { personKey: key, tableNumber: table, seatIndex: seat };
+            })
+            .filter((r) => validKeys.has(r.personKey) && Number.isFinite(r.tableNumber) && r.tableNumber >= 1);
 
         const metaRows = Object.entries(tables || {})
             .map(([n, label]) => [parseInt(n, 10), String(label || '').trim().slice(0, 40)] as [number, string])
@@ -970,15 +981,32 @@ app.post('/api/admin/seating/autoassign', async (req, res) => {
         const tableByTag = new Map<string, number>();
         metas.forEach((m: any) => tableByTag.set(normLabel(m.label), m.tableNumber));
 
+        // asientos ya ocupados por mesa
+        const occupied = new Map<number, Set<number>>();
+        rows.forEach((r: any) => {
+            if (r.seatIndex == null) return;
+            if (!occupied.has(r.tableNumber)) occupied.set(r.tableNumber, new Set());
+            occupied.get(r.tableNumber)!.add(r.seatIndex);
+        });
+        const nextSeat = (t: number) => {
+            if (!occupied.has(t)) occupied.set(t, new Set());
+            const set = occupied.get(t)!;
+            let s = 0;
+            while (set.has(s)) s++;
+            set.add(s);
+            return s;
+        };
+
         let n = 0;
         for (const p of people) {
             if (assigned.has(p.key) || !p.tag) continue;
             const t = tableByTag.get(normLabel(p.tag));
             if (!t) continue;
+            const seatIndex = nextSeat(t);
             await prisma.seatAssignment.upsert({
                 where: { personKey: p.key },
-                update: { tableNumber: t },
-                create: { personKey: p.key, tableNumber: t },
+                update: { tableNumber: t, seatIndex },
+                create: { personKey: p.key, tableNumber: t, seatIndex },
             });
             n++;
         }

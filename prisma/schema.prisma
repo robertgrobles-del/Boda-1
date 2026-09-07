@@ -32,6 +32,7 @@ model SeatAssignment {
   id          Int      @id @default(autoincrement())
   personKey   String   @unique
   tableNumber Int
+  seatIndex   Int? // asiento concreto dentro de la mesa (0 = arriba, sentido horario); null = sin asiento fijo
   updatedAt   DateTime @updatedAt
 }
 
