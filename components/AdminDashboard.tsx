@@ -51,6 +51,7 @@ interface AllowedGuest {
   phone: string;
   pin: string;
   name?: string | null;
+  tag?: string | null;
   ceremonyOnly?: boolean;
   maxGuests?: number;
   usedCount?: number;
@@ -89,6 +90,7 @@ export const AdminDashboard: React.FC = () => {
   const [newPhone, setNewPhone] = useState('');
   const [newPin, setNewPin] = useState('');
   const [newName, setNewName] = useState('');
+  const [newTag, setNewTag] = useState('');
   const [newMaxGuests, setNewMaxGuests] = useState('2');
   const [newCeremonyOnly, setNewCeremonyOnly] = useState(false);
   const [aforo, setAforo] = useState(() => localStorage.getItem('sd_aforo') || '');
@@ -114,7 +116,7 @@ export const AdminDashboard: React.FC = () => {
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
   const [waMenuOpenId, setWaMenuOpenId] = useState<number | null>(null);
   const [editingGuest, setEditingGuest] = useState<AllowedGuest | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', pin: '', maxGuests: '2', ceremonyOnly: false });
+  const [editForm, setEditForm] = useState({ name: '', tag: '', phone: '', pin: '', maxGuests: '2', ceremonyOnly: false });
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Phone sanitization for WhatsApp
@@ -270,6 +272,7 @@ export const AdminDashboard: React.FC = () => {
     setEditingGuest(a);
     setEditForm({
       name: a.name || '',
+      tag: a.tag || '',
       phone: a.phone,
       pin: a.pin,
       maxGuests: String(a.maxGuests || 2),
@@ -292,6 +295,7 @@ export const AdminDashboard: React.FC = () => {
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
         body: JSON.stringify({
           name: editForm.name.trim(),
+          tag: editForm.tag.trim(),
           phone: editForm.phone.trim(),
           pin: editForm.pin.trim(),
           maxGuests: parseInt(editForm.maxGuests, 10) || 2,
@@ -447,6 +451,7 @@ export const AdminDashboard: React.FC = () => {
     const currentPhone = newPhone.trim();
     const currentPin = newPin.trim();
     const currentName = newName.trim();
+    const currentTag = newTag.trim();
     const guestsAllowed = parseInt(newMaxGuests, 10) || 2;
     const aforoNum = parseInt(aforo, 10) || 0;
 
@@ -471,7 +476,7 @@ export const AdminDashboard: React.FC = () => {
           'Content-Type': 'application/json',
           'x-api-key': apiKey
         },
-        body: JSON.stringify({ phone: currentPhone, pin: currentPin, name: currentName, maxGuests: guestsAllowed, ceremonyOnly: newCeremonyOnly, aforo: aforoNum })
+        body: JSON.stringify({ phone: currentPhone, pin: currentPin, name: currentName, tag: currentTag, maxGuests: guestsAllowed, ceremonyOnly: newCeremonyOnly, aforo: aforoNum })
       });
 
       if (res.ok) {
@@ -482,6 +487,7 @@ export const AdminDashboard: React.FC = () => {
         setNewPhone('');
         setNewPin('');
         setNewName('');
+        setNewTag('');
         setNewMaxGuests('2');
         setNewCeremonyOnly(false);
         fetchAllowedGuests();
@@ -1066,8 +1072,29 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <label className="flex flex-1 items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50/60 px-3.5 py-3 cursor-pointer">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label htmlFor="new-tag" className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
+                        Etiqueta / Grupo (opcional)
+                      </label>
+                      <input
+                        id="new-tag"
+                        type="text"
+                        maxLength={40}
+                        list="sd-tag-list"
+                        className="w-full px-4 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-[#4a5d23] text-sm"
+                        placeholder="Ej: Familia novia / Amigos U / Trabajo"
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                      />
+                      <datalist id="sd-tag-list">
+                        {Array.from(new Set(allowedGuests.map((a) => a.tag).filter(Boolean))).map((t) => (
+                          <option key={t as string} value={t as string} />
+                        ))}
+                      </datalist>
+                      <p className="text-[10px] text-stone-400">Al confirmar, se sienta en la mesa que tenga esta misma etiqueta.</p>
+                    </div>
+                    <label className="flex items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50/60 px-3.5 py-3 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={newCeremonyOnly}
@@ -1078,10 +1105,12 @@ export const AdminDashboard: React.FC = () => {
                         <span className="font-bold text-stone-700">Solo ceremonia</span> — este invitado no está invitado a la recepción.
                       </span>
                     </label>
+                  </div>
 
+                  <div className="flex justify-end">
                     <button
                       type="submit"
-                      className="flex items-center justify-center gap-2 py-3 px-8 bg-[#4a5d23] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#3b4c1b] transition-all shadow-md active:scale-95 sm:self-stretch"
+                      className="flex items-center justify-center gap-2 py-3 px-8 bg-[#4a5d23] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#3b4c1b] transition-all shadow-md active:scale-95"
                     >
                       <Plus size={15} />
                       {autoSendWa ? 'Registrar y Abrir WhatsApp' : 'Registrar en Lista'}
@@ -1131,11 +1160,18 @@ export const AdminDashboard: React.FC = () => {
                             ) : (
                               <span className="text-[11px] italic text-stone-300">Sin nombre</span>
                             )}
-                            {a.ceremonyOnly && (
-                              <span className="mt-1 block w-fit rounded-full bg-[#b35a44]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#b35a44]">
-                                Solo ceremonia
-                              </span>
-                            )}
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {a.ceremonyOnly && (
+                                <span className="w-fit rounded-full bg-[#b35a44]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#b35a44]">
+                                  Solo ceremonia
+                                </span>
+                              )}
+                              {a.tag && (
+                                <span className="w-fit rounded-full bg-[#4a5d23]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#4a5d23]">
+                                  {a.tag}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-4 px-4 font-mono font-bold text-stone-800">
                             {a.phone}
@@ -1386,6 +1422,22 @@ export const AdminDashboard: React.FC = () => {
                     placeholder="Ej: Familia Pérez"
                     value={editForm.name}
                     onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label htmlFor="edit-tag" className="text-[9px] font-bold uppercase tracking-wider text-stone-500">
+                    Etiqueta / Grupo
+                  </label>
+                  <input
+                    id="edit-tag"
+                    type="text"
+                    maxLength={40}
+                    list="sd-tag-list"
+                    className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm focus:border-[#4a5d23] focus:outline-none"
+                    placeholder="Ej: Familia novia"
+                    value={editForm.tag}
+                    onChange={(e) => setEditForm((f) => ({ ...f, tag: e.target.value }))}
                   />
                 </div>
 

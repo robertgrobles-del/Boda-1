@@ -251,6 +251,30 @@ app.post('/api/rsvp', async (req, res) => {
             data: { usedCount: newUsed, used: newUsed >= maxAllowed, usedAt: new Date() } as any,
         });
 
+        // Auto-asignar mesa por etiqueta: si el invitado tiene una etiqueta que
+        // coincide con la de alguna mesa, sentar a estas personas en esa mesa.
+        const guestTag = (allowed as any).tag;
+        if (isAttending && guestTag) {
+            try {
+                const wanted = String(guestTag).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+                const metas = await prisma.tableMeta.findMany();
+                const meta = metas.find((m: any) =>
+                    String(m.label || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim() === wanted,
+                );
+                if (meta) {
+                    for (let i = 0; i < guestCount; i++) {
+                        await prisma.seatAssignment.upsert({
+                            where: { personKey: `${result.id}:${i}` },
+                            update: { tableNumber: (meta as any).tableNumber },
+                            create: { personKey: `${result.id}:${i}`, tableNumber: (meta as any).tableNumber },
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error('Auto-seat error:', e);
+            }
+        }
+
         // Email de confirmación
         if (isAttending && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
             const list = guestNames.filter(Boolean).map((n) => `<li>${n}</li>`).join('') || `<li>${guestCount} invitado(s)</li>`;
@@ -620,7 +644,7 @@ app.post('/api/admin/allowed', async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { phone, pin, maxGuests, aforo, name, ceremonyOnly } = req.body;
+    const { phone, pin, maxGuests, aforo, name, ceremonyOnly, tag } = req.body;
     if (!phone || !pin) {
         return res.status(400).json({ error: 'Phone and PIN are required' });
     }
@@ -628,6 +652,7 @@ app.post('/api/admin/allowed', async (req, res) => {
     const count = parseInt(maxGuests, 10) || 2;
     const aforoNum = parseInt(aforo, 10) || 0;
     const cleanName = (name && String(name).trim().slice(0, 60)) || null;
+    const cleanTag = (tag && String(tag).trim().slice(0, 40)) || null;
     const ceremonyOnlyBool = ceremonyOnly === true || ceremonyOnly === 'true';
 
     try {
@@ -645,8 +670,8 @@ app.post('/api/admin/allowed', async (req, res) => {
 
         const result = await prisma.allowedGuest.upsert({
             where: { phone },
-            update: { pin, maxGuests: count, ceremonyOnly: ceremonyOnlyBool, ...(cleanName !== null ? { name: cleanName } : {}) } as any, // no se reinician los cupos ya usados
-            create: { phone, pin, maxGuests: count, name: cleanName, ceremonyOnly: ceremonyOnlyBool } as any
+            update: { pin, maxGuests: count, ceremonyOnly: ceremonyOnlyBool, tag: cleanTag, ...(cleanName !== null ? { name: cleanName } : {}) } as any, // no se reinician los cupos ya usados
+            create: { phone, pin, maxGuests: count, name: cleanName, ceremonyOnly: ceremonyOnlyBool, tag: cleanTag } as any
         });
         res.status(201).json(result);
     } catch (error) {
@@ -682,7 +707,7 @@ app.put('/api/admin/allowed/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
 
-    const { name, phone, pin, maxGuests, aforo, ceremonyOnly } = req.body;
+    const { name, phone, pin, maxGuests, aforo, ceremonyOnly, tag } = req.body;
 
     try {
         const current = await prisma.allowedGuest.findUnique({ where: { id } }) as any;
@@ -709,6 +734,9 @@ app.put('/api/admin/allowed/:id', async (req, res) => {
         }
         if (ceremonyOnly !== undefined) {
             data.ceremonyOnly = ceremonyOnly === true || ceremonyOnly === 'true';
+        }
+        if (tag !== undefined) {
+            data.tag = (tag && String(tag).trim().slice(0, 40)) || null;
         }
         if (maxGuests !== undefined) {
             const parsed = parseInt(maxGuests, 10);
@@ -807,41 +835,53 @@ const isAdmin = (req: any) => {
 };
 
 const onlyDigits = (s: any) => String(s || '').replace(/\D/g, '');
+const normLabel = (s: any) =>
+    String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
-// GET: personas a sentar (confirmadas, que van a la recepción) + asignaciones actuales
+/** Expande las confirmaciones (que van a la recepción) a personas individuales. */
+const buildSeatingPeople = async () => {
+    const [rsvps, allowed] = await Promise.all([
+        prisma.rSVP.findMany({ where: { attending: true }, orderBy: { createdAt: 'asc' } }),
+        prisma.allowedGuest.findMany(),
+    ]);
+
+    const byPhone = new Map<string, any>();
+    allowed.forEach((a: any) => byPhone.set(onlyDigits(a.phone), a));
+
+    const people: { key: string; name: string; party: string; rsvpId: number; tag: string | null }[] = [];
+    for (const r of rsvps) {
+        const ag = r.phone ? byPhone.get(onlyDigits(r.phone)) : null;
+        if (ag && ag.ceremonyOnly) continue; // no van a la recepción
+        let names: string[] = [];
+        try { names = JSON.parse(r.guestNames || '[]'); } catch { /* noop */ }
+        const count = Math.max(r.guestsCount || 0, names.filter(Boolean).length, 1);
+        for (let i = 0; i < count; i++) {
+            people.push({
+                key: `${r.id}:${i}`,
+                name: names[i] || (i === 0 ? r.name : `${r.name} (${i + 1})`),
+                party: r.name,
+                rsvpId: r.id,
+                tag: (ag && ag.tag) || null,
+            });
+        }
+    }
+    return people;
+};
+
+// GET: personas a sentar + asignaciones + etiquetas de mesa
 app.get('/api/admin/seating', async (req, res) => {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
-        const [rsvps, allowed, rows] = await Promise.all([
-            prisma.rSVP.findMany({ where: { attending: true }, orderBy: { createdAt: 'asc' } }),
-            prisma.allowedGuest.findMany(),
+        const [people, rows, metas] = await Promise.all([
+            buildSeatingPeople(),
             prisma.seatAssignment.findMany(),
+            prisma.tableMeta.findMany(),
         ]);
-
-        const ceremonyOnlyPhones = new Set(
-            allowed.filter((a: any) => a.ceremonyOnly).map((a: any) => onlyDigits(a.phone)),
-        );
-
-        const people: { key: string; name: string; party: string; rsvpId: number }[] = [];
-        for (const r of rsvps) {
-            if (r.phone && ceremonyOnlyPhones.has(onlyDigits(r.phone))) continue; // no van a la recepción
-            let names: string[] = [];
-            try { names = JSON.parse(r.guestNames || '[]'); } catch { /* noop */ }
-            const count = Math.max(r.guestsCount || 0, names.filter(Boolean).length, 1);
-            for (let i = 0; i < count; i++) {
-                people.push({
-                    key: `${r.id}:${i}`,
-                    name: names[i] || (i === 0 ? r.name : `${r.name} (${i + 1})`),
-                    party: r.name,
-                    rsvpId: r.id,
-                });
-            }
-        }
 
         const validKeys = new Set(people.map((p) => p.key));
 
-        // Limpiar asignaciones huérfanas (invitados que ya no existen o cambiaron de cantidad)
+        // Limpiar asignaciones huérfanas
         const stale = rows.filter((x) => !validKeys.has(x.personKey)).map((x) => x.id);
         if (stale.length) {
             await prisma.seatAssignment.deleteMany({ where: { id: { in: stale } } });
@@ -852,10 +892,68 @@ app.get('/api/admin/seating', async (req, res) => {
             assignments[x.personKey] = x.tableNumber;
         });
 
-        res.json({ people, assignments });
+        const tables: Record<number, string> = {};
+        metas.forEach((m: any) => { tables[m.tableNumber] = m.label; });
+
+        res.json({ people, assignments, tables });
     } catch (error) {
         console.error('Seating GET error:', error);
         res.status(500).json({ error: 'Failed to load seating' });
+    }
+});
+
+// POST: etiqueta de una mesa (label vacío = quitar)
+app.post('/api/admin/seating/table', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const n = parseInt(req.body?.tableNumber, 10);
+    if (!n || n <= 0) return res.status(400).json({ error: 'tableNumber inválido' });
+    const label = String(req.body?.label || '').trim().slice(0, 40);
+    try {
+        if (!label) {
+            await prisma.tableMeta.deleteMany({ where: { tableNumber: n } });
+            return res.json({ success: true, label: null });
+        }
+        await prisma.tableMeta.upsert({
+            where: { tableNumber: n },
+            update: { label },
+            create: { tableNumber: n, label },
+        });
+        res.json({ success: true, label });
+    } catch (error) {
+        console.error('Table meta error:', error);
+        res.status(500).json({ error: 'Failed to save table label' });
+    }
+});
+
+// POST: auto-asignar por etiqueta (a los que aún no tienen mesa)
+app.post('/api/admin/seating/autoassign', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const [people, rows, metas] = await Promise.all([
+            buildSeatingPeople(),
+            prisma.seatAssignment.findMany(),
+            prisma.tableMeta.findMany(),
+        ]);
+        const assigned = new Set(rows.map((r) => r.personKey));
+        const tableByTag = new Map<string, number>();
+        metas.forEach((m: any) => tableByTag.set(normLabel(m.label), m.tableNumber));
+
+        let n = 0;
+        for (const p of people) {
+            if (assigned.has(p.key) || !p.tag) continue;
+            const t = tableByTag.get(normLabel(p.tag));
+            if (!t) continue;
+            await prisma.seatAssignment.upsert({
+                where: { personKey: p.key },
+                update: { tableNumber: t },
+                create: { personKey: p.key, tableNumber: t },
+            });
+            n++;
+        }
+        res.json({ success: true, assigned: n });
+    } catch (error) {
+        console.error('Autoassign error:', error);
+        res.status(500).json({ error: 'Failed to auto-assign' });
     }
 });
 

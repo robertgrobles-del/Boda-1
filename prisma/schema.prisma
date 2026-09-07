@@ -35,6 +35,13 @@ model SeatAssignment {
   updatedAt   DateTime @updatedAt
 }
 
+// Metadatos de una mesa de la recepción (su etiqueta / grupo).
+model TableMeta {
+  id          Int    @id @default(autoincrement())
+  tableNumber Int    @unique
+  label       String
+}
+
 model GuestMessage {
   id        Int      @id @default(autoincrement())
   name      String
@@ -48,6 +55,7 @@ model AllowedGuest {
   phone     String    @unique
   pin       String
   name      String? // Nombre del invitado (para el saludo personalizado y el enlace ?invitado=)
+  tag       String? // Etiqueta / grupo (p.ej. "Familia novia") — para auto-asignar mesa al confirmar
   ceremonyOnly Boolean @default(false) // true = solo invitación a la ceremonia (no a la recepción)
   maxGuests Int       @default(2) // Cupos totales asignados a este número
   usedCount Int       @default(0) // Invitados ya registrados (acumulado en varios RSVP)

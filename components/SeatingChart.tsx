@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users, Plus, RefreshCw, Minus, X } from 'lucide-react';
+import { Users, Plus, RefreshCw, Minus, X, Wand2, Tag } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
 
@@ -8,6 +8,7 @@ interface Person {
   name: string;
   party: string;
   rsvpId: number;
+  tag?: string | null;
 }
 
 const LS_SIZE = 'sd_seat_table_size';
@@ -32,6 +33,9 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   const [search, setSearch] = useState('');
   const [dragKey, setDragKey] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [tableLabels, setTableLabels] = useState<Record<number, string>>({});
+  const [editingLabel, setEditingLabel] = useState<number | null>(null);
+  const [labelDraft, setLabelDraft] = useState('');
 
   const [tableSize, setTableSize] = useState<number>(() => {
     const v = parseInt(localStorage.getItem(LS_SIZE) || '', 10);
@@ -57,6 +61,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
       const data = await res.json();
       setPeople(data.people || []);
       setAssignments(data.assignments || {});
+      setTableLabels(data.tables || {});
       setTableCount((prev) => {
         const maxAssigned = Math.max(0, ...Object.values<number>(data.assignments || {}));
         const needed = Math.max(1, Math.ceil((data.people?.length || 0) / (tableSize || 8)));
@@ -94,10 +99,48 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     }
   };
 
+  const saveTableLabel = async (n: number, label: string) => {
+    const clean = label.trim();
+    setEditingLabel(null);
+    setTableLabels((m) => {
+      const next = { ...m };
+      if (clean) next[n] = clean;
+      else delete next[n];
+      return next;
+    });
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/seating/table`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        body: JSON.stringify({ tableNumber: n, label: clean }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      toast('No se pudo guardar la etiqueta de la mesa.', 'error');
+      load();
+    }
+  };
+
+  const autoAssign = async () => {
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/seating/autoassign`, {
+        method: 'POST',
+        headers: { 'x-api-key': apiKey },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error();
+      toast(data.assigned ? `${data.assigned} invitado(s) asignados por etiqueta.` : 'No había nadie por asignar por etiqueta.', 'success');
+      load();
+    } catch {
+      toast('No se pudo auto-asignar.', 'error');
+    }
+  };
+
   const effectiveCount = useMemo(() => {
     const maxAssigned = Math.max(0, ...Object.values(assignments));
-    return Math.max(tableCount || 1, maxAssigned);
-  }, [tableCount, assignments]);
+    const maxLabeled = Math.max(0, ...Object.keys(tableLabels).map(Number));
+    return Math.max(tableCount || 1, maxAssigned, maxLabeled);
+  }, [tableCount, assignments, tableLabels]);
 
   const byTable = useMemo(() => {
     const m = new Map<number, Person[]>();
@@ -206,10 +249,37 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
           }`}
         >
           {/* mesa (círculo central) */}
-          <div className="absolute inset-[24%] flex flex-col items-center justify-center rounded-full border-2 border-[#4a5d23]/25 bg-[#f1f4ea]/60 text-center">
+          <div className="absolute inset-[24%] flex flex-col items-center justify-center gap-0.5 rounded-full border-2 border-[#4a5d23]/25 bg-[#f1f4ea]/60 p-2 text-center">
             <span className="text-xs font-bold text-stone-700">Mesa {n}</span>
+            {editingLabel === n ? (
+              <input
+                autoFocus
+                value={labelDraft}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setLabelDraft(e.target.value)}
+                onBlur={() => saveTableLabel(n, labelDraft)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveTableLabel(n, labelDraft);
+                  if (e.key === 'Escape') setEditingLabel(null);
+                }}
+                maxLength={40}
+                placeholder="Etiqueta…"
+                className="w-[80%] rounded-full border border-[#4a5d23]/40 bg-white px-2 py-0.5 text-center text-[10px] focus:outline-none"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setEditingLabel(n); setLabelDraft(tableLabels[n] || ''); }}
+                className={`max-w-full truncate rounded-full px-1.5 text-[9px] font-semibold ${
+                  tableLabels[n] ? 'bg-[#4a5d23]/15 text-[#4a5d23]' : 'text-stone-400 hover:text-[#4a5d23]'
+                }`}
+                title="Editar etiqueta de la mesa"
+              >
+                {tableLabels[n] || '+ etiqueta'}
+              </button>
+            )}
             <span
-              className={`mt-0.5 rounded-full px-1.5 text-[9px] font-bold ${
+              className={`rounded-full px-1.5 text-[9px] font-bold ${
                 over ? 'bg-red-100 text-red-600' : full ? 'bg-amber-100 text-amber-700' : 'text-[#4a5d23]'
               }`}
             >
@@ -282,6 +352,14 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
           </label>
           <button
             type="button"
+            onClick={autoAssign}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#4a5d23]/40 bg-[#f1f4ea] px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-[#4a5d23] hover:bg-[#e3ead3]"
+            title="Sentar a los invitados sin mesa según su etiqueta"
+          >
+            <Wand2 size={13} /> Auto-asignar por etiqueta
+          </button>
+          <button
+            type="button"
             onClick={() => setTableCount(effectiveCount + 1)}
             className="inline-flex items-center gap-1.5 rounded-full bg-[#4a5d23] px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-[#3b4c1b]"
           >
@@ -349,17 +427,25 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
                   {search ? 'Nadie coincide.' : '¡Todos asignados! 🎉'}
                 </p>
               ) : (
-                filteredGroups.map((g) => (
+                filteredGroups.map((g) => {
+                  const gtag = g.items.find((p) => p.tag)?.tag;
+                  return (
                   <div key={g.party}>
-                    <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                    <p className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-400">
                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: partyColor(g.party) }} />
                       {g.party}
+                      {gtag && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-[#4a5d23]/10 px-1.5 text-[9px] text-[#4a5d23]">
+                          <Tag size={9} /> {gtag}
+                        </span>
+                      )}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {g.items.map((p) => <Pill key={p.key} p={p} table={null} />)}
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
