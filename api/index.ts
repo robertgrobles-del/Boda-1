@@ -902,6 +902,38 @@ app.get('/api/admin/seating', async (req, res) => {
     }
 });
 
+// POST: guardar TODA la distribución (asignaciones + etiquetas de mesa)
+app.post('/api/admin/seating/save', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { assignments, tables } = req.body || {};
+
+    try {
+        const people = await buildSeatingPeople();
+        const validKeys = new Set(people.map((p) => p.key));
+
+        const seatRows = Object.entries(assignments || {})
+            .map(([key, t]) => [key, parseInt(String(t), 10)] as [string, number])
+            .filter(([key, t]) => validKeys.has(key) && Number.isFinite(t) && t >= 1)
+            .map(([personKey, tableNumber]) => ({ personKey, tableNumber }));
+
+        const metaRows = Object.entries(tables || {})
+            .map(([n, label]) => [parseInt(n, 10), String(label || '').trim().slice(0, 40)] as [number, string])
+            .filter(([n, label]) => Number.isFinite(n) && n >= 1 && !!label)
+            .map(([tableNumber, label]) => ({ tableNumber, label }));
+
+        await prisma.seatAssignment.deleteMany({});
+        await prisma.tableMeta.deleteMany({});
+        if (seatRows.length) await prisma.seatAssignment.createMany({ data: seatRows });
+        if (metaRows.length) await prisma.tableMeta.createMany({ data: metaRows });
+
+        res.json({ success: true, seats: seatRows.length, tables: metaRows.length });
+    } catch (error) {
+        console.error('Seating save error:', error);
+        res.status(500).json({ error: 'Failed to save seating' });
+    }
+});
+
 // POST: etiqueta de una mesa (label vacío = quitar)
 app.post('/api/admin/seating/table', async (req, res) => {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
