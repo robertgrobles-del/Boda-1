@@ -26,6 +26,15 @@ model RSVP {
   createdAt   DateTime @default(now())
 }
 
+// Asignación de un invitado (persona individual) a una mesa de la recepción.
+// personKey = "<rsvpId>:<índice del invitado dentro de esa confirmación>"
+model SeatAssignment {
+  id          Int      @id @default(autoincrement())
+  personKey   String   @unique
+  tableNumber Int
+  updatedAt   DateTime @updatedAt
+}
+
 model GuestMessage {
   id        Int      @id @default(autoincrement())
   name      String

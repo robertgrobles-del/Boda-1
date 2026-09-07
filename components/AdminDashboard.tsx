@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
+import { SeatingChart } from './SeatingChart';
 
 const DEFAULT_WA_TEMPLATE = `👋 {SALUDO}
 
@@ -93,7 +94,7 @@ export const AdminDashboard: React.FC = () => {
   const [aforo, setAforo] = useState(() => localStorage.getItem('sd_aforo') || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [messages, setMessages] = useState<{ id: number; name: string; message: string; createdAt: string }[]>([]);
-  const [activeView, setActiveView] = useState<'rsvps' | 'allowed' | 'messages'>('rsvps');
+  const [activeView, setActiveView] = useState<'rsvps' | 'allowed' | 'messages' | 'seating'>('rsvps');
 
   // WhatsApp Template and Sender state
   const [waTemplate, setWaTemplate] = useState(() => {
@@ -613,6 +614,7 @@ export const AdminDashboard: React.FC = () => {
           {([
             ['rsvps', `Confirmaciones${summary ? ` (${summary.totalRSVPs})` : ''}`],
             ['allowed', `Invitados Autorizados (${allowedGuests.length})`],
+            ['seating', 'Mesas'],
             ['messages', `Mensajes (${messages.length})`],
           ] as const).map(([key, label]) => (
             <button
@@ -1293,6 +1295,8 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
           </div>
+        ) : activeView === 'seating' ? (
+          <SeatingChart apiKey={apiKey} />
         ) : (
           <div className="bg-white rounded-3xl border border-stone-200/50 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-stone-100 flex items-center gap-3">
