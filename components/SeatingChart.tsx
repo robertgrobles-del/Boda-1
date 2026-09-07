@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users, Plus, RefreshCw, Minus, GripVertical, MoveRight } from 'lucide-react';
+import { Users, Plus, RefreshCw, Minus, X } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
 
@@ -13,7 +13,6 @@ interface Person {
 const LS_SIZE = 'sd_seat_table_size';
 const LS_COUNT = 'sd_seat_table_count';
 
-// Color estable por "party" (grupo/confirmación) para reconocer familias de un vistazo.
 const PARTY_COLORS = [
   '#4a5d23', '#b35a44', '#2f6f6f', '#7a5195', '#bc5090',
   '#ff764a', '#3d6b35', '#8a6d3b', '#4c6ef5', '#c9971f',
@@ -23,6 +22,7 @@ const partyColor = (party: string) => {
   for (let i = 0; i < party.length; i++) h = (h * 31 + party.charCodeAt(i)) >>> 0;
   return PARTY_COLORS[h % PARTY_COLORS.length];
 };
+const firstName = (name: string) => name.split(/\s+/).filter(Boolean)[0] || name;
 
 export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   const { toast } = useToast();
@@ -31,7 +31,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [dragKey, setDragKey] = useState<string | null>(null);
-  const [menuKey, setMenuKey] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
 
   const [tableSize, setTableSize] = useState<number>(() => {
     const v = parseInt(localStorage.getItem(LS_SIZE) || '', 10);
@@ -39,7 +39,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   });
   const [tableCount, setTableCount] = useState<number>(() => {
     const v = parseInt(localStorage.getItem(LS_COUNT) || '', 10);
-    return v > 0 ? v : 0; // 0 = aún no calculado
+    return v > 0 ? v : 0;
   });
 
   useEffect(() => localStorage.setItem(LS_SIZE, String(tableSize)), [tableSize]);
@@ -72,7 +72,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   useEffect(() => { load(); }, [load]);
 
   const assign = async (key: string, table: number | null) => {
-    setMenuKey(null);
+    setSelected(null);
     const prev = assignments[key] ?? null;
     if (prev === table) return;
     setAssignments((a) => {
@@ -105,19 +105,19 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     const unassigned: Person[] = [];
     for (const p of people) {
       const t = assignments[p.key];
-      if (t && m.has(t)) m.get(t)!.push(p);
-      else if (t) { m.set(t, [p]); }
-      else unassigned.push(p);
+      if (t && t >= 1) {
+        if (!m.has(t)) m.set(t, []);
+        m.get(t)!.push(p);
+      } else unassigned.push(p);
     }
     return { m, unassigned };
   }, [people, assignments, effectiveCount]);
 
-  const filteredUnassigned = useMemo(() => {
+  const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
     const list = q
       ? byTable.unassigned.filter((p) => p.name.toLowerCase().includes(q) || p.party.toLowerCase().includes(q))
       : byTable.unassigned;
-    // Agrupar por party conservando orden
     const groups: { party: string; items: Person[] }[] = [];
     for (const p of list) {
       const g = groups.find((x) => x.party === p.party);
@@ -132,75 +132,125 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     assigned: people.length - byTable.unassigned.length,
     unassigned: byTable.unassigned.length,
   };
+  const selectedPerson = selected ? people.find((p) => p.key === selected) : null;
 
-  const onDrop = (table: number | null) => (e: React.DragEvent) => {
-    e.preventDefault();
-    const key = e.dataTransfer.getData('text/plain');
-    setDragKey(null);
-    if (key) assign(key, table);
+  // --- drag & drop ---
+  const dragProps = (key: string) => ({
+    draggable: true as const,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.setData('text/plain', key);
+      e.dataTransfer.effectAllowed = 'move';
+      setDragKey(key);
+    },
+    onDragEnd: () => setDragKey(null),
+  });
+  const dropProps = (table: number | null) => ({
+    onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      const key = e.dataTransfer.getData('text/plain');
+      setDragKey(null);
+      if (key) assign(key, table);
+    },
+  });
+
+  // click-to-move: si hay alguien seleccionado y tocas una mesa/pool → lo mueve
+  const clickTarget = (table: number | null) => () => {
+    if (selected) assign(selected, table);
   };
-  const allowDrop = (e: React.DragEvent) => e.preventDefault();
+  const clickPerson = (p: Person, tableOfPerson: number | null) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (selected && selected !== p.key) {
+      // mover el seleccionado a la mesa de esta persona
+      assign(selected, tableOfPerson);
+    } else {
+      setSelected((s) => (s === p.key ? null : p.key));
+    }
+  };
 
-  const Chip: React.FC<{ p: Person; current: number | null }> = ({ p, current }) => (
-    <div
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData('text/plain', p.key);
-        e.dataTransfer.effectAllowed = 'move';
-        setDragKey(p.key);
-      }}
-      onDragEnd={() => setDragKey(null)}
-      className={`group relative flex items-center gap-1.5 rounded-full border bg-white pl-1.5 pr-2 py-1 text-xs shadow-sm transition-all ${
-        dragKey === p.key ? 'opacity-40' : 'hover:shadow-md'
-      }`}
-      style={{ borderColor: `${partyColor(p.party)}55` }}
-      title={`${p.name} · ${p.party}`}
-    >
-      <GripVertical size={12} className="shrink-0 cursor-grab text-stone-300" />
-      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: partyColor(p.party) }} />
-      <span className="max-w-[9rem] truncate font-medium text-stone-700">{p.name}</span>
+  /** Ficha de invitado (pool y asientos comparten estilo). */
+  const Pill: React.FC<{ p: Person; table: number | null; compact?: boolean }> = ({ p, table, compact }) => {
+    const isSel = selected === p.key;
+    return (
       <button
         type="button"
-        onClick={() => setMenuKey(menuKey === p.key ? null : p.key)}
-        className="ml-0.5 shrink-0 rounded-full p-0.5 text-stone-300 hover:bg-stone-100 hover:text-stone-600"
-        title="Mover a…"
+        {...dragProps(p.key)}
+        onClick={clickPerson(p, table)}
+        title={`${p.name} · ${p.party}`}
+        className={`flex items-center gap-1 rounded-full border bg-white py-1 text-[10px] font-medium shadow-sm transition-all ${
+          compact ? 'px-1.5' : 'pl-1.5 pr-2'
+        } ${isSel ? 'ring-2 ring-[#4a5d23] ring-offset-1' : 'hover:shadow-md'} ${dragKey === p.key ? 'opacity-40' : ''}`}
+        style={{ borderColor: `${partyColor(p.party)}66` }}
       >
-        <MoveRight size={13} />
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: partyColor(p.party) }} />
+        <span className={`truncate ${compact ? 'max-w-[3.6rem]' : 'max-w-[8rem]'} text-stone-700`}>
+          {compact ? firstName(p.name) : p.name}
+        </span>
       </button>
+    );
+  };
 
-      {menuKey === p.key && (
-        <>
-          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-30 cursor-default" onClick={() => setMenuKey(null)} />
-          <div className="absolute left-0 top-8 z-40 max-h-64 w-40 overflow-y-auto rounded-xl border border-stone-200 bg-white py-1 text-left shadow-lg">
-            <button
-              type="button"
-              onClick={() => assign(p.key, null)}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-[11px] hover:bg-stone-50 ${current == null ? 'font-bold text-[#4a5d23]' : 'text-stone-600'}`}
+  /** Mesa redonda con los asientos alrededor. */
+  const Table: React.FC<{ n: number }> = ({ n }) => {
+    const seated = byTable.m.get(n) || [];
+    const slots = Math.max(tableSize, seated.length);
+    const over = seated.length > tableSize;
+    const full = seated.length === tableSize;
+    return (
+      <div className="flex flex-col items-center">
+        <div
+          {...dropProps(n)}
+          onClick={clickTarget(n)}
+          className={`relative aspect-square w-full max-w-[260px] cursor-pointer rounded-full outline-2 outline-offset-4 transition-all ${
+            dragKey || selected ? 'outline outline-dashed outline-[#4a5d23]/50' : 'outline-transparent'
+          }`}
+        >
+          {/* mesa (círculo central) */}
+          <div className="absolute inset-[24%] flex flex-col items-center justify-center rounded-full border-2 border-[#4a5d23]/25 bg-[#f1f4ea]/60 text-center">
+            <span className="text-xs font-bold text-stone-700">Mesa {n}</span>
+            <span
+              className={`mt-0.5 rounded-full px-1.5 text-[9px] font-bold ${
+                over ? 'bg-red-100 text-red-600' : full ? 'bg-amber-100 text-amber-700' : 'text-[#4a5d23]'
+              }`}
             >
-              Sin asignar
-            </button>
-            {Array.from({ length: effectiveCount }, (_, i) => i + 1).map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => assign(p.key, n)}
-                className={`flex w-full items-center gap-2 px-3 py-1.5 text-[11px] hover:bg-stone-50 ${current === n ? 'font-bold text-[#4a5d23]' : 'text-stone-600'}`}
-              >
-                Mesa {n}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => { const n = effectiveCount + 1; setTableCount(n); assign(p.key, n); }}
-              className="flex w-full items-center gap-2 border-t border-stone-100 px-3 py-1.5 text-[11px] text-stone-500 hover:bg-stone-50"
-            >
-              <Plus size={12} /> Nueva mesa {effectiveCount + 1}
-            </button>
+              {seated.length}/{tableSize}
+            </span>
           </div>
-        </>
-      )}
-    </div>
-  );
+
+          {/* asientos alrededor */}
+          {Array.from({ length: slots }).map((_, i) => {
+            const angle = (i / slots) * 2 * Math.PI - Math.PI / 2;
+            const r = 42;
+            const style: React.CSSProperties = {
+              left: `${50 + r * Math.cos(angle)}%`,
+              top: `${50 + r * Math.sin(angle)}%`,
+              transform: 'translate(-50%, -50%)',
+            };
+            const p = seated[i];
+            return (
+              <div key={i} className="absolute z-10" style={style}>
+                {p ? (
+                  <Pill p={p} table={n} compact />
+                ) : (
+                  <span className="block h-5 w-5 rounded-full border-2 border-dashed border-stone-300" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {seated.length === 0 && n === effectiveCount && n > 1 && (
+          <button
+            type="button"
+            onClick={() => setTableCount(n - 1)}
+            className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-stone-300 hover:text-red-500"
+          >
+            <Minus size={11} /> Quitar
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -213,7 +263,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
           <div>
             <h2 className="text-lg font-bold">Mesas de la Recepción</h2>
             <p className="text-xs text-stone-400">
-              {totals.total} invitados · <span className="text-[#4a5d23] font-semibold">{totals.assigned} asignados</span> · {totals.unassigned} sin asignar
+              {totals.total} invitados · <span className="font-semibold text-[#4a5d23]">{totals.assigned} asignados</span> · {totals.unassigned} sin asignar
             </p>
           </div>
         </div>
@@ -248,44 +298,65 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
         </div>
       </div>
 
+      {selectedPerson && (
+        <div className="sticky top-2 z-30 flex items-center justify-between gap-3 rounded-2xl border border-[#4a5d23]/30 bg-[#f1f4ea] px-4 py-2.5 shadow-md">
+          <span className="text-xs text-stone-700">
+            Moviendo a <strong>{selectedPerson.name}</strong> — toca una mesa
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => assign(selectedPerson.key, null)}
+              className="rounded-full border border-stone-300 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50"
+            >
+              Sin asignar
+            </button>
+            <button type="button" onClick={() => setSelected(null)} className="rounded-full p-1 text-stone-500 hover:bg-white">
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {people.length === 0 && !loading ? (
         <div className="rounded-3xl border border-stone-200/50 bg-white py-16 text-center text-sm italic text-stone-400">
           Todavía no hay confirmaciones para la recepción. Aparecerán aquí a medida que acepten la invitación.
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           {/* Pool sin asignar */}
           <div
-            onDragOver={allowDrop}
-            onDrop={onDrop(null)}
+            {...dropProps(null)}
+            onClick={clickTarget(null)}
             className={`h-fit rounded-3xl border-2 border-dashed bg-white p-4 transition-colors ${
-              dragKey ? 'border-[#4a5d23] bg-[#f1f4ea]/40' : 'border-stone-200'
+              dragKey || selected ? 'border-[#4a5d23] bg-[#f1f4ea]/40' : 'border-stone-200'
             }`}
           >
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Sin asignar ({byTable.unassigned.length})</span>
-            </div>
+            <span className="mb-3 block text-[11px] font-bold uppercase tracking-wider text-stone-500">
+              Sin asignar ({byTable.unassigned.length})
+            </span>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
               placeholder="Buscar invitado…"
               className="mb-3 w-full rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs focus:border-[#4a5d23] focus:outline-none"
             />
-            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
-              {filteredUnassigned.length === 0 ? (
+            <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">
+              {filteredGroups.length === 0 ? (
                 <p className="py-6 text-center text-xs italic text-stone-300">
                   {search ? 'Nadie coincide.' : '¡Todos asignados! 🎉'}
                 </p>
               ) : (
-                filteredUnassigned.map((g) => (
+                filteredGroups.map((g) => (
                   <div key={g.party}>
                     <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-400">
                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: partyColor(g.party) }} />
                       {g.party}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {g.items.map((p) => <Chip key={p.key} p={p} current={null} />)}
+                      {g.items.map((p) => <Pill key={p.key} p={p} table={null} />)}
                     </div>
                   </div>
                 ))
@@ -293,55 +364,11 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
             </div>
           </div>
 
-          {/* Grilla de mesas */}
-          <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-            {Array.from({ length: effectiveCount }, (_, i) => i + 1).map((n) => {
-              const seated = byTable.m.get(n) || [];
-              const over = seated.length > tableSize;
-              const full = seated.length === tableSize;
-              return (
-                <div
-                  key={n}
-                  onDragOver={allowDrop}
-                  onDrop={onDrop(n)}
-                  className={`flex min-h-[150px] flex-col rounded-3xl border-2 bg-white p-4 transition-colors ${
-                    dragKey ? 'border-[#4a5d23]/60' : 'border-stone-200/70'
-                  }`}
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm font-bold text-stone-700">
-                      <span className="h-6 w-6 rounded-full border-2 border-[#4a5d23]/40" />
-                      Mesa {n}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        over ? 'bg-red-50 text-red-600' : full ? 'bg-amber-50 text-amber-700' : 'bg-[#f1f4ea] text-[#4a5d23]'
-                      }`}
-                    >
-                      {seated.length}/{tableSize}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-1 flex-wrap content-start gap-1.5">
-                    {seated.length === 0 ? (
-                      <span className="m-auto text-[11px] italic text-stone-300">Arrastra invitados aquí</span>
-                    ) : (
-                      seated.map((p) => <Chip key={p.key} p={p} current={n} />)
-                    )}
-                  </div>
-
-                  {seated.length === 0 && n === effectiveCount && n > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setTableCount(n - 1)}
-                      className="mt-2 inline-flex items-center gap-1 self-end text-[10px] font-bold uppercase tracking-wider text-stone-300 hover:text-red-500"
-                    >
-                      <Minus size={11} /> Quitar mesa
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+          {/* Grilla de mesas redondas */}
+          <div className="grid gap-x-6 gap-y-10 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
+            {Array.from({ length: effectiveCount }, (_, i) => i + 1).map((n) => (
+              <Table key={n} n={n} />
+            ))}
           </div>
         </div>
       )}
