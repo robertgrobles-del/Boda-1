@@ -385,8 +385,10 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
           {/* Cuentas de banco */}
           <div className="rounded-xl border border-stone-200 px-3.5 py-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Cuentas de banco</span>
-              <button type="button" onClick={() => setBanks([...banks, { bank: '', type: '', number: '', holder: '', cedula: '' }])} className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#4a5d23]"><Plus size={12} /> Agregar</button>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Cuentas de banco (hasta 3)</span>
+              {banks.length < 3 && (
+                <button type="button" onClick={() => setBanks([...banks, { bank: '', type: 'Cuenta de Ahorro', number: '', holder: '', cedula: '' }])} className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#4a5d23]"><Plus size={12} /> Agregar</button>
+              )}
             </div>
             {row('Mostrar las cuentas de banco', pv('registryBanksOn'), (v) => patchPortal({ registryBanksOn: v }))}
             {banks.length === 0 && <p className="mt-2 text-[10px] italic text-stone-400">Sin cuentas configuradas — el sitio usa las de por defecto.</p>}

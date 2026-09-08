@@ -946,6 +946,8 @@ app.put('/api/admin/portals/:n', async (req, res) => {
         const incoming = req.body || {};
         const merged: any = { ...(portals[String(n)] || {}) };
         for (const k of PRESENTATION_KEYS) if (k in incoming) merged[k] = incoming[k];
+        if (Array.isArray(merged.registryBanks)) merged.registryBanks = merged.registryBanks.slice(0, 3);
+        if (Array.isArray(merged.registryStores)) merged.registryStores = merged.registryStores.slice(0, 8);
         const next: any = { ...raw, portals: { ...portals, [n]: merged } };
         if (typeof incoming.name === 'string') {
             next.portalNames = { ...portalNames, [n]: incoming.name.slice(0, 40) };

@@ -79,7 +79,7 @@ export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
   const showAmazon = s.registryAmazonOn && !!s.registryAmazonUrl;
   const stores = (s.registryStores || []).filter((x) => x && x.name && x.url);
 
-  const banks = s.registryBanks.length ? s.registryBanks : BANK_ACCOUNTS;
+  const banks = (s.registryBanks.length ? s.registryBanks : BANK_ACCOUNTS).slice(0, 3);
   const showBanks = s.registryBanksOn && banks.length > 0;
 
   return (
@@ -124,10 +124,10 @@ export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
           ))}
 
           {showBanks && (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {banks.map((acc) => (
+            <div className={`grid grid-cols-1 gap-6 md:grid-cols-2 ${banks.length >= 3 ? 'lg:grid-cols-3' : ''}`}>
+              {banks.map((acc, i) => (
                 <motion.div
-                  key={acc.bank}
+                  key={`${acc.bank}-${i}`}
                   variants={cardVariants}
                   className="flex flex-col rounded-[2rem] border border-stone-100 bg-white p-7 text-left shadow-[0_15px_40px_rgba(0,0,0,0.03)] md:p-8"
                 >
