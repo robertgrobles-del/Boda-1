@@ -14,7 +14,7 @@ interface RSVPFormProps {
 
 export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
   const { toast } = useToast();
-  const { isCeremonyOnly, name: inviteeName } = useInvitee();
+  const { isCeremonyOnly, isReceptionOnly, name: inviteeName } = useInvitee();
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -350,7 +350,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                 </div>
 
                 <div className="flex flex-col space-y-3 py-4 border-y border-stone-100">
-                  <span className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">{isCeremonyOnly ? '¿Asistirás a la ceremonia?' : '¿Asistirás a la celebración?'}</span>
+                  <span className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">{isCeremonyOnly ? '¿Asistirás a la ceremonia?' : isReceptionOnly ? '¿Asistirás a la recepción?' : '¿Asistirás a la celebración?'}</span>
                   <div className="flex justify-start space-x-8 md:space-x-12 ml-1">
                     <label className="flex items-center space-x-2 cursor-pointer group">
                       <input

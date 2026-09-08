@@ -7,8 +7,10 @@ import { MAPS_URLS } from '../constants';
 import { useInvitee } from './InviteeContext';
 
 export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
-  const { isCeremonyOnly } = useInvitee();
+  const { isCeremonyOnly, isReceptionOnly } = useInvitee();
   const showReception = !isCeremonyOnly;
+  const showCeremony = !isReceptionOnly;
+  const twoCards = showReception && showCeremony;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -45,9 +47,10 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className={`grid gap-8 md:gap-12 mx-auto ${showReception ? 'md:grid-cols-2 max-w-5xl' : 'max-w-md'}`}
+          className={`grid gap-8 md:gap-12 mx-auto ${twoCards ? 'md:grid-cols-2 max-w-5xl' : 'max-w-md'}`}
         >
           {/* Ceremony Card */}
+          {showCeremony && (
           <motion.div
             variants={itemVariants}
             className="bg-[#f9fafb] rounded-[2rem] p-6 sm:p-8 md:p-12 shadow-sm relative overflow-hidden flex flex-col items-center text-center group h-full"
@@ -112,6 +115,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
               />
             </div>
           </motion.div>
+          )}
 
           {/* Reception Card */}
           {showReception && (

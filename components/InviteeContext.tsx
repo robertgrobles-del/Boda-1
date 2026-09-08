@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { API_CONFIG } from '../constants';
 import { getInviteeName } from '../utils/invitee';
 
-type Access = 'full' | 'ceremony';
+type Access = 'full' | 'ceremony' | 'reception';
 
 interface InviteeValue {
   /** Nombre del invitado (del registro que coincide, o del enlace). */
@@ -15,6 +15,8 @@ interface InviteeValue {
   hasParam: boolean;
   /** true solo si el enlace está confirmado como "solo ceremonia". */
   isCeremonyOnly: boolean;
+  /** true solo si el enlace está confirmado como "solo recepción". */
+  isReceptionOnly: boolean;
 }
 
 const InviteeContext = createContext<InviteeValue>({
@@ -23,6 +25,7 @@ const InviteeContext = createContext<InviteeValue>({
   loaded: true,
   hasParam: false,
   isCeremonyOnly: false,
+  isReceptionOnly: false,
 });
 
 export const useInvitee = () => useContext(InviteeContext);
@@ -47,7 +50,7 @@ export const InviteeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (d && d.found) {
           setState({
             name: d.name || name,
-            access: d.ceremonyOnly ? 'ceremony' : 'full',
+            access: d.ceremonyOnly ? 'ceremony' : d.receptionOnly ? 'reception' : 'full',
             loaded: true,
           });
         } else {
@@ -69,6 +72,7 @@ export const InviteeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     loaded: state.loaded,
     hasParam: Boolean(initialName),
     isCeremonyOnly: state.loaded && state.access === 'ceremony',
+    isReceptionOnly: state.loaded && state.access === 'reception',
   };
 
   return <InviteeContext.Provider value={value}>{children}</InviteeContext.Provider>;
