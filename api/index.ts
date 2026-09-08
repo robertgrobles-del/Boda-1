@@ -147,9 +147,67 @@ app.post('/api/rsvp/check', async (req, res) => {
 
         const maxGuests = (allowed as any).maxGuests ?? 2;
         const usedCount = (allowed as any).usedCount ?? 0;
-        res.json({ success: true, maxGuests, usedCount, remaining: Math.max(0, maxGuests - usedCount) });
+
+        // ¿Ya confirmó con este número? (para poder editar la respuesta)
+        const prev = await prisma.rSVP.findFirst({ where: { phone }, orderBy: { createdAt: 'desc' } });
+        const existing = prev
+            ? {
+                  id: prev.id,
+                  name: prev.name,
+                  attending: prev.attending,
+                  guestsCount: prev.guestsCount,
+                  dietary: prev.dietary || '',
+                  message: prev.message || '',
+                  createdAt: prev.createdAt,
+              }
+            : null;
+
+        res.json({ success: true, maxGuests, usedCount, remaining: Math.max(0, maxGuests - usedCount), existing });
     } catch (error) {
         console.error('RSVP check error:', error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+
+// PUT: el invitado edita su propia confirmación (con teléfono + PIN)
+app.put('/api/rsvp/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        const { phone, pin, attending, dietary, message } = req.body || {};
+        if (Number.isNaN(id) || !phone || !pin) return res.status(400).json({ success: false, error: 'Datos incompletos.' });
+
+        const allowed = await prisma.allowedGuest.findUnique({ where: { phone } });
+        if (!allowed || allowed.pin !== pin) return res.status(403).json({ success: false, error: 'Teléfono o PIN incorrecto.' });
+
+        const rsvp = await prisma.rSVP.findUnique({ where: { id } });
+        if (!rsvp || rsvp.phone !== phone) return res.status(404).json({ success: false, error: 'No encontramos tu confirmación.' });
+
+        const willAttend = attending === undefined ? rsvp.attending : (attending === true || attending === 'yes' || attending === 'true');
+        const newCount = willAttend ? rsvp.guestsCount || 1 : 0;
+
+        // Ajustar cupos del teléfono si cambia el estado de asistencia
+        if (rsvp.attending !== willAttend) {
+            const before = rsvp.attending ? rsvp.guestsCount : 0;
+            const after = willAttend ? newCount : 0;
+            const used = Math.max(0, ((allowed as any).usedCount ?? 0) + (after - before));
+            await prisma.allowedGuest.update({
+                where: { phone },
+                data: { usedCount: used, used: used >= ((allowed as any).maxGuests ?? 2) } as any,
+            });
+        }
+
+        const updated = await prisma.rSVP.update({
+            where: { id },
+            data: {
+                attending: willAttend,
+                guestsCount: newCount,
+                dietary: (dietary && String(dietary).trim()) || null,
+                message: (message && String(message).trim()) || null,
+            },
+        });
+        res.json({ success: true, data: updated });
+    } catch (error) {
+        console.error('RSVP edit error:', error);
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });

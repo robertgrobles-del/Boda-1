@@ -40,6 +40,9 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
 
   // Cupos disponibles para el teléfono + PIN (se consulta al backend)
   const [slots, setSlots] = useState<{ remaining: number; maxGuests: number; usedCount: number } | null>(null);
+  // Confirmación previa de este teléfono (para editar)
+  const [existing, setExisting] = useState<{ id: number; attending: boolean; guestsCount: number; dietary: string; message: string; createdAt: string } | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
   // Consultar cupos cuando teléfono y PIN están completos
   useEffect(() => {
@@ -58,8 +61,10 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
         });
         const data = await res.json();
         setSlots(res.ok && data.success ? { remaining: data.remaining, maxGuests: data.maxGuests, usedCount: data.usedCount } : null);
+        setExisting(res.ok && data.success && data.existing ? data.existing : null);
       } catch {
         setSlots(null);
+        setExisting(null);
       }
     }, 500);
     return () => clearTimeout(t);
@@ -126,8 +131,46 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
     }
   };
 
+  const startEdit = () => {
+    if (!existing) return;
+    setEditMode(true);
+    setFormData((f) => ({
+      ...f,
+      attending: existing.attending ? 'yes' : 'no',
+      dietary: existing.dietary || '',
+      message: existing.message || '',
+      guests: `${existing.guestsCount || 1} ${existing.guestsCount === 1 ? 'Invitado' : 'Invitados'}`,
+    }));
+  };
+
+  const handleEditSubmit = async () => {
+    if (!existing) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/rsvp/${existing.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: formData.phone.replace(/\D/g, ''),
+          pin: formData.pin.trim(),
+          attending: formData.attending,
+          dietary: formData.dietary,
+          message: formData.message,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'No se pudo actualizar.');
+      setSubmitted(true);
+    } catch (err: any) {
+      toast(err?.message || 'Error al actualizar.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editMode) return handleEditSubmit();
     if (formData.honeypot) {
       console.log('Spam detected');
       return;
@@ -217,9 +260,28 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
             >
               <div className="text-center mb-6 md:mb-10">
                 <span className="text-olive text-[8px] md:text-[10px] font-bold uppercase tracking-[0.4em] mb-3 md:mb-4 block">CONFIRMACIÓN</span>
-                <h2 className="font-signature text-3xl md:text-5xl text-olive mb-2">Confirma tu Asistencia</h2>
+                <h2 className="font-signature text-3xl md:text-5xl text-olive mb-2">{editMode ? 'Edita tu Respuesta' : 'Confirma tu Asistencia'}</h2>
                 <p className="text-stone-500 text-[11px] italic">Por favor confirma antes del 7 de octubre de 2026.</p>
               </div>
+
+              {existing && !editMode && (
+                <div className="mb-5 rounded-xl border border-olive/20 bg-olive/5 p-4 text-center">
+                  <p className="text-xs text-stone-600">
+                    Ya registramos una respuesta con este número{' '}
+                    <span className="text-stone-400">
+                      ({new Date(existing.createdAt).toLocaleDateString()}) — {existing.attending ? `asistirán ${existing.guestsCount}` : 'no asistirán'}
+                    </span>
+                    .
+                  </p>
+                  <button
+                    type="button"
+                    onClick={startEdit}
+                    className="mt-2 text-[11px] font-bold uppercase tracking-widest text-olive underline hover:text-olive-dark"
+                  >
+                    Editar mi respuesta
+                  </button>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
                 <div className="space-y-3 md:space-y-4">
@@ -323,6 +385,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                       exit={{ opacity: 0, height: 0 }}
                       className="space-y-4 overflow-hidden"
                     >
+                      {!editMode && (
                       <div className="space-y-1 md:space-y-2">
                         <label htmlFor="rsvp-guests" className="text-[10px] md:text-[11px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Número de Invitados</label>
                         <select
@@ -346,8 +409,9 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                           </p>
                         )}
                       </div>
+                      )}
 
-                      {!isCeremonyOnly && (
+                      {!isCeremonyOnly && !editMode && (
                       <div className="space-y-3">
                         {cedulas.map((cedula, index) => (
                           <div key={index} className="space-y-1 md:space-y-2 relative">
@@ -408,12 +472,17 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting || (formData.attending === 'yes' && !isCeremonyOnly && cedulaStatus.some(s => s === 'loading'))}
+                  disabled={isSubmitting || (!editMode && formData.attending === 'yes' && !isCeremonyOnly && cedulaStatus.some(s => s === 'loading'))}
                   className={`w-full py-4 rounded-lg font-bold text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all shadow-lg active:scale-[0.98] ${isSubmitting ? 'bg-stone-400 cursor-wait' : 'bg-olive hover:bg-olive-dark text-white'
                     }`}
                 >
-                  {isSubmitting ? 'Enviando...' : 'Enviar respuesta'}
+                  {isSubmitting ? 'Enviando...' : editMode ? 'Guardar cambios' : 'Enviar respuesta'}
                 </button>
+                {editMode && (
+                  <button type="button" onClick={() => setEditMode(false)} className="w-full text-center text-[10px] uppercase tracking-widest font-bold text-stone-400 hover:text-stone-600">
+                    Cancelar edición
+                  </button>
+                )}
               </form>
             </motion.div>
           ) : (
