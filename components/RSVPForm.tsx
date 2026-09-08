@@ -14,7 +14,7 @@ interface RSVPFormProps {
 
 export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
   const { toast } = useToast();
-  const { isCeremonyOnly } = useInvitee();
+  const { isCeremonyOnly, name: inviteeName } = useInvitee();
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -32,6 +32,11 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
   const [cedulas, setCedulas] = useState<string[]>(['']);
   const [cedulaStatus, setCedulaStatus] = useState<('idle' | 'loading' | 'valid' | 'invalid')[]>(['idle']);
   const [cedulaNames, setCedulaNames] = useState<(string | null)[]>([null]);
+
+  // Autocompletar el nombre desde el enlace ?invitado=
+  useEffect(() => {
+    if (inviteeName) setFormData((f) => (f.name ? f : { ...f, name: inviteeName }));
+  }, [inviteeName]);
 
   // Cupos disponibles para el teléfono + PIN (se consulta al backend)
   const [slots, setSlots] = useState<{ remaining: number; maxGuests: number; usedCount: number } | null>(null);

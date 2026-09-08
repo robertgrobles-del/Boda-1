@@ -508,6 +508,32 @@ export const AdminDashboard: React.FC = () => {
     toast('Sesión cerrada.', 'success');
   };
 
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importing, setImporting] = useState(false);
+  const handleImport = async () => {
+    if (!importText.trim()) return;
+    setImporting(true);
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/allowed/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        body: JSON.stringify({ text: importText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error');
+      toast(`Importados: ${data.created} nuevos, ${data.updated} actualizados${data.errors?.length ? `, ${data.errors.length} con error` : ''}.`, data.errors?.length ? 'error' : 'success');
+      if (data.errors?.length) console.warn('Import errors:', data.errors);
+      setImportOpen(false);
+      setImportText('');
+      fetchAllowedGuests();
+    } catch (e: any) {
+      toast(e?.message || 'No se pudo importar.', 'error');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const [fixingEnc, setFixingEnc] = useState(false);
   const handleFixEncoding = async () => {
     if (!window.confirm('Reparar los acentos mal codificados (ej. "PÃ©rez" → "Pérez") en nombres y mensajes. ¿Continuar?')) return;
@@ -630,10 +656,15 @@ export const AdminDashboard: React.FC = () => {
     (g.phone && g.phone.includes(searchTerm))
   );
 
+  const [allowedFilter, setAllowedFilter] = useState<'all' | 'pending' | 'confirmed'>('all');
+  const confirmedPhoneSet = new Set(guests.map((g) => (g.phone || '').replace(/\D/g, '')));
+  const isConfirmed = (a: AllowedGuest) => confirmedPhoneSet.has(a.phone.replace(/\D/g, '')) || (a.usedCount ?? 0) > 0;
+  const pendingCount = allowedGuests.filter((a) => !isConfirmed(a)).length;
   const filteredAllowed = allowedGuests.filter(a =>
-    a.phone.includes(searchTerm) ||
-    a.pin.includes(searchTerm) ||
-    (a.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (a.phone.includes(searchTerm) ||
+      a.pin.includes(searchTerm) ||
+      (a.name || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (allowedFilter === 'all' || (allowedFilter === 'pending' ? !isConfirmed(a) : isConfirmed(a)))
   );
 
   if (!isAuthorized) {
@@ -686,6 +717,13 @@ export const AdminDashboard: React.FC = () => {
             <p className="text-stone-500 text-xs italic mt-1">Stephanie & Dalvin · Control de RSVP & Seguridad de Lista</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setImportOpen(true)}
+              className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
+              title="Pegar una lista de invitados (nombre, teléfono, PIN, pases, etiqueta)"
+            >
+              <Plus size={14} className="text-[#4a5d23]" /> Importar
+            </button>
             <button
               onClick={handleFixEncoding}
               disabled={fixingEnc}
@@ -753,6 +791,52 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              );
+            })()}
+
+            {/* Gráficas rápidas */}
+            {summary && (() => {
+              const cuposTotal = allowedGuests.reduce((s, a) => s + (a.maxGuests || 2), 0);
+              const digits = (s?: string | null) => (s || '').replace(/\D/g, '');
+              const respondedPhones = new Set(guests.map((g) => digits(g.phone)));
+              const totalPhones = allowedGuests.length;
+              const respondieron = allowedGuests.filter((a) => respondedPhones.has(digits(a.phone))).length;
+              const Bar: React.FC<{ label: string; parts: { v: number; c: string; t: string }[]; total: number }> = ({ label, parts, total }) => (
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                    <span>{label}</span>
+                    <span className="font-sans normal-case text-stone-400">{total}</span>
+                  </div>
+                  <div className="flex h-5 w-full overflow-hidden rounded-full bg-stone-100">
+                    {parts.map((p, i) => p.v > 0 && (
+                      <div key={i} className={p.c} style={{ width: `${(p.v / Math.max(total, 1)) * 100}%` }} title={`${p.t}: ${p.v}`} />
+                    ))}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-stone-500">
+                    {parts.map((p, i) => (
+                      <span key={i} className="flex items-center gap-1">
+                        <span className={`h-2 w-2 rounded-full ${p.c}`} /> {p.t} {p.v}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+              return (
+                <div className="grid gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100 md:grid-cols-3">
+                  <Bar label="Respuestas" total={totalPhones} parts={[
+                    { v: summary.accepted, c: 'bg-green-500', t: 'Sí' },
+                    { v: summary.declined, c: 'bg-red-400', t: 'No' },
+                    { v: Math.max(0, totalPhones - respondieron), c: 'bg-stone-300', t: 'Sin responder' },
+                  ]} />
+                  <Bar label="Personas confirmadas" total={cuposTotal} parts={[
+                    { v: summary.totalGuests, c: 'bg-[#4a5d23]', t: 'Asistirán' },
+                    { v: Math.max(0, cuposTotal - summary.totalGuests), c: 'bg-stone-300', t: 'Cupos libres' },
+                  ]} />
+                  <Bar label="Aforo" total={parseInt(aforo, 10) || cuposTotal} parts={[
+                    { v: cuposTotal, c: 'bg-amber-400', t: 'Pases asignados' },
+                    { v: Math.max(0, (parseInt(aforo, 10) || cuposTotal) - cuposTotal), c: 'bg-stone-300', t: 'Disponibles' },
+                  ]} />
                 </div>
               );
             })()}
@@ -1229,20 +1313,34 @@ export const AdminDashboard: React.FC = () => {
 
               {/* Allowed Guests List */}
               <div className="bg-white rounded-3xl border border-stone-200/50 shadow-sm">
-                <div className="p-6 border-b border-stone-100 rounded-t-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-bold">Invitados Autorizados ({allowedGuests.length})</h3>
-                    <p className="text-xs text-stone-400">Lista de invitados con acceso de confirmación y cupos</p>
+                <div className="p-6 border-b border-stone-100 rounded-t-3xl flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold">Invitados Autorizados ({allowedGuests.length})</h3>
+                      <p className="text-xs text-stone-400">Lista de invitados con acceso de confirmación y cupos</p>
+                    </div>
+                    <div className="relative w-full sm:w-auto">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={14} />
+                      <input
+                        type="text"
+                        className="pl-8 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-full focus:outline-none focus:border-[#4a5d23] text-xs w-full sm:w-56"
+                        placeholder="Buscar nombre, teléfono o PIN..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div className="relative w-full sm:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={14} />
-                    <input
-                      type="text"
-                      className="pl-8 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-full focus:outline-none focus:border-[#4a5d23] text-xs w-full sm:w-56"
-                      placeholder="Buscar nombre, teléfono o PIN..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                  <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider">
+                    {([['all', `Todos (${allowedGuests.length})`], ['pending', `Sin confirmar (${pendingCount})`], ['confirmed', `Confirmados (${allowedGuests.length - pendingCount})`]] as const).map(([v, label]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setAllowedFilter(v)}
+                        className={`rounded-full px-3 py-1.5 transition-colors ${allowedFilter === v ? 'bg-[#4a5d23] text-white' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -1635,6 +1733,52 @@ export const AdminDashboard: React.FC = () => {
                 </button>
               </div>
             </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: importar invitados */}
+      <AnimatePresence>
+        {importOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+            onClick={() => !importing && setImportOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl md:p-8"
+            >
+              <div className="mb-4 flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-stone-800">Importar invitados</h3>
+                  <p className="text-xs text-stone-400">Una línea por invitado. Separadores: coma, tab o punto y coma.</p>
+                </div>
+                <button type="button" onClick={() => !importing && setImportOpen(false)} className="rounded-full p-1.5 text-stone-400 hover:bg-stone-100">
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="mb-2 rounded-lg bg-stone-50 px-3 py-2 text-[11px] font-mono text-stone-500">
+                nombre, teléfono, PIN, pases, etiqueta
+              </p>
+              <p className="mb-2 text-[10px] text-stone-400">PIN vacío → se genera uno. Pases vacío → 2. Si el teléfono ya existe, se actualiza.</p>
+              <textarea
+                rows={9}
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder={'Familia Pérez, 8095551234, 4821, 4, Familia novia\nJuan y María, 8299876543, , 2, Amigos U'}
+                className="w-full rounded-xl border border-stone-200 px-4 py-3 text-xs font-mono focus:border-[#4a5d23] focus:outline-none"
+              />
+              <div className="mt-5 flex gap-3">
+                <button type="button" onClick={() => setImportOpen(false)} disabled={importing} className="flex-1 rounded-xl border border-stone-200 py-2.5 text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50 disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button type="button" onClick={handleImport} disabled={importing || !importText.trim()} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#4a5d23] py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#3b4c1b] disabled:opacity-50">
+                  {importing ? 'Importando…' : 'Importar'}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

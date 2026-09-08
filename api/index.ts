@@ -306,6 +306,23 @@ app.post('/api/rsvp', async (req, res) => {
                 .catch((err) => console.error('Email error:', err));
         }
 
+        // Aviso a los novios (opcional: requiere NOTIFY_EMAIL + credenciales de correo)
+        if (process.env.NOTIFY_EMAIL && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+            const quienes = guestNames.filter(Boolean).join(', ') || `${guestCount} invitado(s)`;
+            transporter
+                .sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: process.env.NOTIFY_EMAIL,
+                    subject: isAttending
+                        ? `✅ ${contactName} confirmó (${guestCount})`
+                        : `❌ ${contactName} no asistirá`,
+                    text: isAttending
+                        ? `${contactName} confirmó su asistencia.\nTeléfono: ${phone}\nInvitados (${guestCount}): ${quienes}\n${dietary ? `Restricciones: ${dietary}\n` : ''}${message ? `Mensaje: ${message}\n` : ''}`
+                        : `${contactName} (${phone}) marcó que NO asistirá.${message ? `\nMensaje: ${message}` : ''}`,
+                })
+                .catch((err) => console.error('Notify email error:', err));
+        }
+
         res.status(201).json({ success: true, data: result, remaining: Math.max(0, maxAllowed - newUsed) });
     } catch (error) {
         console.error('RSVP Error:', error);
@@ -737,6 +754,48 @@ app.post('/api/admin/allowed', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Failed to save allowed guest' });
     }
+});
+
+// 7e. POST Importar invitados en lote (una línea por invitado)
+app.post('/api/admin/allowed/bulk', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+    const text = String(req.body?.text || '');
+    if (!text.trim()) return res.status(400).json({ error: 'Sin datos' });
+
+    const splitRow = (line: string) => line.split(/\t|,|;/).map((c) => c.trim());
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+    // Saltar fila de encabezados si la primera parece serlo
+    if (lines[0] && /nombre|tel[eé]fono|phone|pin/i.test(lines[0]) && !/\d{7,}/.test(lines[0])) lines.shift();
+
+    let created = 0;
+    let updated = 0;
+    const errors: string[] = [];
+
+    for (const line of lines) {
+        const [name, phoneRaw, pinRaw, pasesRaw, tag] = splitRow(line);
+        const phone = String(phoneRaw || '').replace(/[^\d]/g, '');
+        if (phone.length < 7) { errors.push(`Teléfono inválido: "${line}"`); continue; }
+        const pin = String(pinRaw || '').trim() || String(Math.floor(1000 + Math.random() * 9000));
+        const maxGuests = parseInt(pasesRaw, 10) || 2;
+        const cleanName = (name && String(name).trim().slice(0, 60)) || null;
+        const cleanTag = (tag && String(tag).trim().slice(0, 40)) || null;
+        try {
+            const existing = await prisma.allowedGuest.findUnique({ where: { phone } });
+            await prisma.allowedGuest.upsert({
+                where: { phone },
+                update: { pin, maxGuests, ...(cleanName ? { name: cleanName } : {}), ...(cleanTag ? { tag: cleanTag } : {}) } as any,
+                create: { phone, pin, maxGuests, name: cleanName, tag: cleanTag } as any,
+            });
+            if (existing) updated++;
+            else created++;
+        } catch (e: any) {
+            errors.push(`Error con ${phone}: ${String(e?.message || e).slice(0, 80)}`);
+        }
+    }
+
+    res.json({ success: true, created, updated, errors });
 });
 
 // 7c. POST Reset a un teléfono autorizado (vuelve a 0 sus cupos usados)
