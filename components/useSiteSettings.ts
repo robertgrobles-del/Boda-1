@@ -37,6 +37,8 @@ export interface SiteSettings {
   galleryUrls: string[];
   /** slot -> versión (ms) de la imagen sobreescrita desde el panel */
   images: Record<string, number>;
+  /** portal activo (o el de ?portalPreview=N) */
+  _portal: number;
 }
 
 const DEFAULTS: SiteSettings = {
@@ -66,6 +68,17 @@ const DEFAULTS: SiteSettings = {
   registryBanks: [],
   galleryUrls: [],
   images: {},
+  _portal: 1,
+};
+
+// ?portalPreview=N → previsualizar un portal sin activarlo
+const previewPortal = (): number => {
+  try {
+    const n = parseInt(new URLSearchParams(window.location.search).get('portalPreview') || '', 10);
+    return n >= 1 && n <= 5 ? n : 0;
+  } catch {
+    return 0;
+  }
 };
 
 // Cache a nivel de módulo: una sola petición por carga de página.
@@ -73,17 +86,23 @@ let cache: SiteSettings | null = null;
 let inflight: Promise<SiteSettings> | null = null;
 const listeners = new Set<(s: SiteSettings) => void>();
 
+const imgUrl = (slot: string, v: number): string => {
+  const p = previewPortal();
+  return `${API_CONFIG.backendUrl}/api/img/${slot}?v=${v}${p ? `&portal=${p}` : ''}`;
+};
+
 /** Devuelve el src de una imagen: el override del panel si existe, o el fallback local. */
 export function siteImageSrc(slot: string, fallback: string): string {
   const v = cache?.images?.[slot];
   if (!v) return fallback;
-  return `${API_CONFIG.backendUrl}/api/img/${slot}?v=${v}`;
+  return imgUrl(slot, v);
 }
 
 const load = (): Promise<SiteSettings> => {
   if (cache) return Promise.resolve(cache);
   if (inflight) return inflight;
-  inflight = fetch(`${API_CONFIG.backendUrl}/api/settings`)
+  const p = previewPortal();
+  inflight = fetch(`${API_CONFIG.backendUrl}/api/settings${p ? `?portalPreview=${p}` : ''}`)
     .then((r) => (r.ok ? r.json() : {}))
     .then((d) => {
       cache = { ...DEFAULTS, ...(d || {}) };
@@ -104,7 +123,7 @@ const load = (): Promise<SiteSettings> => {
 export function useSiteImage(slot: string, fallback: string): string {
   const s = useSiteSettings();
   const v = s.images?.[slot];
-  return v ? `${API_CONFIG.backendUrl}/api/img/${slot}?v=${v}` : fallback;
+  return v ? imgUrl(slot, v) : fallback;
 }
 
 export function useSiteSettings(): SiteSettings {

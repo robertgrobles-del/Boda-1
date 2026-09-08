@@ -55,14 +55,19 @@ model Setting {
 
 // Imágenes del sitio editables desde el panel (portada, gateway, historia, OG, etc.).
 // slot = nombre lógico ("heroBackground", "gateway", "og"…).
+// portal = 1..5 (cada "portal de invitados" tiene su propio juego de imágenes).
 // kind "url" → `url` es un enlace público; kind "data" → `data` es base64 y `mime` el tipo.
 model SiteAsset {
-  slot      String   @id
+  id        Int      @id @default(autoincrement())
+  portal    Int      @default(1)
+  slot      String
   kind      String   @default("url")
   url       String?
   data      String?
   mime      String?
   updatedAt DateTime @updatedAt
+
+  @@unique([portal, slot])
 }
 
 model GuestMessage {

@@ -113,6 +113,61 @@ const getSettings = async (): Promise<Settings> => {
     }
 };
 
+// --- Portales de invitados (hasta 5) ---------------------------------------
+// Cada portal tiene su propia "presentación" (textos, fotos, secciones, anuncio,
+// fecha del evento, galería). El resto de ajustes son globales para todos.
+const PRESENTATION_KEYS = [
+    'announceShow', 'announceText',
+    'showStory', 'showParents', 'showGallery', 'showDressCode', 'showGifts',
+    'showCounter', 'showGuestbook',
+    'eventDateTime',
+    'dressFormalTitle', 'dressFormalText', 'dressColorsTitle', 'dressColorsText',
+    'registryIntro', 'registryCasaNote', 'registryCasaListNumber', 'registryCasaUrl', 'registryBanks',
+    'galleryUrls',
+] as const;
+type PresentationKey = typeof PRESENTATION_KEYS[number];
+const PRESENTATION_SET = new Set<string>(PRESENTATION_KEYS as readonly string[]);
+const DEFAULT_PRESENTATION = Object.fromEntries(
+    PRESENTATION_KEYS.map((k) => [k, (DEFAULT_SETTINGS as any)[k]]),
+) as Pick<Settings, PresentationKey>;
+
+const clampPortal = (v: any): number => {
+    const n = parseInt(String(v ?? ''), 10);
+    return n >= 1 && n <= 5 ? n : 0;
+};
+
+let rawDataCache: { at: number; value: any } = { at: 0, value: null };
+const getRawData = async (): Promise<any> => {
+    if (rawDataCache.value && Date.now() - rawDataCache.at < 15000) return rawDataCache.value;
+    try {
+        const row = await prisma.setting.findUnique({ where: { id: 1 } });
+        rawDataCache = { at: Date.now(), value: (row?.data as any) || {} };
+    } catch { /* mantener el último valor */ }
+    return rawDataCache.value || {};
+};
+const invalidateSettingsCache = () => { settingsCache = { at: 0, value: { ...DEFAULT_SETTINGS } }; rawDataCache = { at: 0, value: null }; };
+
+// Lee (y migra si hace falta) la estructura de portales de Setting.data.
+const readPortals = (data: any): { activePortal: number; portalNames: Record<string, string>; portals: Record<string, any> } => {
+    const d = data || {};
+    if (d.portals && typeof d.portals === 'object') {
+        return {
+            activePortal: clampPortal(d.activePortal) || 1,
+            portalNames: d.portalNames || {},
+            portals: d.portals,
+        };
+    }
+    // Migración: los valores de presentación "planos" antiguos pasan a ser el portal 1.
+    const legacy: any = {};
+    for (const k of PRESENTATION_KEYS) if (k in d) legacy[k] = d[k];
+    return { activePortal: 1, portalNames: { 1: 'Principal' }, portals: { 1: legacy } };
+};
+
+const presentationOf = (data: any, portal: number): Pick<Settings, PresentationKey> => {
+    const { portals } = readPortals(data);
+    return { ...DEFAULT_PRESENTATION, ...(portals[String(portal)] || {}) };
+};
+
 // Nodemailer dinámico (según los ajustes; la contraseña siempre es env EMAIL_PASS)
 const makeMailer = (s: Settings) => {
     const pass = process.env.EMAIL_PASS;
@@ -700,41 +755,30 @@ app.post('/api/upload', async (req, res) => {
 
 // --- Ajustes -----------------------------------------------------------------
 
-// Público: solo lo que necesita el sitio de invitados
-app.get('/api/settings', async (_req, res) => {
+// Público: solo lo que necesita el sitio de invitados.
+// Presentación = del portal activo (o de ?portalPreview=N para previsualizar sin activar).
+app.get('/api/settings', async (req, res) => {
     const s = await getSettings();
+    const raw = await getRawData();
+    const previewN = clampPortal(req.query.portalPreview);
+    const portal = previewN || readPortals(raw).activePortal;
+    const pres = presentationOf(raw, portal);
     let images: Record<string, number> = {};
     try {
-        const assets = await prisma.siteAsset.findMany({ select: { slot: true, updatedAt: true } });
+        const assets = await prisma.siteAsset.findMany({ where: { portal }, select: { slot: true, updatedAt: true } });
         images = Object.fromEntries(assets.map((a) => [a.slot, a.updatedAt.getTime()]));
     } catch { /* noop */ }
-    res.set('Cache-Control', 'public, max-age=30');
+    res.set('Cache-Control', previewN ? 'no-store' : 'public, max-age=30');
     res.json({
-        showCounter: s.showCounter,
-        showGuestbook: s.showGuestbook,
+        // globales
         rsvpOpen: s.rsvpOpen,
         rsvpDeadline: s.rsvpDeadline,
         graciasAuto: s.graciasAuto,
         graciasFrom: s.graciasFrom,
-        announceShow: s.announceShow,
-        announceText: s.announceText,
-        showStory: s.showStory,
-        showParents: s.showParents,
-        showGallery: s.showGallery,
-        showDressCode: s.showDressCode,
-        showGifts: s.showGifts,
-        eventDateTime: s.eventDateTime,
         lockMode: s.lockMode,
-        dressFormalTitle: s.dressFormalTitle,
-        dressFormalText: s.dressFormalText,
-        dressColorsTitle: s.dressColorsTitle,
-        dressColorsText: s.dressColorsText,
-        registryIntro: s.registryIntro,
-        registryCasaNote: s.registryCasaNote,
-        registryCasaListNumber: s.registryCasaListNumber,
-        registryCasaUrl: s.registryCasaUrl,
-        registryBanks: s.registryBanks,
-        galleryUrls: s.galleryUrls,
+        // presentación del portal
+        ...pres,
+        _portal: portal,
         images,
     });
 });
@@ -748,10 +792,15 @@ app.post('/api/site/unlock', async (req, res) => {
 });
 
 // Servir una imagen del sitio (override del panel) o caer al archivo estático.
+// ?portal=N para una imagen de un portal concreto; sin parámetro = portal activo.
 app.get('/api/img/:slot', async (req, res) => {
     const slot = String(req.params.slot).replace(/[^\w-]/g, '').slice(0, 40);
+    let portal = clampPortal(req.query.portal);
+    if (!portal) {
+        try { portal = readPortals(await getRawData()).activePortal; } catch { portal = 1; }
+    }
     try {
-        const asset = await prisma.siteAsset.findUnique({ where: { slot } });
+        const asset = await prisma.siteAsset.findUnique({ where: { portal_slot: { portal, slot } } });
         if (asset) {
             if (asset.kind === 'url' && asset.url) {
                 res.set('Cache-Control', 'public, max-age=3600');
@@ -770,24 +819,30 @@ app.get('/api/img/:slot', async (req, res) => {
     return res.status(404).end();
 });
 
-// Admin: gestión de imágenes del sitio
+// Resuelve el portal a editar/gestionar: ?portal=N o el activo.
+const resolvePortal = async (req: any): Promise<number> =>
+    clampPortal(req.query.portal) || readPortals(await getRawData()).activePortal;
+
+// Admin: gestión de imágenes del sitio (por portal)
 app.get('/api/admin/assets', async (req, res) => {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
-    const assets = await prisma.siteAsset.findMany();
+    const portal = await resolvePortal(req);
+    const assets = await prisma.siteAsset.findMany({ where: { portal } });
     res.json(assets.map((a) => ({ slot: a.slot, kind: a.kind, url: a.url, hasData: Boolean(a.data), mime: a.mime, updatedAt: a.updatedAt })));
 });
 
 app.put('/api/admin/assets/:slot', async (req, res) => {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const portal = await resolvePortal(req);
     const slot = String(req.params.slot).replace(/[^\w-]/g, '').slice(0, 40);
     if (!slot) return res.status(400).json({ error: 'Slot inválido.' });
     const { url, dataUrl } = req.body || {};
     try {
         if (typeof url === 'string' && /^https?:\/\//.test(url)) {
             await prisma.siteAsset.upsert({
-                where: { slot },
+                where: { portal_slot: { portal, slot } },
                 update: { kind: 'url', url, data: null, mime: null },
-                create: { slot, kind: 'url', url },
+                create: { portal, slot, kind: 'url', url },
             });
             return res.json({ success: true });
         }
@@ -799,9 +854,9 @@ app.put('/api/admin/assets/:slot', async (req, res) => {
             // Límite ~4 MB en base64 (~3 MB de imagen)
             if (b64.length > 5_600_000) return res.status(413).json({ error: 'La imagen es muy grande (máx. ~3 MB).' });
             await prisma.siteAsset.upsert({
-                where: { slot },
+                where: { portal_slot: { portal, slot } },
                 update: { kind: 'data', data: b64, mime, url: null },
-                create: { slot, kind: 'data', data: b64, mime },
+                create: { portal, slot, kind: 'data', data: b64, mime },
             });
             return res.json({ success: true });
         }
@@ -814,39 +869,88 @@ app.put('/api/admin/assets/:slot', async (req, res) => {
 
 app.delete('/api/admin/assets/:slot', async (req, res) => {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const portal = await resolvePortal(req);
     const slot = String(req.params.slot).replace(/[^\w-]/g, '').slice(0, 40);
     try {
-        await prisma.siteAsset.delete({ where: { slot } });
+        await prisma.siteAsset.delete({ where: { portal_slot: { portal, slot } } });
     } catch { /* ya no existe */ }
     res.json({ success: true });
 });
 
-// Admin: todos los ajustes
+// Admin: todos los ajustes + estructura de portales
 app.get('/api/admin/settings', async (req, res) => {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
     const s = await getSettings();
-    res.json({ ...s, emailPassSet: Boolean(process.env.EMAIL_PASS), emailUserEnv: process.env.EMAIL_USER || '' });
+    const { activePortal, portalNames, portals } = readPortals(await getRawData());
+    res.json({
+        ...s, activePortal, portalNames, portals,
+        emailPassSet: Boolean(process.env.EMAIL_PASS), emailUserEnv: process.env.EMAIL_USER || '',
+    });
 });
 
+// Guardar ajustes GLOBALES (todo menos la presentación, que va por portal) + portal activo / nombres
 app.put('/api/admin/settings', async (req, res) => {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
     try {
-        const current = await getSettings();
+        const raw = await getRawData();
         const incoming = req.body || {};
-        const merged: any = { ...current };
+        const next: any = { ...raw };
         for (const k of Object.keys(DEFAULT_SETTINGS)) {
-            if (k in incoming) merged[k] = incoming[k];
+            if (PRESENTATION_SET.has(k)) continue; // la presentación va por portal
+            if (k in incoming) next[k] = incoming[k];
         }
-        await prisma.setting.upsert({
-            where: { id: 1 },
-            update: { data: merged },
-            create: { id: 1, data: merged },
+        if ('activePortal' in incoming) next.activePortal = clampPortal(incoming.activePortal) || 1;
+        if (incoming.portalNames && typeof incoming.portalNames === 'object') {
+            next.portalNames = { ...(next.portalNames || {}), ...incoming.portalNames };
+        }
+        const migrated = readPortals(next);
+        next.portals = migrated.portals;
+        next.portalNames = next.portalNames || migrated.portalNames;
+        next.activePortal = clampPortal(next.activePortal) || migrated.activePortal;
+        await prisma.setting.upsert({ where: { id: 1 }, update: { data: next }, create: { id: 1, data: next } });
+        invalidateSettingsCache();
+        const s = await getSettings();
+        res.json({
+            success: true,
+            settings: {
+                ...s, ...readPortals(next),
+                emailPassSet: Boolean(process.env.EMAIL_PASS), emailUserEnv: process.env.EMAIL_USER || '',
+            },
         });
-        settingsCache = { at: Date.now(), value: merged };
-        res.json({ success: true, settings: merged });
     } catch (error) {
         console.error('Settings save error:', error);
         res.status(500).json({ error: 'Failed to save settings' });
+    }
+});
+
+// Guardar la PRESENTACIÓN de un portal (1..5) y opcionalmente su nombre.
+app.put('/api/admin/portals/:n', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const n = clampPortal(req.params.n);
+    if (!n) return res.status(400).json({ error: 'Portal inválido (1..5).' });
+    try {
+        const raw = await getRawData();
+        const { portals, portalNames } = readPortals(raw);
+        const incoming = req.body || {};
+        const merged: any = { ...(portals[String(n)] || {}) };
+        for (const k of PRESENTATION_KEYS) if (k in incoming) merged[k] = incoming[k];
+        const next: any = { ...raw, portals: { ...portals, [n]: merged } };
+        if (typeof incoming.name === 'string') {
+            next.portalNames = { ...portalNames, [n]: incoming.name.slice(0, 40) };
+        } else {
+            next.portalNames = portalNames;
+        }
+        next.activePortal = clampPortal(raw.activePortal) || 1;
+        await prisma.setting.upsert({ where: { id: 1 }, update: { data: next }, create: { id: 1, data: next } });
+        invalidateSettingsCache();
+        res.json({
+            success: true, portal: n,
+            presentation: { ...DEFAULT_PRESENTATION, ...merged },
+            portalNames: next.portalNames,
+        });
+    } catch (error) {
+        console.error('Portal save error:', error);
+        res.status(500).json({ error: 'No se pudo guardar el portal.' });
     }
 });
 

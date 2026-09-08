@@ -27,7 +27,11 @@ export const SiteGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
 
-  if (lockMode === 'off') return <>{children}</>;
+  // Vista previa de un portal desde el panel → sin bloqueo
+  let isPreview = false;
+  try { isPreview = /[?&]portalPreview=[1-5]\b/.test(window.location.search); } catch { /* noop */ }
+
+  if (lockMode === 'off' || isPreview) return <>{children}</>;
 
   const needsInviteeLookup = lockMode === 'list' || lockMode === 'password';
   if (needsInviteeLookup && hasParam && !loaded) {
