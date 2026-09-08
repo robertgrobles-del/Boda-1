@@ -52,7 +52,8 @@ interface AllowedGuest {
   pin: string;
   name?: string | null;
   tag?: string | null;
-  ceremonyOnly?: boolean;
+  ceremonyOnly?: boolean | null;
+  receptionOnly?: boolean | null;
   maxGuests?: number;
   usedCount?: number;
   used: boolean;
@@ -92,7 +93,7 @@ export const AdminDashboard: React.FC = () => {
   const [newName, setNewName] = useState('');
   const [newTag, setNewTag] = useState('');
   const [newMaxGuests, setNewMaxGuests] = useState('2');
-  const [newCeremonyOnly, setNewCeremonyOnly] = useState(false);
+  const [newAccess, setNewAccess] = useState<'both' | 'ceremony' | 'reception'>('both');
   const [aforo, setAforo] = useState(() => localStorage.getItem('sd_aforo') || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [messages, setMessages] = useState<{ id: number; name: string; message: string; createdAt: string }[]>([]);
@@ -116,7 +117,7 @@ export const AdminDashboard: React.FC = () => {
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
   const [waMenuOpenId, setWaMenuOpenId] = useState<number | null>(null);
   const [editingGuest, setEditingGuest] = useState<AllowedGuest | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', tag: '', phone: '', pin: '', maxGuests: '2', ceremonyOnly: false });
+  const [editForm, setEditForm] = useState<{ name: string; tag: string; phone: string; pin: string; maxGuests: string; access: 'both' | 'ceremony' | 'reception' }>({ name: '', tag: '', phone: '', pin: '', maxGuests: '2', access: 'both' });
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Phone sanitization for WhatsApp
@@ -136,15 +137,25 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Build rendered message
-  const buildWhatsAppMessage = (phone: string, pin: string, maxGuests?: number, name?: string | null, ceremonyOnly?: boolean): string => {
+  const buildWhatsAppMessage = (
+    phone: string,
+    pin: string,
+    maxGuests?: number,
+    name?: string | null,
+    access: 'both' | 'ceremony' | 'reception' = 'both',
+  ): string => {
     const clean = (name || '').trim();
     const weddingUrl = buildInviteeLink(clean, '#confirmar');
     const count = (maxGuests || 2).toString();
     const saludo = clean ? `Hola ${clean}` : 'Hola';
-    const acceso = ceremonyOnly ? 'Solo ceremonia' : 'Ceremonia y recepción';
-    const notaAcceso = ceremonyOnly
-      ? '🕊️ *Nota importante:* Esta invitación es únicamente para la *ceremonia religiosa*.'
-      : '';
+    const acceso =
+      access === 'ceremony' ? 'Solo ceremonia' : access === 'reception' ? 'Solo recepción' : 'Ceremonia y recepción';
+    const notaAcceso =
+      access === 'ceremony'
+        ? '🕊️ *Nota importante:* Esta invitación es únicamente para la *ceremonia religiosa*.'
+        : access === 'reception'
+        ? '🥂 *Nota importante:* Esta invitación es únicamente para la *recepción*.'
+        : '';
 
     let out = waTemplate
       .replace(/{SALUDO}/g, saludo)
@@ -160,11 +171,11 @@ export const AdminDashboard: React.FC = () => {
       .replace(/{ENLACE}/g, weddingUrl)
       .replace(/{LINK}/g, weddingUrl);
 
-    // Si es "solo ceremonia" y la plantilla no menciona el acceso, añadir la nota automáticamente
+    // Si tiene acceso restringido y la plantilla no lo menciona, añadir la nota automáticamente
     if (
-      ceremonyOnly &&
+      notaAcceso &&
       !/\{ACCESO\}|\{NOTA_ACCESO\}/.test(waTemplate) &&
-      !/solo ceremonia/i.test(waTemplate)
+      !/solo (ceremonia|recepci[oó]n)/i.test(waTemplate)
     ) {
       out = `${out.trimEnd()}\n\n${notaAcceso}`;
     }
@@ -172,10 +183,13 @@ export const AdminDashboard: React.FC = () => {
     return out.replace(/\n{3,}/g, '\n\n').trim();
   };
 
+  const accessOf = (a: { ceremonyOnly?: boolean | null; receptionOnly?: boolean | null }): 'both' | 'ceremony' | 'reception' =>
+    a.ceremonyOnly ? 'ceremony' : a.receptionOnly ? 'reception' : 'both';
+
   // Send WhatsApp
-  const handleSendWhatsApp = (phone: string, pin: string, maxGuests?: number, name?: string | null, ceremonyOnly?: boolean) => {
+  const handleSendWhatsApp = (phone: string, pin: string, maxGuests?: number, name?: string | null, access: 'both' | 'ceremony' | 'reception' = 'both') => {
     const cleanPhone = formatPhoneForWhatsApp(phone);
-    const msg = buildWhatsAppMessage(phone, pin, maxGuests, name, ceremonyOnly);
+    const msg = buildWhatsAppMessage(phone, pin, maxGuests, name, access);
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
     toast(`Abriendo WhatsApp para enviar a ${name ? name : phone}`, 'success');
@@ -192,8 +206,8 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Copy message text
-  const handleCopyMessage = async (phone: string, pin: string, maxGuests?: number, name?: string | null, ceremonyOnly?: boolean) => {
-    const msg = buildWhatsAppMessage(phone, pin, maxGuests, name, ceremonyOnly);
+  const handleCopyMessage = async (phone: string, pin: string, maxGuests?: number, name?: string | null, access: 'both' | 'ceremony' | 'reception' = 'both') => {
+    const msg = buildWhatsAppMessage(phone, pin, maxGuests, name, access);
     try {
       await navigator.clipboard.writeText(msg);
       toast('Mensaje de invitación copiado al portapapeles.', 'success');
@@ -219,6 +233,55 @@ export const AdminDashboard: React.FC = () => {
     } catch (err) {
       console.error(err);
       toast('Error de conexión con el servidor.', 'error');
+    }
+  };
+
+  // Editar una confirmación
+  const [editingRsvp, setEditingRsvp] = useState<Guest | null>(null);
+  const [rsvpForm, setRsvpForm] = useState({ name: '', guests: 1, dietary: '', message: '', attending: true });
+  const [savingRsvp, setSavingRsvp] = useState(false);
+  const openEditRsvp = (g: Guest) => {
+    setEditingRsvp(g);
+    setRsvpForm({
+      name: g.name,
+      guests: g.guestsCount || 1,
+      dietary: g.dietary || '',
+      message: g.message || '',
+      attending: g.attending,
+    });
+  };
+  const handleSaveRsvp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRsvp) return;
+    setSavingRsvp(true);
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/guests/${editingRsvp.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        body: JSON.stringify({
+          name: rsvpForm.name.trim(),
+          guestsCount: rsvpForm.guests,
+          dietary: rsvpForm.dietary.trim(),
+          message: rsvpForm.message.trim(),
+          attending: rsvpForm.attending,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'No se pudo actualizar.');
+      }
+      toast('Confirmación actualizada.', 'success');
+      setEditingRsvp(null);
+      fetchGuests();
+      fetchAllowedGuests();
+      fetch(`${API_CONFIG.backendUrl}/api/admin/summary`, { headers: { 'x-api-key': apiKey } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && setSummary(d))
+        .catch(() => {});
+    } catch (err: any) {
+      toast(err?.message || 'Error al actualizar.', 'error');
+    } finally {
+      setSavingRsvp(false);
     }
   };
 
@@ -276,7 +339,7 @@ export const AdminDashboard: React.FC = () => {
       phone: a.phone,
       pin: a.pin,
       maxGuests: String(a.maxGuests || 2),
-      ceremonyOnly: !!a.ceremonyOnly,
+      access: a.ceremonyOnly ? 'ceremony' : a.receptionOnly ? 'reception' : 'both',
     });
   };
 
@@ -299,7 +362,8 @@ export const AdminDashboard: React.FC = () => {
           phone: editForm.phone.trim(),
           pin: editForm.pin.trim(),
           maxGuests: parseInt(editForm.maxGuests, 10) || 2,
-          ceremonyOnly: editForm.ceremonyOnly,
+          ceremonyOnly: editForm.access === 'ceremony',
+          receptionOnly: editForm.access === 'reception',
           aforo: parseInt(aforo, 10) || 0,
         }),
       });
@@ -498,20 +562,20 @@ export const AdminDashboard: React.FC = () => {
           'Content-Type': 'application/json',
           'x-api-key': apiKey
         },
-        body: JSON.stringify({ phone: currentPhone, pin: currentPin, name: currentName, tag: currentTag, maxGuests: guestsAllowed, ceremonyOnly: newCeremonyOnly, aforo: aforoNum })
+        body: JSON.stringify({ phone: currentPhone, pin: currentPin, name: currentName, tag: currentTag, maxGuests: guestsAllowed, ceremonyOnly: newAccess === 'ceremony', receptionOnly: newAccess === 'reception', aforo: aforoNum })
       });
 
       if (res.ok) {
         toast('Invitado autorizado con éxito.', 'success');
         if (autoSendWa) {
-          handleSendWhatsApp(currentPhone, currentPin, guestsAllowed, currentName, newCeremonyOnly);
+          handleSendWhatsApp(currentPhone, currentPin, guestsAllowed, currentName, newAccess);
         }
         setNewPhone('');
         setNewPin('');
         setNewName('');
         setNewTag('');
         setNewMaxGuests('2');
-        setNewCeremonyOnly(false);
+        setNewAccess('both');
         fetchAllowedGuests();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -532,7 +596,7 @@ export const AdminDashboard: React.FC = () => {
       const cedulas = parseList(g.cedulas).join(' | ');
       const names = parseList(g.guestNames).join(' | ');
       const allowed = g.phone ? allowedGuests.find(a => a.phone === g.phone || digits(a.phone) === digits(g.phone)) : undefined;
-      const acceso = !allowed ? '' : allowed.ceremonyOnly ? 'Solo ceremonia' : 'Ceremonia y recepción';
+      const acceso = !allowed ? '' : allowed.ceremonyOnly ? 'Solo ceremonia' : allowed.receptionOnly ? 'Solo recepción' : 'Ceremonia y recepción';
       return [
         g.id,
         `"${g.name.replace(/"/g, '""')}"`,
@@ -782,15 +846,25 @@ export const AdminDashboard: React.FC = () => {
                           <td className="py-4 px-6 text-xs text-stone-400 font-mono">
                             {new Date(g.createdAt).toLocaleDateString()}
                           </td>
-                          <td className="py-4 px-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteGuest(g.id, g.name)}
-                              className="text-stone-300 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
-                              title="Eliminar esta confirmación"
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => openEditRsvp(g)}
+                                className="text-stone-300 hover:text-[#4a5d23] p-1.5 rounded-full hover:bg-[#f1f4ea] transition-colors"
+                                title="Editar esta confirmación"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteGuest(g.id, g.name)}
+                                className="text-stone-300 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
+                                title="Eliminar esta confirmación"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -924,7 +998,7 @@ export const AdminDashboard: React.FC = () => {
                           {[
                             { tag: '{SALUDO}', label: 'Hola + Nombre' },
                             { tag: '{NOMBRE}', label: 'Nombre del Invitado' },
-                            { tag: '{ACCESO}', label: 'Solo ceremonia / Ceremonia y recepción' },
+                            { tag: '{ACCESO}', label: 'Ceremonia y recepción / Solo ceremonia / Solo recepción' },
                             { tag: '{NOTA_ACCESO}', label: 'Nota si es solo ceremonia (si no, no aparece)' },
                             { tag: '{TELEFONO}', label: 'Teléfono' },
                             { tag: '{PIN}', label: 'PIN Exclusivo' },
@@ -975,7 +1049,7 @@ export const AdminDashboard: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleSendWhatsApp('8095551234', '1234', 2, newName.trim() || 'Familia Pérez', newCeremonyOnly)}
+                          onClick={() => handleSendWhatsApp('8095551234', '1234', 2, newName.trim() || 'Familia Pérez', newAccess)}
                           className="px-4 py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-100 transition-all flex items-center gap-1.5"
                         >
                           <Send size={13} /> Probar Mensaje en WhatsApp
@@ -999,7 +1073,7 @@ export const AdminDashboard: React.FC = () => {
                         {/* WhatsApp Message Bubble */}
                         <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/60 max-w-full text-xs text-stone-800 space-y-3 relative">
                           <div className="whitespace-pre-wrap font-sans leading-relaxed text-[11px] text-stone-700">
-                            {buildWhatsAppMessage('829-923-4460', '8421', 2, newName.trim() || 'Familia Pérez', newCeremonyOnly)}
+                            {buildWhatsAppMessage('829-923-4460', '8421', 2, newName.trim() || 'Familia Pérez', newAccess)}
                           </div>
 
                           <div className="text-[9px] text-stone-400 text-right font-mono">
@@ -1124,17 +1198,21 @@ export const AdminDashboard: React.FC = () => {
                       </datalist>
                       <p className="text-[10px] text-stone-400">Al confirmar, se sienta en la mesa que tenga esta misma etiqueta.</p>
                     </div>
-                    <label className="flex items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50/60 px-3.5 py-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={newCeremonyOnly}
-                        onChange={(e) => setNewCeremonyOnly(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 shrink-0 accent-[#4a5d23]"
-                      />
-                      <span className="text-[11px] leading-snug text-stone-600">
-                        <span className="font-bold text-stone-700">Solo ceremonia</span> — este invitado no está invitado a la recepción.
-                      </span>
-                    </label>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">Invitación para</label>
+                      <div className="flex overflow-hidden rounded-xl border border-stone-200 text-[11px] font-semibold">
+                        {([['both', 'Ceremonia y recepción'], ['ceremony', 'Solo ceremonia'], ['reception', 'Solo recepción']] as const).map(([v, label]) => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setNewAccess(v)}
+                            className={`flex-1 px-2 py-2.5 transition-colors ${newAccess === v ? 'bg-[#4a5d23] text-white' : 'text-stone-500 hover:bg-stone-50'}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex justify-end">
@@ -1194,6 +1272,11 @@ export const AdminDashboard: React.FC = () => {
                               {a.ceremonyOnly && (
                                 <span className="w-fit rounded-full bg-[#b35a44]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#b35a44]">
                                   Solo ceremonia
+                                </span>
+                              )}
+                              {a.receptionOnly && (
+                                <span className="w-fit rounded-full bg-[#b35a44]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#b35a44]">
+                                  Solo recepción
                                 </span>
                               )}
                               {a.tag && (
@@ -1264,7 +1347,7 @@ export const AdminDashboard: React.FC = () => {
                                     <button
                                       type="button"
                                       role="menuitem"
-                                      onClick={() => { setWaMenuOpenId(null); handleSendWhatsApp(a.phone, a.pin, a.maxGuests, a.name, a.ceremonyOnly); }}
+                                      onClick={() => { setWaMenuOpenId(null); handleSendWhatsApp(a.phone, a.pin, a.maxGuests, a.name, accessOf(a)); }}
                                       className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50"
                                     >
                                       <Send size={13} className="text-emerald-600" /> Enviar por WhatsApp
@@ -1272,7 +1355,7 @@ export const AdminDashboard: React.FC = () => {
                                     <button
                                       type="button"
                                       role="menuitem"
-                                      onClick={() => { setWaMenuOpenId(null); handleCopyMessage(a.phone, a.pin, a.maxGuests, a.name, a.ceremonyOnly); }}
+                                      onClick={() => { setWaMenuOpenId(null); handleCopyMessage(a.phone, a.pin, a.maxGuests, a.name, accessOf(a)); }}
                                       className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-50"
                                     >
                                       <Copy size={13} className="text-stone-400" /> Copiar mensaje
@@ -1517,17 +1600,21 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <label className="flex items-start gap-2.5 rounded-xl border border-stone-200 bg-stone-50/60 px-3.5 py-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.ceremonyOnly}
-                    onChange={(e) => setEditForm((f) => ({ ...f, ceremonyOnly: e.target.checked }))}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#4a5d23]"
-                  />
-                  <span className="text-[11px] leading-snug text-stone-600">
-                    <span className="font-bold text-stone-700">Solo ceremonia</span> — no está invitado a la recepción.
-                  </span>
-                </label>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-stone-500">Invitación para</label>
+                  <div className="flex overflow-hidden rounded-xl border border-stone-200 text-[11px] font-semibold">
+                    {([['both', 'Ceremonia y recepción'], ['ceremony', 'Solo ceremonia'], ['reception', 'Solo recepción']] as const).map(([v, label]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setEditForm((f) => ({ ...f, access: v }))}
+                        className={`flex-1 px-2 py-2 transition-colors ${editForm.access === v ? 'bg-[#4a5d23] text-white' : 'text-stone-500 hover:bg-stone-50'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="mt-6 flex gap-3">
@@ -1545,6 +1632,106 @@ export const AdminDashboard: React.FC = () => {
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#4a5d23] py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#3b4c1b] disabled:opacity-50"
                 >
                   <Check size={14} /> {savingEdit ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: editar una confirmación */}
+      <AnimatePresence>
+        {editingRsvp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+            onClick={() => !savingRsvp && setEditingRsvp(null)}
+          >
+            <motion.form
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              onSubmit={handleSaveRsvp}
+              className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl md:p-8"
+            >
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-stone-800">Editar confirmación</h3>
+                  <p className="text-xs text-stone-400">{editingRsvp.phone || 'sin teléfono'}</p>
+                </div>
+                <button type="button" onClick={() => !savingRsvp && setEditingRsvp(null)} className="rounded-full p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-stone-500">Contacto</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm focus:border-[#4a5d23] focus:outline-none"
+                    value={rsvpForm.name}
+                    onChange={(e) => setRsvpForm((f) => ({ ...f, name: e.target.value }))}
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <label className="flex flex-1 items-center gap-2 rounded-xl border border-stone-200 px-3 py-2 text-xs cursor-pointer">
+                    <input type="radio" checked={rsvpForm.attending} onChange={() => setRsvpForm((f) => ({ ...f, attending: true }))} className="accent-[#4a5d23]" />
+                    Asiste
+                  </label>
+                  <label className="flex flex-1 items-center gap-2 rounded-xl border border-stone-200 px-3 py-2 text-xs cursor-pointer">
+                    <input type="radio" checked={!rsvpForm.attending} onChange={() => setRsvpForm((f) => ({ ...f, attending: false }))} className="accent-[#4a5d23]" />
+                    No asiste
+                  </label>
+                </div>
+
+                {rsvpForm.attending && (
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-stone-500">Cantidad de invitados</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm focus:border-[#4a5d23] focus:outline-none"
+                      value={rsvpForm.guests}
+                      onChange={(e) => setRsvpForm((f) => ({ ...f, guests: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
+                    />
+                    <p className="text-[10px] text-stone-400">Ajusta los cupos usados del teléfono automáticamente.</p>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-stone-500">Restricciones</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm focus:border-[#4a5d23] focus:outline-none"
+                    placeholder="Alergias / dieta"
+                    value={rsvpForm.dietary}
+                    onChange={(e) => setRsvpForm((f) => ({ ...f, dietary: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-stone-500">Mensaje</label>
+                  <textarea
+                    rows={2}
+                    className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm focus:border-[#4a5d23] focus:outline-none"
+                    value={rsvpForm.message}
+                    onChange={(e) => setRsvpForm((f) => ({ ...f, message: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button type="button" onClick={() => setEditingRsvp(null)} disabled={savingRsvp} className="flex-1 rounded-xl border border-stone-200 py-2.5 text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50 disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={savingRsvp} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#4a5d23] py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#3b4c1b] disabled:opacity-50">
+                  <Check size={14} /> {savingRsvp ? 'Guardando…' : 'Guardar'}
                 </button>
               </div>
             </motion.form>

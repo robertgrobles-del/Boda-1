@@ -128,7 +128,7 @@ app.get('/api/invitee/:slug', async (req, res) => {
         if (!match) return res.json({ found: false, ceremonyOnly: false, name: null });
 
         res.set('Cache-Control', 'public, max-age=30');
-        res.json({ found: true, ceremonyOnly: !!(match as any).ceremonyOnly, name: (match as any).name });
+        res.json({ found: true, ceremonyOnly: !!(match as any).ceremonyOnly, receptionOnly: !!(match as any).receptionOnly, name: (match as any).name });
     } catch (error) {
         console.error('Invitee lookup error:', error);
         res.status(500).json({ found: false, ceremonyOnly: false, name: null });
@@ -623,6 +623,58 @@ app.delete('/api/admin/guests/:id', async (req, res) => {
     }
 });
 
+// PUT: editar una confirmación (nombre, cantidad, restricciones, mensaje, asiste)
+app.put('/api/admin/guests/:id', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+
+    const { name, guestsCount, dietary, message, attending } = req.body || {};
+
+    try {
+        const rsvp = await prisma.rSVP.findUnique({ where: { id } });
+        if (!rsvp) return res.status(404).json({ error: 'No existe' });
+
+        const willAttend = attending === undefined ? rsvp.attending : (attending === true || attending === 'yes' || attending === 'true');
+        let newCount = rsvp.guestsCount;
+        if (guestsCount !== undefined) {
+            const c = parseInt(guestsCount, 10);
+            if (Number.isFinite(c) && c >= 0) newCount = c;
+        }
+        if (!willAttend) newCount = 0;
+
+        // Ajustar cupos usados del teléfono según el delta
+        if (rsvp.phone) {
+            const ag = await prisma.allowedGuest.findUnique({ where: { phone: rsvp.phone } }) as any;
+            if (ag) {
+                const before = rsvp.attending ? rsvp.guestsCount : 0;
+                const after = willAttend ? newCount : 0;
+                const delta = after - before;
+                const used = Math.max(0, (ag.usedCount ?? 0) + delta);
+                if (after > before) {
+                    const max = ag.maxGuests ?? 2;
+                    if (used > max) return res.status(400).json({ error: `Se pasa del cupo del teléfono (${max}).` });
+                }
+                await prisma.allowedGuest.update({
+                    where: { phone: rsvp.phone },
+                    data: { usedCount: used, used: used >= (ag.maxGuests ?? 2) } as any,
+                });
+            }
+        }
+
+        const data: any = { attending: willAttend, guestsCount: newCount };
+        if (name !== undefined) data.name = (name && String(name).trim()) || rsvp.name;
+        if (dietary !== undefined) data.dietary = (dietary && String(dietary).trim()) || null;
+        if (message !== undefined) data.message = (message && String(message).trim()) || null;
+
+        const updated = await prisma.rSVP.update({ where: { id }, data });
+        res.json({ success: true, data: updated });
+    } catch (error) {
+        console.error('Edit RSVP error:', error);
+        res.status(500).json({ error: 'Failed to update guest' });
+    }
+});
+
 // 6. GET All Allowed Guests (Admin only)
 app.get('/api/admin/allowed', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
@@ -651,7 +703,7 @@ app.post('/api/admin/allowed', async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { phone, pin, maxGuests, aforo, name, ceremonyOnly, tag } = req.body;
+    const { phone, pin, maxGuests, aforo, name, ceremonyOnly, receptionOnly, tag } = req.body;
     if (!phone || !pin) {
         return res.status(400).json({ error: 'Phone and PIN are required' });
     }
@@ -661,6 +713,7 @@ app.post('/api/admin/allowed', async (req, res) => {
     const cleanName = (name && String(name).trim().slice(0, 60)) || null;
     const cleanTag = (tag && String(tag).trim().slice(0, 40)) || null;
     const ceremonyOnlyBool = ceremonyOnly === true || ceremonyOnly === 'true';
+    const receptionOnlyBool = !ceremonyOnlyBool && (receptionOnly === true || receptionOnly === 'true');
 
     try {
         if (aforoNum > 0) {
@@ -677,8 +730,8 @@ app.post('/api/admin/allowed', async (req, res) => {
 
         const result = await prisma.allowedGuest.upsert({
             where: { phone },
-            update: { pin, maxGuests: count, ceremonyOnly: ceremonyOnlyBool, tag: cleanTag, ...(cleanName !== null ? { name: cleanName } : {}) } as any, // no se reinician los cupos ya usados
-            create: { phone, pin, maxGuests: count, name: cleanName, ceremonyOnly: ceremonyOnlyBool, tag: cleanTag } as any
+            update: { pin, maxGuests: count, ceremonyOnly: ceremonyOnlyBool, receptionOnly: receptionOnlyBool, tag: cleanTag, ...(cleanName !== null ? { name: cleanName } : {}) } as any, // no se reinician los cupos ya usados
+            create: { phone, pin, maxGuests: count, name: cleanName, ceremonyOnly: ceremonyOnlyBool, receptionOnly: receptionOnlyBool, tag: cleanTag } as any
         });
         res.status(201).json(result);
     } catch (error) {
@@ -714,7 +767,7 @@ app.put('/api/admin/allowed/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
 
-    const { name, phone, pin, maxGuests, aforo, ceremonyOnly, tag } = req.body;
+    const { name, phone, pin, maxGuests, aforo, ceremonyOnly, receptionOnly, tag } = req.body;
 
     try {
         const current = await prisma.allowedGuest.findUnique({ where: { id } }) as any;
@@ -739,8 +792,11 @@ app.put('/api/admin/allowed/:id', async (req, res) => {
         if (name !== undefined) {
             data.name = (name && String(name).trim().slice(0, 60)) || null;
         }
-        if (ceremonyOnly !== undefined) {
-            data.ceremonyOnly = ceremonyOnly === true || ceremonyOnly === 'true';
+        if (ceremonyOnly !== undefined || receptionOnly !== undefined) {
+            const c = ceremonyOnly === true || ceremonyOnly === 'true';
+            const r = !c && (receptionOnly === true || receptionOnly === 'true');
+            data.ceremonyOnly = c;
+            data.receptionOnly = r;
         }
         if (tag !== undefined) {
             data.tag = (tag && String(tag).trim().slice(0, 40)) || null;
