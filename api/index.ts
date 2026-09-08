@@ -52,14 +52,48 @@ app.post('/api/admin/login', (req, res) => {
     res.json({ success: true, token, exp });
 });
 
-// Configuración de Nodemailer (Placeholder - requiere config del usuario)
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+// --- Ajustes del sitio (guardados en la BD) ------------------------------------
+const DEFAULT_SETTINGS = {
+    emailNotify: false,          // avisar a los novios por correo al confirmar
+    emailProvider: 'gmail' as 'gmail' | 'outlook',
+    emailFrom: '',               // correo remitente (usuario SMTP)
+    emailTo: '',                 // correo de los novios (destino del aviso)
+    emailGuest: false,           // enviar correo de confirmación al invitado
+    autoSendWa: true,            // abrir WhatsApp al registrar teléfono
+    aforo: 0,                    // aforo total del evento
+    showCounter: true,           // mostrar "X invitados confirmaron" en el sitio
+    showGuestbook: true,         // mostrar el libro de mensajes en el sitio
+    rsvpOpen: true,              // permitir nuevas confirmaciones
+    rsvpDeadline: '2026-10-07',  // fecha límite (texto en el formulario)
+    graciasAuto: false,          // redirigir el sitio a /gracias automáticamente
+    graciasFrom: '2026-11-08',   // desde esta fecha
+    tableSizeDefault: 8,
+};
+type Settings = typeof DEFAULT_SETTINGS;
+
+let settingsCache: { at: number; value: Settings } = { at: 0, value: { ...DEFAULT_SETTINGS } };
+const getSettings = async (): Promise<Settings> => {
+    if (Date.now() - settingsCache.at < 15000) return settingsCache.value;
+    try {
+        const row = await prisma.setting.findUnique({ where: { id: 1 } });
+        const value = { ...DEFAULT_SETTINGS, ...((row?.data as any) || {}) };
+        settingsCache = { at: Date.now(), value };
+        return value;
+    } catch {
+        return { ...DEFAULT_SETTINGS };
     }
-});
+};
+
+// Nodemailer dinámico (según los ajustes; la contraseña siempre es env EMAIL_PASS)
+const makeMailer = (s: Settings) => {
+    const pass = process.env.EMAIL_PASS;
+    const user = s.emailFrom || process.env.EMAIL_USER;
+    if (!pass || !user) return null;
+    return nodemailer.createTransport({
+        service: s.emailProvider === 'outlook' ? 'hotmail' : 'gmail',
+        auth: { user, pass },
+    });
+};
 
 // --- Helpers · Cédula ------------------------------------------------------
 
@@ -252,6 +286,10 @@ app.post('/api/rsvp', async (req, res) => {
     try {
         const { name, email, phone, pin, attending, guests, dietary, message, cedulas } = req.body;
 
+        if (!(await getSettings()).rsvpOpen) {
+            return res.status(403).json({ success: false, error: 'Las confirmaciones están cerradas por el momento.' });
+        }
+
         if (!phone || !pin) {
             return res.status(400).json({ success: false, error: 'Se requiere teléfono y PIN para confirmar.' });
         }
@@ -375,12 +413,16 @@ app.post('/api/rsvp', async (req, res) => {
             }
         }
 
-        // Email de confirmación
-        if (isAttending && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        // Correos (según los ajustes; la contraseña siempre es la env EMAIL_PASS)
+        const st = await getSettings();
+        const mailer = makeMailer(st);
+        const fromAddr = st.emailFrom || process.env.EMAIL_USER;
+
+        if (mailer && isAttending && st.emailGuest && email) {
             const list = guestNames.filter(Boolean).map((n) => `<li>${n}</li>`).join('') || `<li>${guestCount} invitado(s)</li>`;
-            transporter
+            mailer
                 .sendMail({
-                    from: process.env.EMAIL_USER,
+                    from: fromAddr,
                     to: email,
                     subject: '¡Confirmación recibida! - Boda Stephanie & Dalvin',
                     html: `
@@ -399,13 +441,12 @@ app.post('/api/rsvp', async (req, res) => {
                 .catch((err) => console.error('Email error:', err));
         }
 
-        // Aviso a los novios (opcional: requiere NOTIFY_EMAIL + credenciales de correo)
-        if (process.env.NOTIFY_EMAIL && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        if (mailer && st.emailNotify && st.emailTo) {
             const quienes = guestNames.filter(Boolean).join(', ') || `${guestCount} invitado(s)`;
-            transporter
+            mailer
                 .sendMail({
-                    from: process.env.EMAIL_USER,
-                    to: process.env.NOTIFY_EMAIL,
+                    from: fromAddr,
+                    to: st.emailTo,
                     subject: isAttending
                         ? `✅ ${contactName} confirmó (${guestCount})`
                         : `❌ ${contactName} no asistirá`,
@@ -625,6 +666,71 @@ app.post('/api/upload', async (req, res) => {
     } catch (error: any) {
         console.error('Upload Error:', error);
         res.status(500).json({ success: false, error: `Error al subir: ${String(error?.message || error).slice(0, 200)}` });
+    }
+});
+
+// --- Ajustes -----------------------------------------------------------------
+
+// Público: solo lo que necesita el sitio de invitados
+app.get('/api/settings', async (_req, res) => {
+    const s = await getSettings();
+    res.set('Cache-Control', 'public, max-age=30');
+    res.json({
+        showCounter: s.showCounter,
+        showGuestbook: s.showGuestbook,
+        rsvpOpen: s.rsvpOpen,
+        rsvpDeadline: s.rsvpDeadline,
+        graciasAuto: s.graciasAuto,
+        graciasFrom: s.graciasFrom,
+    });
+});
+
+// Admin: todos los ajustes
+app.get('/api/admin/settings', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const s = await getSettings();
+    res.json({ ...s, emailPassSet: Boolean(process.env.EMAIL_PASS), emailUserEnv: process.env.EMAIL_USER || '' });
+});
+
+app.put('/api/admin/settings', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const current = await getSettings();
+        const incoming = req.body || {};
+        const merged: any = { ...current };
+        for (const k of Object.keys(DEFAULT_SETTINGS)) {
+            if (k in incoming) merged[k] = incoming[k];
+        }
+        await prisma.setting.upsert({
+            where: { id: 1 },
+            update: { data: merged },
+            create: { id: 1, data: merged },
+        });
+        settingsCache = { at: Date.now(), value: merged };
+        res.json({ success: true, settings: merged });
+    } catch (error) {
+        console.error('Settings save error:', error);
+        res.status(500).json({ error: 'Failed to save settings' });
+    }
+});
+
+// Enviar un correo de prueba a la dirección de los novios
+app.post('/api/admin/settings/test-email', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const s = await getSettings();
+    const mailer = makeMailer(s);
+    if (!mailer) return res.status(400).json({ error: 'Falta la contraseña (EMAIL_PASS) o el correo remitente.' });
+    if (!s.emailTo) return res.status(400).json({ error: 'Falta el correo de destino (novios).' });
+    try {
+        await mailer.sendMail({
+            from: s.emailFrom || process.env.EMAIL_USER,
+            to: s.emailTo,
+            subject: 'Prueba de notificación — Boda S&D',
+            text: 'Si recibes esto, las notificaciones por correo están funcionando. 🎉',
+        });
+        res.json({ success: true });
+    } catch (error: any) {
+        res.status(502).json({ error: String(error?.message || error).slice(0, 200) });
     }
 });
 

@@ -96,7 +96,27 @@ export const AdminDashboard: React.FC = () => {
   const [newTag, setNewTag] = useState('');
   const [newMaxGuests, setNewMaxGuests] = useState('2');
   const [newAccess, setNewAccess] = useState<'both' | 'ceremony' | 'reception'>('both');
-  const [aforo, setAforo] = useState(() => localStorage.getItem('sd_aforo') || '');
+  const [settings, setSettings] = useState<any>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const aforo = settings?.aforo ? String(settings.aforo) : '';
+  const loadSettings = async (key = apiKey) => {
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/settings`, { headers: { 'x-api-key': key } });
+      if (res.ok) setSettings(await res.json());
+    } catch { /* noop */ }
+  };
+  const patchSettings = async (obj: Record<string, any>) => {
+    setSettings((s: any) => ({ ...s, ...obj }));
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        body: JSON.stringify(obj),
+      });
+      if (res.ok) setSettings((await res.json()).settings);
+      else toast('No se pudo guardar el ajuste.', 'error');
+    } catch { toast('Error de conexión.', 'error'); }
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [messages, setMessages] = useState<{ id: number; name: string; message: string; createdAt: string }[]>([]);
   const [activeView, setActiveView] = useState<'rsvps' | 'allowed' | 'messages' | 'seating'>('rsvps');
@@ -114,7 +134,7 @@ export const AdminDashboard: React.FC = () => {
     if (!/\{ACCESO\}|\{NOTA_ACCESO\}/.test(t)) t = `${t}\n\n{NOTA_ACCESO}`;
     return t;
   });
-  const [autoSendWa, setAutoSendWa] = useState(() => localStorage.getItem('sd_auto_send_wa') !== 'false');
+  const autoSendWa = settings?.autoSendWa ?? true;
   const [showTemplateSettings, setShowTemplateSettings] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
   const [waMenuOpenId, setWaMenuOpenId] = useState<number | null>(null);
@@ -387,7 +407,6 @@ export const AdminDashboard: React.FC = () => {
   // Save template
   const handleSaveTemplate = () => {
     localStorage.setItem('sd_wa_template', waTemplate);
-    localStorage.setItem('sd_auto_send_wa', autoSendWa ? 'true' : 'false');
     toast('Plantilla de WhatsApp guardada exitosamente.', 'success');
   };
 
@@ -418,6 +437,7 @@ export const AdminDashboard: React.FC = () => {
           fetchGuests();
           fetchAllowedGuests();
           fetchMessages();
+          loadSettings(apiKey);
         } else {
           setApiKey('');
           localStorage.removeItem('sd_admin_key');
@@ -762,6 +782,13 @@ export const AdminDashboard: React.FC = () => {
               <Download size={14} className="text-[#b35a44]" /> Exportar CSV
             </button>
             <button
+              onClick={() => { setSettingsOpen(true); loadSettings(); }}
+              className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
+              title="Configuración"
+            >
+              <Sliders size={14} className="text-[#4a5d23]" /> Configuración
+            </button>
+            <button
               onClick={() => setDark((d) => !d)}
               className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
               title={dark ? 'Modo claro' : 'Modo oscuro'}
@@ -1012,10 +1039,7 @@ export const AdminDashboard: React.FC = () => {
                   <input
                     type="checkbox"
                     checked={autoSendWa}
-                    onChange={(e) => {
-                      setAutoSendWa(e.target.checked);
-                      localStorage.setItem('sd_auto_send_wa', e.target.checked ? 'true' : 'false');
-                    }}
+                    onChange={(e) => patchSettings({ autoSendWa: e.target.checked })}
                     className="accent-[#4a5d23] rounded"
                   />
                   <span>Enviar por WhatsApp al registrar</span>
@@ -1050,10 +1074,8 @@ export const AdminDashboard: React.FC = () => {
                       type="number"
                       min={0}
                       value={aforo}
-                      onChange={(e) => {
-                        setAforo(e.target.value);
-                        localStorage.setItem('sd_aforo', e.target.value);
-                      }}
+                      onChange={(e) => setSettings((s: any) => ({ ...s, aforo: parseInt(e.target.value, 10) || 0 }))}
+                      onBlur={(e) => patchSettings({ aforo: parseInt(e.target.value, 10) || 0 })}
                       placeholder="Ej: 150"
                       className="w-24 px-3 py-2 border border-stone-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#4a5d23]"
                     />
@@ -1763,6 +1785,103 @@ export const AdminDashboard: React.FC = () => {
                 </button>
               </div>
             </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Configuración */}
+      <AnimatePresence>
+        {settingsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setSettingsOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl md:p-8"
+            >
+              <div className="mb-5 flex items-start justify-between">
+                <h3 className="text-lg font-bold text-stone-800">Configuración</h3>
+                <button type="button" onClick={() => setSettingsOpen(false)} className="rounded-full p-1.5 text-stone-400 hover:bg-stone-100"><X size={18} /></button>
+              </div>
+
+              {!settings ? (
+                <p className="py-8 text-center text-sm italic text-stone-400">Cargando…</p>
+              ) : (() => {
+                const Row = (label: string, checked: boolean, onChange: (v: boolean) => void, hint?: string) => (
+                  <label className="flex items-start justify-between gap-3 rounded-xl border border-stone-200 px-3.5 py-3 cursor-pointer">
+                    <span className="text-xs">
+                      <span className="font-bold text-stone-700">{label}</span>
+                      {hint && <span className="mt-0.5 block text-[10px] font-normal text-stone-400">{hint}</span>}
+                    </span>
+                    <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#4a5d23]" />
+                  </label>
+                );
+                return (
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Confirmaciones</p>
+                      {Row('Aceptar nuevas confirmaciones', settings.rsvpOpen, (v) => patchSettings({ rsvpOpen: v }), 'Al desactivar, el formulario RSVP queda cerrado.')}
+                      <div className="flex items-center justify-between rounded-xl border border-stone-200 px-3.5 py-2.5 text-xs">
+                        <span className="font-bold text-stone-700">Fecha límite (texto del form)</span>
+                        <input type="date" value={settings.rsvpDeadline || ''} onChange={(e) => patchSettings({ rsvpDeadline: e.target.value })} className="rounded-lg border border-stone-200 px-2 py-1 text-xs" />
+                      </div>
+                      <div className="flex items-center justify-between rounded-xl border border-stone-200 px-3.5 py-2.5 text-xs">
+                        <span className="font-bold text-stone-700">Personas por mesa (por defecto)</span>
+                        <input type="number" min={1} max={20} value={settings.tableSizeDefault || 8} onChange={(e) => patchSettings({ tableSizeDefault: parseInt(e.target.value, 10) || 8 })} className="w-16 rounded-lg border border-stone-200 px-2 py-1 text-center text-xs" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Sitio de invitados</p>
+                      {Row('Mostrar contador "X confirmaron"', settings.showCounter, (v) => patchSettings({ showCounter: v }))}
+                      {Row('Mostrar el libro de mensajes', settings.showGuestbook, (v) => patchSettings({ showGuestbook: v }))}
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Página de gracias</p>
+                      {Row('Mostrar /gracias automáticamente', settings.graciasAuto, (v) => patchSettings({ graciasAuto: v }), 'El sitio muestra la pantalla de agradecimiento en vez de la invitación.')}
+                      <div className="flex items-center justify-between rounded-xl border border-stone-200 px-3.5 py-2.5 text-xs">
+                        <span className="font-bold text-stone-700">Desde el día</span>
+                        <input type="date" value={settings.graciasFrom || ''} onChange={(e) => patchSettings({ graciasFrom: e.target.value })} className="rounded-lg border border-stone-200 px-2 py-1 text-xs" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Notificaciones por correo</p>
+                      {Row('Avisarme al confirmar un invitado', settings.emailNotify, (v) => patchSettings({ emailNotify: v }))}
+                      {Row('Enviar correo de confirmación al invitado', settings.emailGuest, (v) => patchSettings({ emailGuest: v }))}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <select value={settings.emailProvider} onChange={(e) => patchSettings({ emailProvider: e.target.value })} className="rounded-lg border border-stone-200 px-2 py-2">
+                          <option value="gmail">Gmail</option>
+                          <option value="outlook">Outlook / Hotmail</option>
+                        </select>
+                        <input type="email" placeholder="correo remitente" value={settings.emailFrom || ''} onChange={(e) => patchSettings({ emailFrom: e.target.value })} className="rounded-lg border border-stone-200 px-2 py-2" />
+                      </div>
+                      <input type="email" placeholder="correo de los novios (destino del aviso)" value={settings.emailTo || ''} onChange={(e) => patchSettings({ emailTo: e.target.value })} className="w-full rounded-lg border border-stone-200 px-2 py-2 text-xs" />
+                      <p className="text-[10px] text-stone-400">
+                        {settings.emailPassSet
+                          ? '✓ Contraseña configurada (EMAIL_PASS).'
+                          : '⚠ Falta la contraseña: añade la variable EMAIL_PASS en Vercel (contraseña de aplicación de Gmail/Outlook).'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/settings/test-email`, { method: 'POST', headers: { 'x-api-key': apiKey } });
+                          const d = await res.json().catch(() => ({}));
+                          toast(res.ok ? 'Correo de prueba enviado.' : (d.error || 'No se pudo enviar.'), res.ok ? 'success' : 'error');
+                        }}
+                        className="rounded-full border border-stone-200 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50"
+                      >
+                        Enviar correo de prueba
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

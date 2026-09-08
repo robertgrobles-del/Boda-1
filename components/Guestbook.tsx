@@ -4,6 +4,7 @@ import { Heart, Send, Quote } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
 import { SectionHeader } from './SectionHeader';
+import { useSiteSettings } from './useSiteSettings';
 
 interface Message {
   id: number;
@@ -24,6 +25,7 @@ const timeAgo = (iso: string) => {
 
 export const Guestbook: React.FC<{ id?: string }> = ({ id = 'mensajes' }) => {
   const { toast } = useToast();
+  const { showGuestbook } = useSiteSettings();
   const [messages, setMessages] = useState<Message[]>([]);
   const [name, setName] = useState('');
   const [text, setText] = useState('');
@@ -68,6 +70,8 @@ export const Guestbook: React.FC<{ id?: string }> = ({ id = 'mensajes' }) => {
       toast('No pudimos enviar tu mensaje. Intenta de nuevo.', 'error');
     }
   };
+
+  if (!showGuestbook) return null;
 
   return (
     <section id={id} className="relative overflow-hidden bg-white px-6 py-20 md:py-28">

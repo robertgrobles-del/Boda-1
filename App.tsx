@@ -22,6 +22,7 @@ import { MemoriesPage } from './components/MemoriesPage';
 import { LegalPage } from './components/LegalPage';
 import { GraciasPage } from './components/GraciasPage';
 import { InviteeProvider } from './components/InviteeContext';
+import { useSiteSettings } from './components/useSiteSettings';
 import { Calendar, Apple } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { EVENT_DATA, PHOTOS, CALENDAR_URLS, buildIcsDataUri } from './constants';
@@ -45,6 +46,11 @@ const App: React.FC = () => {
   );
 
   const [showGateway, setShowGateway] = useState(true);
+
+  const siteSettings = useSiteSettings();
+  const graciasTakeover =
+    siteSettings.graciasAuto &&
+    new Date().toISOString().slice(0, 10) >= siteSettings.graciasFrom;
 
   const closeGateway = () => {
     setShowGateway(false);
@@ -97,7 +103,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (currentRoute === 'gracias') {
+  if (currentRoute === 'gracias' || (graciasTakeover && currentRoute === 'home')) {
     return (
       <ToastProvider>
         <GraciasPage />

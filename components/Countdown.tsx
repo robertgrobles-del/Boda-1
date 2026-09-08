@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CountdownTime } from '../types';
 import { API_CONFIG } from '../constants';
+import { useSiteSettings } from './useSiteSettings';
 
 interface CountdownProps {
   targetDate: string;
@@ -27,6 +28,7 @@ const getRemaining = (targetDate: string): { time: CountdownTime; done: boolean 
 export const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
   const [{ time: timeLeft, done }, setState] = useState(() => getRemaining(targetDate));
   const [confirmed, setConfirmed] = useState<number | null>(null);
+  const { showCounter } = useSiteSettings();
 
   useEffect(() => {
     let active = true;
@@ -109,7 +111,7 @@ export const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
               <TimeBox value={timeLeft.seconds} label="Seg" />
             </div>
 
-            {confirmed !== null && confirmed > 0 && (
+            {showCounter && confirmed !== null && confirmed > 0 && (
               <motion.p
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}

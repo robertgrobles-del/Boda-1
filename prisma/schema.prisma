@@ -47,6 +47,12 @@ model TableMeta {
   y           Float?
 }
 
+// Ajustes del sitio y del panel (una sola fila, id = 1). `data` = JSON con todo.
+model Setting {
+  id   Int  @id @default(1)
+  data Json @default("{}")
+}
+
 model GuestMessage {
   id        Int      @id @default(autoincrement())
   name      String

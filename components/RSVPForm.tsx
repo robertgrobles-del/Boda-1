@@ -5,6 +5,13 @@ import { ThankYou } from './ThankYou';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
 import { useInvitee } from './InviteeContext';
+import { useSiteSettings } from './useSiteSettings';
+
+const formatDeadline = (iso: string) => {
+  const d = new Date(`${iso}T12:00:00`);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' });
+};
 
 interface RSVPFormProps {
   id: string;
@@ -15,6 +22,8 @@ interface RSVPFormProps {
 export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
   const { toast } = useToast();
   const { isCeremonyOnly, isReceptionOnly, name: inviteeName } = useInvitee();
+  const { rsvpOpen, rsvpDeadline } = useSiteSettings();
+  const deadlineText = formatDeadline(rsvpDeadline);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -261,8 +270,18 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
               <div className="text-center mb-6 md:mb-10">
                 <span className="text-olive text-[8px] md:text-[10px] font-bold uppercase tracking-[0.4em] mb-3 md:mb-4 block">CONFIRMACIÓN</span>
                 <h2 className="font-signature text-3xl md:text-5xl text-olive mb-2">{editMode ? 'Edita tu Respuesta' : 'Confirma tu Asistencia'}</h2>
-                <p className="text-stone-500 text-[11px] italic">Por favor confirma antes del 7 de octubre de 2026.</p>
+                {deadlineText && (
+                  <p className="text-stone-500 text-[11px] italic">Por favor confirma antes del {deadlineText}.</p>
+                )}
               </div>
+
+              {!rsvpOpen && !editMode ? (
+                <div className="rounded-xl border border-olive/20 bg-olive/5 p-6 text-center text-sm leading-relaxed text-stone-600">
+                  Las confirmaciones están cerradas por el momento. Si necesitas hacer un cambio,
+                  escríbenos directamente y con gusto te ayudamos.
+                </div>
+              ) : (
+              <>
 
               {existing && !editMode && (
                 <div className="mb-5 rounded-xl border border-olive/20 bg-olive/5 p-4 text-center">
@@ -484,6 +503,8 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ id, isModal, onClose }) => {
                   </button>
                 )}
               </form>
+              </>
+              )}
             </motion.div>
           ) : (
             <motion.div
