@@ -68,6 +68,17 @@ const DEFAULT_SETTINGS = {
     graciasAuto: false,          // redirigir el sitio a /gracias automáticamente
     graciasFrom: '2026-11-08',   // desde esta fecha
     tableSizeDefault: 8,
+    // Anuncio / banner en la parte superior del sitio
+    announceShow: false,
+    announceText: '',
+    // Secciones visibles del sitio de invitados
+    showStory: true,
+    showParents: true,
+    showGallery: true,
+    showDressCode: true,
+    showGifts: true,
+    // Fecha y hora del evento (ISO, p.ej. "2026-11-07T16:00"). Vacío = usar la de constants.
+    eventDateTime: '',
 };
 type Settings = typeof DEFAULT_SETTINGS;
 
@@ -682,6 +693,14 @@ app.get('/api/settings', async (_req, res) => {
         rsvpDeadline: s.rsvpDeadline,
         graciasAuto: s.graciasAuto,
         graciasFrom: s.graciasFrom,
+        announceShow: s.announceShow,
+        announceText: s.announceText,
+        showStory: s.showStory,
+        showParents: s.showParents,
+        showGallery: s.showGallery,
+        showDressCode: s.showDressCode,
+        showGifts: s.showGifts,
+        eventDateTime: s.eventDateTime,
     });
 });
 

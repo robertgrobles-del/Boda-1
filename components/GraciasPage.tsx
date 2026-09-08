@@ -5,6 +5,7 @@ import { API_CONFIG, EVENT_DATA } from '../constants';
 import { FallingLeaves } from './FallingLeaves';
 import { Lightbox } from './Lightbox';
 import { Skeleton } from './Skeleton';
+import { getInviteeName } from '../utils/invitee';
 
 const goHome = () => {
   window.history.pushState(null, '', '/');
@@ -34,6 +35,7 @@ const GalleryImg: React.FC<{ src: string; alt: string; onClick: () => void }> = 
 export const GraciasPage: React.FC = () => {
   const [items, setItems] = useState<{ id: string; name: string }[] | null>(null);
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const [inviteeName, setInviteeName] = useState<string | null>(() => getInviteeName());
 
   useEffect(() => {
     document.title = `Gracias · ${EVENT_DATA.hashtag.replace('#', '')}`;
@@ -42,7 +44,18 @@ export const GraciasPage: React.FC = () => {
       .then((r) => (r.ok ? r.json() : { items: [] }))
       .then((d) => setItems(d.items || []))
       .catch(() => setItems([]));
+
+    const slug = getInviteeName();
+    if (slug) {
+      fetch(`${API_CONFIG.backendUrl}/api/invitee/${encodeURIComponent(slug)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d && d.found && d.name) setInviteeName(d.name);
+        })
+        .catch(() => {});
+    }
   }, []);
+
 
   const urls = (items || []).map((it) => `${API_CONFIG.backendUrl}/api/gallery/img/${it.id}`);
 
@@ -62,6 +75,11 @@ export const GraciasPage: React.FC = () => {
             <Heart size={12} className="text-terracotta" /> {EVENT_DATA.displayDate}
           </span>
           <h1 className="font-signature text-6xl leading-none text-olive sm:text-7xl md:text-8xl">Gracias</h1>
+          {inviteeName && (
+            <p className="mt-5 font-serif text-lg italic text-terracotta md:text-xl">
+              Gracias, {inviteeName}, por acompañarnos.
+            </p>
+          )}
           <div className="my-8 h-px w-16 bg-olive/30" />
           <p className="font-serif text-base italic leading-relaxed text-stone-600 md:text-lg">
             Gracias por acompañarnos en el día más importante de nuestras vidas. Cada abrazo, cada

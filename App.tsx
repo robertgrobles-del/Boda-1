@@ -139,20 +139,26 @@ const App: React.FC = () => {
           animate={{ opacity: showGateway ? 0 : 1 }}
           transition={{ duration: reduceMotion ? 0 : 1 }}
         >
+          {siteSettings.announceShow && siteSettings.announceText.trim() && (
+            <div className="relative z-20 bg-olive px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-white md:text-xs">
+              {siteSettings.announceText}
+            </div>
+          )}
+
           <Nav />
 
           <Hero onRSVPClick={scrollToRSVP} />
 
           <main className="relative z-10">
-            <StoryImproved />
-            <Parents />
-            <Countdown targetDate={EVENT_DATA.date} />
+            {siteSettings.showStory && <StoryImproved />}
+            {siteSettings.showParents && <Parents />}
+            <Countdown targetDate={siteSettings.eventDateTime || EVENT_DATA.date} />
             <EventDetails id="detalles" />
             <PhotoBand src={PHOTOS.band} quote="No podemos esperar para celebrar contigo" />
-            <UnifiedGallery id="galeria" />
-            <DressCode />
+            {siteSettings.showGallery && <UnifiedGallery id="galeria" />}
+            {siteSettings.showDressCode && <DressCode />}
             <NoKids />
-            <GiftRegistry id="regalos" />
+            {siteSettings.showGifts && <GiftRegistry id="regalos" />}
             <RSVPForm id="confirmar" />
             <Guestbook id="mensajes" />
             <WhatsAppButton phoneNumber={EVENT_DATA.whatsapp} />

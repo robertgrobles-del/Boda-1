@@ -8,6 +8,14 @@ export interface SiteSettings {
   rsvpDeadline: string;
   graciasAuto: boolean;
   graciasFrom: string;
+  announceShow: boolean;
+  announceText: string;
+  showStory: boolean;
+  showParents: boolean;
+  showGallery: boolean;
+  showDressCode: boolean;
+  showGifts: boolean;
+  eventDateTime: string;
 }
 
 const DEFAULTS: SiteSettings = {
@@ -17,6 +25,14 @@ const DEFAULTS: SiteSettings = {
   rsvpDeadline: '2026-10-07',
   graciasAuto: false,
   graciasFrom: '2026-11-08',
+  announceShow: false,
+  announceText: '',
+  showStory: true,
+  showParents: true,
+  showGallery: true,
+  showDressCode: true,
+  showGifts: true,
+  eventDateTime: '',
 };
 
 // Cache a nivel de módulo: una sola petición por carga de página.

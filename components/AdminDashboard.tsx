@@ -4,7 +4,7 @@ import {
   Users, CheckCircle, XCircle, Search, Download, Key, LogOut,
   Smartphone, Plus, MessageSquare, Trash2, Send, Copy, ExternalLink,
   RefreshCw, Sliders, FileText, Check,
-  MessageCircle, MoreVertical, Pencil, X, ChevronDown, Wand2
+  MessageCircle, MoreVertical, Pencil, X, ChevronDown, Wand2, Menu, Moon, Sun
 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
@@ -98,6 +98,7 @@ export const AdminDashboard: React.FC = () => {
   const [newAccess, setNewAccess] = useState<'both' | 'ceremony' | 'reception'>('both');
   const [settings, setSettings] = useState<any>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const aforo = settings?.aforo ? String(settings.aforo) : '';
   const loadSettings = async (key = apiKey) => {
     try {
@@ -759,48 +760,46 @@ export const AdminDashboard: React.FC = () => {
             <h1 className="text-3xl font-bold text-stone-800 md:text-4xl">Panel de Administración</h1>
             <p className="text-stone-500 text-xs italic mt-1">Stephanie & Dalvin · Control de RSVP & Seguridad de Lista</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
             <button
-              onClick={() => setImportOpen(true)}
-              className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
-              title="Pegar una lista de invitados (nombre, teléfono, PIN, pases, etiqueta)"
+              onClick={() => setMenuOpen((o) => !o)}
+              className="flex items-center gap-2 px-5 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
             >
-              <Plus size={14} className="text-[#4a5d23]" /> Importar
+              <Menu size={16} className="text-[#4a5d23]" /> Menú
+              <ChevronDown size={13} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
-            <button
-              onClick={handleFixEncoding}
-              disabled={fixingEnc}
-              className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm disabled:opacity-50"
-              title='Corrige acentos mal guardados (ej. "PÃ©rez" → "Pérez")'
-            >
-              <Wand2 size={14} className={`text-[#4a5d23] ${fixingEnc ? 'animate-pulse' : ''}`} /> Reparar acentos
-            </button>
-            <button
-              onClick={exportGuestsToCSV}
-              className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
-            >
-              <Download size={14} className="text-[#b35a44]" /> Exportar CSV
-            </button>
-            <button
-              onClick={() => { setSettingsOpen(true); loadSettings(); }}
-              className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
-              title="Configuración"
-            >
-              <Sliders size={14} className="text-[#4a5d23]" /> Configuración
-            </button>
-            <button
-              onClick={() => setDark((d) => !d)}
-              className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
-              title={dark ? 'Modo claro' : 'Modo oscuro'}
-            >
-              {dark ? '☀️' : '🌙'}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-5 py-3 rounded-full bg-stone-100 text-xs font-bold uppercase tracking-wider hover:bg-stone-200 transition-colors shadow-sm text-stone-600"
-            >
-              <LogOut size={14} /> Salir
-            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-stone-200 bg-white py-1.5 shadow-xl"
+                >
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); setImportOpen(true); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                    <Plus size={15} className="text-[#4a5d23]" /> Importar
+                  </button>
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleFixEncoding(); }} disabled={fixingEnc} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50 disabled:opacity-50">
+                    <Wand2 size={15} className={`text-[#4a5d23] ${fixingEnc ? 'animate-pulse' : ''}`} /> Reparar acentos
+                  </button>
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); exportGuestsToCSV(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                    <Download size={15} className="text-[#b35a44]" /> Exportar CSV
+                  </button>
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); setSettingsOpen(true); loadSettings(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                    <Sliders size={15} className="text-[#4a5d23]" /> Configuración
+                  </button>
+                  <div className="my-1.5 border-t border-stone-100" />
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); setDark((d) => !d); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                    {dark ? <Sun size={15} className="text-[#b35a44]" /> : <Moon size={15} className="text-[#4a5d23]" />}
+                    {dark ? 'Modo claro' : 'Modo oscuro'}
+                  </button>
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleLogout(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                    <LogOut size={15} /> Salir
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -1822,6 +1821,20 @@ export const AdminDashboard: React.FC = () => {
                 return (
                   <div className="space-y-5">
                     <div className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Anuncio (barra superior del sitio)</p>
+                      {Row('Mostrar el anuncio', settings.announceShow, (v) => patchSettings({ announceShow: v }))}
+                      <input
+                        type="text"
+                        maxLength={140}
+                        placeholder="Ej: Cambio de hora: la ceremonia inicia a las 5:00 PM"
+                        value={settings.announceText || ''}
+                        onChange={(e) => setSettings((s: any) => ({ ...s, announceText: e.target.value }))}
+                        onBlur={(e) => patchSettings({ announceText: e.target.value })}
+                        className="w-full rounded-lg border border-stone-200 px-3 py-2 text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Confirmaciones</p>
                       {Row('Aceptar nuevas confirmaciones', settings.rsvpOpen, (v) => patchSettings({ rsvpOpen: v }), 'Al desactivar, el formulario RSVP queda cerrado.')}
                       <div className="flex items-center justify-between rounded-xl border border-stone-200 px-3.5 py-2.5 text-xs">
@@ -1838,6 +1851,15 @@ export const AdminDashboard: React.FC = () => {
                       <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Sitio de invitados</p>
                       {Row('Mostrar contador "X confirmaron"', settings.showCounter, (v) => patchSettings({ showCounter: v }))}
                       {Row('Mostrar el libro de mensajes', settings.showGuestbook, (v) => patchSettings({ showGuestbook: v }))}
+                      {Row('Sección "Nuestra historia"', settings.showStory, (v) => patchSettings({ showStory: v }))}
+                      {Row('Sección "Padres / padrinos"', settings.showParents, (v) => patchSettings({ showParents: v }))}
+                      {Row('Sección "Galería"', settings.showGallery, (v) => patchSettings({ showGallery: v }))}
+                      {Row('Sección "Código de vestimenta"', settings.showDressCode, (v) => patchSettings({ showDressCode: v }))}
+                      {Row('Sección "Mesa de regalos"', settings.showGifts, (v) => patchSettings({ showGifts: v }))}
+                      <div className="flex items-center justify-between rounded-xl border border-stone-200 px-3.5 py-2.5 text-xs">
+                        <span className="font-bold text-stone-700">Fecha y hora del evento<span className="mt-0.5 block text-[10px] font-normal text-stone-400">Para la cuenta regresiva. Vacío = usar la predeterminada.</span></span>
+                        <input type="datetime-local" value={settings.eventDateTime || ''} onChange={(e) => patchSettings({ eventDateTime: e.target.value })} className="rounded-lg border border-stone-200 px-2 py-1 text-xs" />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
