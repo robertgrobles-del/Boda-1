@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Users, Plus, RefreshCw, X, Wand2, Tag, Save, Trash2, Lock, Unlock, AlertTriangle, Download, UtensilsCrossed } from 'lucide-react';
+import { Users, Plus, RefreshCw, X, Wand2, Tag, Save, Trash2, Lock, Unlock, AlertTriangle, Download, UtensilsCrossed, Undo2, Redo2 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
 
@@ -46,6 +46,12 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   const [labelDraft, setLabelDraft] = useState('');
   const [exportOpen, setExportOpen] = useState(false);
 
+  // undo / redo
+  type Snap = { a: Assignments; l: Record<number, string>; k: number[] };
+  const historyRef = useRef<Snap[]>([]);
+  const [histIdx, setHistIdx] = useState(0);
+  const travelRef = useRef(false);
+
   const [tableSize, setTableSize] = useState<number>(() => {
     const v = parseInt(localStorage.getItem(LS_SIZE) || '', 10);
     return v > 0 ? v : 8;
@@ -70,12 +76,17 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
       Object.entries<any>(data.assignments || {}).forEach(([k, v]) => {
         norm[k] = typeof v === 'object' ? { table: v.table, seat: v.seat ?? null } : { table: v, seat: null };
       });
+      const labelsObj = Object.fromEntries(
+        Object.entries(data.tables || {}).map(([k, v]) => [Number(k), v as string]),
+      ) as Record<number, string>;
+      const lockedArr = ((data.locked || []) as any[]).map(Number);
+      travelRef.current = true; // que el efecto de historial no registre esta carga
       setAssignments(norm);
-      setTableLabels(
-        Object.fromEntries(Object.entries(data.tables || {}).map(([k, v]) => [Number(k), v as string])),
-      );
-      setLocked(new Set<number>((data.locked || []).map(Number)));
+      setTableLabels(labelsObj);
+      setLocked(new Set<number>(lockedArr));
       setDirty(false);
+      historyRef.current = [{ a: norm, l: labelsObj, k: lockedArr }];
+      setHistIdx(0);
       setTableCount((prev) => {
         const maxT = Math.max(0, ...Object.values(norm).map((s) => s.table));
         const maxLabeled = Math.max(0, ...Object.keys(data.tables || {}).map(Number));
@@ -95,6 +106,43 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     didLoad.current = true;
     load(true);
   }, [load]);
+
+  // Registrar cada cambio en el historial (para deshacer/rehacer)
+  useEffect(() => {
+    if (travelRef.current) { travelRef.current = false; return; }
+    const s: Snap = { a: assignments, l: tableLabels, k: [...locked] };
+    const cur = historyRef.current[histIdx];
+    if (cur && JSON.stringify(cur) === JSON.stringify(s)) return;
+    const next = historyRef.current.slice(0, histIdx + 1);
+    next.push(JSON.parse(JSON.stringify(s)));
+    historyRef.current = next.slice(-60);
+    setHistIdx(historyRef.current.length - 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignments, tableLabels, locked]);
+
+  const applySnap = (s: Snap) => {
+    travelRef.current = true;
+    setAssignments(s.a);
+    setTableLabels(s.l);
+    setLocked(new Set(s.k));
+    setDirty(true);
+    setSelected(null);
+  };
+  const canUndo = histIdx > 0;
+  const canRedo = histIdx < historyRef.current.length - 1;
+  const undo = () => { if (canUndo) { applySnap(historyRef.current[histIdx - 1]); setHistIdx(histIdx - 1); } };
+  const redo = () => { if (canRedo) { applySnap(historyRef.current[histIdx + 1]); setHistIdx(histIdx + 1); } };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   const save = async () => {
     setSaving(true);
@@ -182,6 +230,25 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   };
 
   const toTable = (key: string, table: number) => placeAt(key, table, nextFreeSeat(table, key));
+
+  // Mueve TODA una familia (los miembros sin asignar) a una mesa, en asientos seguidos.
+  const moveGroup = (party: string, table: number, startSeat?: number) => {
+    const members = people.filter((p) => p.party === party && !assignments[p.key]);
+    if (!members.length) return;
+    setAssignments((a) => {
+      const next = { ...a };
+      const taken = (s: number) => Object.values(next).some((v) => v.table === table && v.seat === s);
+      let seat = startSeat ?? 0;
+      for (const m of members) {
+        while (taken(seat)) seat++;
+        next[m.key] = { table, seat };
+        seat++;
+      }
+      return next;
+    });
+    setSelected(null);
+    setDirty(true);
+  };
 
   const setLabel = (n: number, label: string) => {
     setEditingLabel(null);
@@ -471,6 +538,22 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     },
   });
 
+  const handleDrop = (k: string, target: 'pool' | { table: number; seat?: number }) => {
+    if (!k) return;
+    if (k.startsWith('group:')) {
+      const party = k.slice(6);
+      if (target === 'pool') {
+        people.filter((p) => p.party === party && assignments[p.key]).forEach((p) => toPool(p.key));
+      } else {
+        moveGroup(party, target.table, target.seat);
+      }
+      return;
+    }
+    if (target === 'pool') toPool(k);
+    else if (target.seat != null) placeAt(k, target.table, target.seat);
+    else toTable(k, target.table);
+  };
+
   // Nota: `chip` y `renderTable` son FUNCIONES (no componentes) a propósito:
   // definirlos como componentes dentro del render los recrea en cada estado y
   // React desmonta el nodo que se está arrastrando → cancela el drag.
@@ -531,7 +614,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
           {/* mesa (círculo central) — soltar/clic aquí = primer asiento libre */}
           <div
             {...over(`t${n}`)}
-            onDrop={(e) => { e.preventDefault(); const k = e.dataTransfer.getData('text/plain'); endDrag(); if (k) toTable(k, n); }}
+            onDrop={(e) => { e.preventDefault(); const k = e.dataTransfer.getData('text/plain'); endDrag(); handleDrop(k, { table: n }); }}
             onClick={() => { if (selected) toTable(selected, n); }}
             className={`absolute inset-[26%] flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-full border-2 p-2 text-center transition-all ${
               dragOver === `t${n}` ? 'scale-105 border-[#4a5d23] bg-[#4a5d23]/15'
@@ -606,7 +689,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
                   e.stopPropagation();
                   const k = e.dataTransfer.getData('text/plain');
                   endDrag();
-                  if (k) placeAt(k, n, i);
+                  handleDrop(k, { table: n, seat: i });
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -712,6 +795,26 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
               </>
             )}
           </div>
+          <div className="flex overflow-hidden rounded-full border border-stone-200">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!canUndo}
+              title="Deshacer (Ctrl+Z)"
+              className="px-2.5 py-2 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-300"
+            >
+              <Undo2 size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={!canRedo}
+              title="Rehacer (Ctrl+Shift+Z)"
+              className="border-l border-stone-200 px-2.5 py-2 text-stone-600 hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-300"
+            >
+              <Redo2 size={13} />
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => load()}
@@ -788,7 +891,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
           {/* Pool sin asignar */}
           <div
             {...over('pool')}
-            onDrop={(e) => { e.preventDefault(); const k = e.dataTransfer.getData('text/plain'); endDrag(); if (k) toPool(k); }}
+            onDrop={(e) => { e.preventDefault(); const k = e.dataTransfer.getData('text/plain'); endDrag(); handleDrop(k, 'pool'); }}
             onClick={() => { if (selected) toPool(selected); }}
             className={`h-fit rounded-3xl border-2 border-dashed bg-white p-4 transition-colors ${
               dragOver === 'pool' ? 'border-[#4a5d23] bg-[#f1f4ea]/60' : dragKey || selected ? 'border-[#4a5d23]/60' : 'border-stone-200'
@@ -815,9 +918,22 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
                   const gtag = g.items.find((p) => p.tag)?.tag;
                   return (
                     <div key={g.party}>
-                      <p className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                      <p
+                        draggable={g.items.length > 1}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', `group:${g.party}`);
+                          e.dataTransfer.effectAllowed = 'move';
+                          requestAnimationFrame(() => { setDragKey(`group:${g.party}`); document.body.classList.add('select-none'); });
+                        }}
+                        onDragEnd={endDrag}
+                        title={g.items.length > 1 ? 'Arrastra para sentar a toda la familia junta' : undefined}
+                        className={`mb-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-stone-400 ${
+                          g.items.length > 1 ? 'cursor-grab active:cursor-grabbing' : ''
+                        }`}
+                      >
                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: partyColor(g.party) }} />
                         {g.party}
+                        <span className="text-stone-300">({g.items.length})</span>
                         {gtag && (
                           <span className="inline-flex items-center gap-0.5 rounded-full bg-[#4a5d23]/10 px-1.5 text-[9px] text-[#4a5d23]">
                             <Tag size={9} /> {gtag}
