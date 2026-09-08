@@ -44,20 +44,20 @@
                 extend: {
                     colors: {
                         olive: {
-                            DEFAULT: '#4a5d23',
-                            dark: '#3b4c1b',
-                            light: '#f1f4ea',
+                            DEFAULT: 'rgb(var(--c-olive) / <alpha-value>)',
+                            dark: 'rgb(var(--c-olive-dark) / <alpha-value>)',
+                            light: 'rgb(var(--c-olive-light) / <alpha-value>)',
                         },
                         terracotta: {
-                            DEFAULT: '#b35a44',
-                            dark: '#a04d39',
+                            DEFAULT: 'rgb(var(--c-terracotta) / <alpha-value>)',
+                            dark: 'rgb(var(--c-terracotta-dark) / <alpha-value>)',
                         },
-                        cream: '#fdfaf6',
-                        ink: '#1a1a1a',
+                        cream: 'rgb(var(--c-cream) / <alpha-value>)',
+                        ink: 'rgb(var(--c-ink) / <alpha-value>)',
                     },
                     fontFamily: {
-                        serif: ['Playfair Display', 'serif'],
-                        signature: ['Great Vibes', 'cursive'],
+                        serif: ['var(--font-serif)', 'Playfair Display', 'serif'],
+                        signature: ['var(--font-signature)', 'Great Vibes', 'cursive'],
                     }
                 }
             }
@@ -66,13 +66,59 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Great+Vibes&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Great+Vibes&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Parisienne&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Tangerine:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Petit+Formal+Script&display=swap" rel="stylesheet">
     <style>
         :root {
-            --wedding-bg: #fdfaf6;
-            --wedding-olive: #4a5d23;
-            --wedding-terracotta: #b35a44;
-            --wedding-dark: #1a1a1a;
+            /* Paleta base (tema "clásico"). Cada portal puede cambiarla con data-portaltheme. */
+            --c-olive: 74 93 35;
+            --c-olive-dark: 59 76 27;
+            --c-olive-light: 241 244 234;
+            --c-terracotta: 179 90 68;
+            --c-terracotta-dark: 160 77 57;
+            --c-cream: 253 250 246;
+            --c-ink: 26 26 26;
+            --font-serif: 'Playfair Display';
+            --font-signature: 'Great Vibes';
+
+            --wedding-bg: rgb(var(--c-cream));
+            --wedding-olive: rgb(var(--c-olive));
+            --wedding-terracotta: rgb(var(--c-terracotta));
+            --wedding-dark: rgb(var(--c-ink));
+        }
+
+        /* --- Temas por portal (solo cambian paleta + tipografías, mismo layout) --- */
+        [data-portaltheme="rosa"] {
+            --c-olive: 122 78 92;
+            --c-olive-dark: 99 62 74;
+            --c-olive-light: 245 236 239;
+            --c-terracotta: 192 120 120;
+            --c-terracotta-dark: 170 100 100;
+            --c-cream: 252 247 246;
+            --c-ink: 42 30 34;
+            --font-serif: 'Cormorant Garamond';
+            --font-signature: 'Parisienne';
+        }
+        [data-portaltheme="jardin"] {
+            --c-olive: 30 95 72;
+            --c-olive-dark: 22 74 56;
+            --c-olive-light: 229 242 236;
+            --c-terracotta: 226 114 91;
+            --c-terracotta-dark: 200 95 74;
+            --c-cream: 249 250 246;
+            --c-ink: 24 38 32;
+            --font-serif: 'EB Garamond';
+            --font-signature: 'Tangerine';
+        }
+        [data-portaltheme="arena"] {
+            --c-olive: 138 102 61;
+            --c-olive-dark: 112 82 48;
+            --c-olive-light: 244 237 227;
+            --c-terracotta: 176 86 54;
+            --c-terracotta-dark: 150 72 44;
+            --c-cream: 250 245 238;
+            --c-ink: 42 33 25;
+            --font-serif: 'Fraunces';
+            --font-signature: 'Petit Formal Script';
         }
         body {
             font-family: 'Inter', sans-serif;
@@ -94,10 +140,10 @@
             outline: none;
         }
         .font-serif {
-            font-family: 'Playfair Display', serif;
+            font-family: var(--font-serif), 'Playfair Display', serif;
         }
         .font-signature {
-            font-family: 'Great Vibes', cursive;
+            font-family: var(--font-signature), 'Great Vibes', cursive;
         }
         /* Bordes de papel rasgado (arriba y abajo) para las bandas de foto */
         .paper-edge-y {

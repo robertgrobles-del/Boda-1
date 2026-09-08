@@ -6,6 +6,7 @@ import { FallingLeaves } from './FallingLeaves';
 import { Lightbox } from './Lightbox';
 import { Skeleton } from './Skeleton';
 import { getInviteeName } from '../utils/invitee';
+import { useSiteSettings, applyTheme } from './useSiteSettings';
 
 const goHome = () => {
   window.history.pushState(null, '', '/');
@@ -36,6 +37,8 @@ export const GraciasPage: React.FC = () => {
   const [items, setItems] = useState<{ id: string; name: string }[] | null>(null);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [inviteeName, setInviteeName] = useState<string | null>(() => getInviteeName());
+  const { theme } = useSiteSettings();
+  useEffect(() => { applyTheme(theme); }, [theme]);
 
   useEffect(() => {
     document.title = `Gracias · ${EVENT_DATA.hashtag.replace('#', '')}`;

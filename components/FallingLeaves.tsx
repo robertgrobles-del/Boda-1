@@ -29,7 +29,12 @@ export const FallingLeaves: React.FC<{ count?: number }> = ({ count = 14 }) => {
         drift: `${(Math.random() * 2 - 1) * 44}px`,
         spin: `${(Math.random() > 0.5 ? 1 : -1) * (240 + Math.random() * 260)}deg`,
         opacity: 0.1 + Math.random() * 0.22,
-        color: ['#4a5d23', '#6b7c3a', '#8a9a5b', '#b35a44'][i % 4],
+        color: [
+          'rgb(var(--c-olive))',
+          'rgb(var(--c-olive) / 0.75)',
+          'rgb(var(--c-olive-dark))',
+          'rgb(var(--c-terracotta))',
+        ][i % 4],
       })),
     [count],
   );

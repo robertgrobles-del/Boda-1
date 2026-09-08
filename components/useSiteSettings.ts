@@ -35,6 +35,7 @@ export interface SiteSettings {
   registryCasaUrl: string;
   registryBanks: BankAccount[];
   galleryUrls: string[];
+  theme: 'clasico' | 'rosa' | 'jardin' | 'arena';
   /** slot -> versión (ms) de la imagen sobreescrita desde el panel */
   images: Record<string, number>;
   /** portal activo (o el de ?portalPreview=N) */
@@ -67,9 +68,19 @@ const DEFAULTS: SiteSettings = {
   registryCasaUrl: 'https://listaderegalos.casacuesta.com/Event/Stephanie-DalvinDaniel?utm_source=share',
   registryBanks: [],
   galleryUrls: [],
+  theme: 'clasico',
   images: {},
   _portal: 1,
 };
+
+/** Aplica el tema del portal (paleta + tipografías) al <html>. */
+export function applyTheme(theme: string) {
+  try {
+    const el = document.documentElement;
+    if (theme && theme !== 'clasico') el.setAttribute('data-portaltheme', theme);
+    else el.removeAttribute('data-portaltheme');
+  } catch { /* noop */ }
+}
 
 // ?portalPreview=N → previsualizar un portal sin activarlo
 const previewPortal = (): number => {
@@ -106,6 +117,7 @@ const load = (): Promise<SiteSettings> => {
     .then((r) => (r.ok ? r.json() : {}))
     .then((d) => {
       cache = { ...DEFAULTS, ...(d || {}) };
+      applyTheme(cache.theme);
       listeners.forEach((fn) => fn(cache!));
       return cache;
     })

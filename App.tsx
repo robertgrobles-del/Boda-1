@@ -22,7 +22,7 @@ import { MemoriesPage } from './components/MemoriesPage';
 import { LegalPage } from './components/LegalPage';
 import { GraciasPage } from './components/GraciasPage';
 import { InviteeProvider } from './components/InviteeContext';
-import { useSiteSettings, useSiteImage } from './components/useSiteSettings';
+import { useSiteSettings, useSiteImage, applyTheme } from './components/useSiteSettings';
 import { SiteGate } from './components/SiteGate';
 import { Calendar, Apple } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
@@ -50,6 +50,7 @@ const App: React.FC = () => {
 
   const siteSettings = useSiteSettings();
   const bandImg = useSiteImage('band', PHOTOS.band);
+  useEffect(() => { applyTheme(siteSettings.theme); }, [siteSettings.theme]);
   const graciasTakeover =
     siteSettings.graciasAuto &&
     new Date().toISOString().slice(0, 10) >= siteSettings.graciasFrom;

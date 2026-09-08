@@ -97,6 +97,8 @@ const DEFAULT_SETTINGS = {
     registryBanks: [] as Array<{ bank: string; type: string; number: string; holder: string; cedula: string }>,
     // Galería: si tiene URLs, reemplazan a las fotos por defecto de la galería del sitio
     galleryUrls: [] as string[],
+    // Tema visual del portal: paleta de color + tipografías (mismo layout)
+    theme: 'clasico' as 'clasico' | 'rosa' | 'jardin' | 'arena',
 };
 type Settings = typeof DEFAULT_SETTINGS;
 
@@ -123,7 +125,7 @@ const PRESENTATION_KEYS = [
     'eventDateTime',
     'dressFormalTitle', 'dressFormalText', 'dressColorsTitle', 'dressColorsText',
     'registryIntro', 'registryCasaNote', 'registryCasaListNumber', 'registryCasaUrl', 'registryBanks',
-    'galleryUrls',
+    'galleryUrls', 'theme',
 ] as const;
 type PresentationKey = typeof PRESENTATION_KEYS[number];
 const PRESENTATION_SET = new Set<string>(PRESENTATION_KEYS as readonly string[]);
