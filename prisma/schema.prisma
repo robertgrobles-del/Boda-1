@@ -42,6 +42,8 @@ model TableMeta {
   tableNumber Int     @unique
   label       String  @default("")
   locked      Boolean @default(false) // mesa fija: auto-asignar la ignora
+  x           Float? // posición en el plano del salón (fracción 0..1)
+  y           Float?
 }
 
 model GuestMessage {

@@ -915,12 +915,14 @@ app.get('/api/admin/seating', async (req, res) => {
 
         const tables: Record<number, string> = {};
         const locked: number[] = [];
+        const positions: Record<number, { x: number; y: number }> = {};
         metas.forEach((m: any) => {
             if (m.label) tables[m.tableNumber] = m.label;
             if (m.locked) locked.push(m.tableNumber);
+            if (m.x != null && m.y != null) positions[m.tableNumber] = { x: m.x, y: m.y };
         });
 
-        res.json({ people, assignments, tables, locked });
+        res.json({ people, assignments, tables, locked, positions });
     } catch (error) {
         console.error('Seating GET error:', error);
         res.status(500).json({ error: 'Failed to load seating' });
@@ -931,7 +933,7 @@ app.get('/api/admin/seating', async (req, res) => {
 app.post('/api/admin/seating/save', async (req, res) => {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { assignments, tables, locked } = req.body || {};
+    const { assignments, tables, locked, positions } = req.body || {};
 
     try {
         const people = await buildSeatingPeople();
@@ -954,11 +956,23 @@ app.post('/api/admin/seating/save', async (req, res) => {
             const clean = String(label || '').trim().slice(0, 40);
             if (num >= 1 && clean) labels.set(num, clean);
         });
-        const metaNums = new Set<number>([...labels.keys(), ...lockedSet]);
+        const pos = new Map<number, { x: number; y: number }>();
+        Object.entries(positions || {}).forEach(([n, p]: [string, any]) => {
+            const num = parseInt(n, 10);
+            const x = Number(p?.x);
+            const y = Number(p?.y);
+            if (num >= 1 && Number.isFinite(x) && Number.isFinite(y)) {
+                pos.set(num, { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) });
+            }
+        });
+
+        const metaNums = new Set<number>([...labels.keys(), ...lockedSet, ...pos.keys()]);
         const metaRows = [...metaNums].map((tableNumber) => ({
             tableNumber,
             label: labels.get(tableNumber) || '',
             locked: lockedSet.has(tableNumber),
+            x: pos.get(tableNumber)?.x ?? null,
+            y: pos.get(tableNumber)?.y ?? null,
         }));
 
         await prisma.seatAssignment.deleteMany({});

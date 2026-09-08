@@ -45,6 +45,14 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   const [editingLabel, setEditingLabel] = useState<number | null>(null);
   const [labelDraft, setLabelDraft] = useState('');
   const [exportOpen, setExportOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'plan'>(
+    () => (localStorage.getItem('sd_seat_view') === 'plan' ? 'plan' : 'grid'),
+  );
+  const [positions, setPositions] = useState<Record<number, { x: number; y: number }>>({});
+  const planRef = useRef<HTMLDivElement | null>(null);
+  const dragTableRef = useRef<number | null>(null);
+
+  useEffect(() => localStorage.setItem('sd_seat_view', viewMode), [viewMode]);
 
   // undo / redo
   type Snap = { a: Assignments; l: Record<number, string>; k: number[] };
@@ -84,6 +92,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
       setAssignments(norm);
       setTableLabels(labelsObj);
       setLocked(new Set<number>(lockedArr));
+      setPositions(data.positions || {});
       setDirty(false);
       historyRef.current = [{ a: norm, l: labelsObj, k: lockedArr }];
       setHistIdx(0);
@@ -150,7 +159,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
       const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/seating/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
-        body: JSON.stringify({ assignments, tables: tableLabels, locked: [...locked] }),
+        body: JSON.stringify({ assignments, tables: tableLabels, locked: [...locked], positions }),
       });
       if (!res.ok) throw new Error();
       setDirty(false);
@@ -300,6 +309,15 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
         if (num === n) return;
         next.add(num > n ? num - 1 : num);
       });
+      return next;
+    });
+    setPositions((m) => {
+      const next: Record<number, { x: number; y: number }> = {};
+      for (const [k, v] of Object.entries(m)) {
+        const num = Number(k);
+        if (num === n) continue;
+        next[num > n ? num - 1 : num] = v;
+      }
       return next;
     });
     setTableCount((c) => Math.max(1, c - 1));
@@ -727,6 +745,87 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     );
   };
 
+  // --- Plano libre del salón ---
+  const posOf = (n: number) => {
+    if (positions[n]) return positions[n];
+    const cols = Math.max(1, Math.ceil(Math.sqrt(effectiveCount)));
+    const idx = n - 1;
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    const rows = Math.ceil(effectiveCount / cols);
+    return { x: (col + 0.5) / cols, y: (row + 0.5) / Math.max(1, rows) };
+  };
+  const onPlanMove = (e: React.PointerEvent) => {
+    const n = dragTableRef.current;
+    if (n == null || !planRef.current) return;
+    const r = planRef.current.getBoundingClientRect();
+    const x = Math.min(0.97, Math.max(0.03, (e.clientX - r.left) / r.width));
+    const y = Math.min(0.95, Math.max(0.05, (e.clientY - r.top) / r.height));
+    setPositions((p) => ({ ...p, [n]: { x, y } }));
+  };
+  const onPlanUp = () => {
+    if (dragTableRef.current != null) {
+      dragTableRef.current = null;
+      setDirty(true);
+    }
+  };
+  const renderPlanTable = (n: number) => {
+    const p = posOf(n);
+    const map = seatMapOf(n);
+    const cnt = map.filter(Boolean).length;
+    const isLocked = locked.has(n);
+    const anyHit = !!searchQ && map.some((x) => x && matches(x));
+    return (
+      <div
+        className="absolute -translate-x-1/2 -translate-y-1/2 touch-none select-none"
+        style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}
+      >
+        <div
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            dragTableRef.current = n;
+          }}
+          onDoubleClick={() => {
+            setViewMode('grid');
+            requestAnimationFrame(() => tableRefs.current[n]?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+          }}
+          {...over(`t${n}`)}
+          onDrop={(e) => {
+            e.preventDefault();
+            const k = e.dataTransfer.getData('text/plain');
+            endDrag();
+            handleDrop(k, { table: n });
+          }}
+          title={`${tableLabels[n] || `Mesa ${n}`} — arrastra para mover · doble clic para editar asientos`}
+          className={`flex h-[5.5rem] w-[5.5rem] cursor-grab flex-col items-center justify-center rounded-full border-2 text-center shadow-md transition-all active:cursor-grabbing ${
+            dragOver === `t${n}`
+              ? 'scale-110 border-[#4a5d23] bg-[#4a5d23]/15'
+              : anyHit
+              ? 'border-amber-400 bg-amber-50'
+              : isLocked
+              ? 'border-amber-300 bg-amber-50'
+              : 'border-[#4a5d23]/30 bg-[#f1f4ea]'
+          }`}
+        >
+          <span className="text-[11px] font-bold text-stone-700">Mesa {n}</span>
+          {tableLabels[n] && (
+            <span className="max-w-[4.5rem] truncate rounded-full bg-[#4a5d23]/15 px-1 text-[8px] font-semibold text-[#4a5d23]">
+              {tableLabels[n]}
+            </span>
+          )}
+          <span
+            className={`text-[9px] font-bold ${
+              cnt > tableSize ? 'text-red-600' : cnt === tableSize ? 'text-amber-700' : 'text-[#4a5d23]'
+            }`}
+          >
+            {cnt}/{tableSize}
+          </span>
+        </div>
+        {isLocked && <Lock size={11} className="absolute -right-1 -top-1 rounded-full bg-amber-100 p-0.5 text-amber-700" />}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Toolbar */}
@@ -744,6 +843,22 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <div className="flex overflow-hidden rounded-full border border-stone-200 text-[11px] font-bold uppercase tracking-wider">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-2 ${viewMode === 'grid' ? 'bg-[#4a5d23] text-white' : 'text-stone-500 hover:bg-stone-50'}`}
+            >
+              Cuadrícula
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('plan')}
+              className={`px-3 py-2 ${viewMode === 'plan' ? 'bg-[#4a5d23] text-white' : 'text-stone-500 hover:bg-stone-50'}`}
+            >
+              Plano
+            </button>
+          </div>
           <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-stone-500">
             Personas / mesa
             <input
@@ -954,12 +1069,32 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
             </div>
           </div>
 
-          {/* Grilla de mesas redondas */}
-          <div className="grid gap-x-6 gap-y-8 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
-            {Array.from({ length: effectiveCount }, (_, i) => i + 1).map((n) => (
-              <React.Fragment key={n}>{renderTable(n)}</React.Fragment>
-            ))}
-          </div>
+          {/* Mesas: cuadrícula o plano libre */}
+          {viewMode === 'grid' ? (
+            <div className="grid gap-x-6 gap-y-8 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
+              {Array.from({ length: effectiveCount }, (_, i) => i + 1).map((n) => (
+                <React.Fragment key={n}>{renderTable(n)}</React.Fragment>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11px] italic text-stone-400">
+                Arrastra las mesas para colocarlas como en el salón. Suelta un invitado sobre una mesa para sentarlo. Doble clic en una mesa para editar sus asientos.
+              </p>
+              <div
+                ref={planRef}
+                onPointerMove={onPlanMove}
+                onPointerUp={onPlanUp}
+                onPointerLeave={onPlanUp}
+                className="relative w-full overflow-hidden rounded-3xl border-2 border-dashed border-stone-200 bg-[#faf8f4]"
+                style={{ aspectRatio: '16 / 10' }}
+              >
+                {Array.from({ length: effectiveCount }, (_, i) => i + 1).map((n) => (
+                  <React.Fragment key={n}>{renderPlanTable(n)}</React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
