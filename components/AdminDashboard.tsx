@@ -83,6 +83,8 @@ export const AdminDashboard: React.FC = () => {
   const { toast } = useToast();
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('sd_admin_key') || '');
+  const [dark, setDark] = useState(() => localStorage.getItem('sd_admin_dark') === '1');
+  useEffect(() => { localStorage.setItem('sd_admin_dark', dark ? '1' : '0'); }, [dark]);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -491,10 +493,31 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKeyInput.trim()) return;
-    setApiKey(apiKeyInput.trim());
+    const key = apiKeyInput.trim();
+    if (!key) return;
+    setLoading(true);
+    try {
+      // Intercambiar la clave por un token de sesión (que expira). La clave real no se guarda.
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.token) {
+        setApiKey(data.token);
+        setApiKeyInput('');
+      } else {
+        // Fallback: backend sin /login → usar la clave directa
+        setApiKey(key);
+      }
+    } catch {
+      setApiKey(key);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -707,7 +730,7 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#fdfaf6] py-12 px-6 lg:px-16 text-stone-800">
+    <div data-admintheme={dark ? 'dark' : undefined} className="min-h-screen bg-[#fdfaf6] py-8 px-4 sm:py-12 sm:px-6 lg:px-16 text-stone-800">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header */}
@@ -737,6 +760,13 @@ export const AdminDashboard: React.FC = () => {
               className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
             >
               <Download size={14} className="text-[#b35a44]" /> Exportar CSV
+            </button>
+            <button
+              onClick={() => setDark((d) => !d)}
+              className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
+              title={dark ? 'Modo claro' : 'Modo oscuro'}
+            >
+              {dark ? '☀️' : '🌙'}
             </button>
             <button
               onClick={handleLogout}

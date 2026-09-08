@@ -5,6 +5,7 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 // Cargar variables de entorno (.env es lo que también lee Prisma; .env.backend por compatibilidad)
 dotenv.config();
@@ -16,6 +17,40 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// --- Sesión de admin (token firmado, expira; la clave real no se guarda en el cliente) ---
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const signSession = (exp: number) =>
+    crypto.createHmac('sha256', process.env.ADMIN_API_KEY || 'x').update(String(exp)).digest('hex');
+const makeSession = () => {
+    const exp = Date.now() + SESSION_TTL_MS;
+    return { token: `s.${exp}.${signSession(exp)}`, exp };
+};
+const validSession = (t: any): boolean => {
+    const m = /^s\.(\d+)\.([0-9a-f]{64})$/.exec(String(t || ''));
+    if (!m) return false;
+    if (Number(m[1]) < Date.now()) return false;
+    try {
+        return crypto.timingSafeEqual(Buffer.from(m[2], 'hex'), Buffer.from(signSession(Number(m[1])), 'hex'));
+    } catch {
+        return false;
+    }
+};
+const adminOk = (req: any): boolean => {
+    const adminKey = process.env.ADMIN_API_KEY;
+    if (!adminKey) return false;
+    const k = req.headers['x-api-key'];
+    return k === adminKey || validSession(k);
+};
+
+app.post('/api/admin/login', (req, res) => {
+    const adminKey = process.env.ADMIN_API_KEY;
+    if (!adminKey || req.body?.key !== adminKey) {
+        return res.status(401).json({ success: false, error: 'Clave incorrecta.' });
+    }
+    const { token, exp } = makeSession();
+    res.json({ success: true, token, exp });
+});
 
 // Configuración de Nodemailer (Placeholder - requiere config del usuario)
 const transporter = nodemailer.createTransport({
@@ -626,7 +661,7 @@ app.get('/api/admin/summary', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
     const adminKey = process.env.ADMIN_API_KEY;
 
-    if (!adminKey || apiKey !== adminKey) {
+    if (!adminKey || !adminOk(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -652,7 +687,7 @@ app.get('/api/admin/guests', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
     const adminKey = process.env.ADMIN_API_KEY;
 
-    if (!adminKey || apiKey !== adminKey) {
+    if (!adminKey || !adminOk(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -669,7 +704,7 @@ app.get('/api/admin/guests', async (req, res) => {
 // 4b. DELETE una confirmación (Admin) — libera los cupos usados
 app.delete('/api/admin/guests/:id', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
-    if (!process.env.ADMIN_API_KEY || apiKey !== process.env.ADMIN_API_KEY) {
+    if (!process.env.ADMIN_API_KEY || !adminOk(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     const id = parseInt(req.params.id, 10);
@@ -755,7 +790,7 @@ app.get('/api/admin/allowed', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
     const adminKey = process.env.ADMIN_API_KEY;
 
-    if (!adminKey || apiKey !== adminKey) {
+    if (!adminKey || !adminOk(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -774,7 +809,7 @@ app.post('/api/admin/allowed', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
     const adminKey = process.env.ADMIN_API_KEY;
 
-    if (!adminKey || apiKey !== adminKey) {
+    if (!adminKey || !adminOk(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -859,7 +894,7 @@ app.post('/api/admin/allowed/bulk', async (req, res) => {
 // 7c. POST Reset a un teléfono autorizado (vuelve a 0 sus cupos usados)
 app.post('/api/admin/allowed/:id/reset', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
-    if (!process.env.ADMIN_API_KEY || apiKey !== process.env.ADMIN_API_KEY) {
+    if (!process.env.ADMIN_API_KEY || !adminOk(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     const id = parseInt(req.params.id, 10);
@@ -878,7 +913,7 @@ app.post('/api/admin/allowed/:id/reset', async (req, res) => {
 // 7d. PUT Editar un teléfono autorizado (nombre, teléfono, PIN, pases)
 app.put('/api/admin/allowed/:id', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
-    if (!process.env.ADMIN_API_KEY || apiKey !== process.env.ADMIN_API_KEY) {
+    if (!process.env.ADMIN_API_KEY || !adminOk(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     const id = parseInt(req.params.id, 10);
@@ -949,7 +984,7 @@ app.delete('/api/admin/allowed/:id', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
     const adminKey = process.env.ADMIN_API_KEY;
 
-    if (!adminKey || apiKey !== adminKey) {
+    if (!adminKey || !adminOk(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -971,7 +1006,7 @@ app.get('/api/admin/messages', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
     const adminKey = process.env.ADMIN_API_KEY;
 
-    if (!adminKey || apiKey !== adminKey) {
+    if (!adminKey || !adminOk(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -990,7 +1025,7 @@ app.delete('/api/admin/messages/:id', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
     const adminKey = process.env.ADMIN_API_KEY;
 
-    if (!adminKey || apiKey !== adminKey) {
+    if (!adminKey || !adminOk(req)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -1009,10 +1044,7 @@ app.delete('/api/admin/messages/:id', async (req, res) => {
 
 // --- Organización de mesas de la recepción (Admin) ---------------------------
 
-const isAdmin = (req: any) => {
-    const adminKey = process.env.ADMIN_API_KEY;
-    return adminKey && req.headers['x-api-key'] === adminKey;
-};
+const isAdmin = (req: any) => adminOk(req);
 
 const onlyDigits = (s: any) => String(s || '').replace(/\D/g, '');
 const normLabel = (s: any) =>
