@@ -2,9 +2,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { PHOTOS } from '../constants';
+import { useSiteImage } from './useSiteSettings';
 
 export const StoryImproved: React.FC = () => {
     const [isLoaded, setIsLoaded] = React.useState(false);
+    const storyImg = useSiteImage('story', PHOTOS.story);
 
     return (
         <section id="historia" className="relative pt-16 pb-24 md:py-40 bg-cream overflow-hidden min-h-screen flex items-center">
@@ -49,7 +51,7 @@ export const StoryImproved: React.FC = () => {
                             <motion.img
                                 whileHover={{ scale: 1.1 }}
                                 transition={{ duration: 1.5 }}
-                                src={PHOTOS.story}
+                                src={storyImg}
                                 alt="La belleza del sacramento"
                                 className={`w-full h-full object-cover transition-opacity duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
                                 onLoad={() => setIsLoaded(true)}

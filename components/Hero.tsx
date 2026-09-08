@@ -4,12 +4,11 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ChevronRight, MapPin, Calendar } from 'lucide-react';
 import { responsiveImg } from '../utils/images';
 import { PHOTOS } from '../constants';
+import { useSiteImage } from './useSiteSettings';
 
 interface HeroProps {
   onRSVPClick?: () => void;
 }
-
-const images = PHOTOS.heroCluster;
 
 // 3 posiciones orbitales del cluster de hexágonos
 const positions = [
@@ -21,6 +20,9 @@ const positions = [
 export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
   const reduceMotion = useReducedMotion();
   const [rotationIndex, setRotationIndex] = React.useState(0);
+  const heroBackground = useSiteImage('heroBackground', PHOTOS.heroBackground);
+  const heroPortrait = useSiteImage('heroPortrait', '');
+  const images = heroPortrait ? [heroPortrait, heroPortrait, heroPortrait] : PHOTOS.heroCluster;
 
   React.useEffect(() => {
     if (reduceMotion) return;
@@ -38,7 +40,7 @@ export const Hero: React.FC<HeroProps> = ({ onRSVPClick }) => {
       {/* Foto de fondo (LCP) - Desplazada hacia arriba (70%) para mejor encuadre */}
       <div className="absolute inset-0 z-0">
         <img
-          {...responsiveImg(PHOTOS.heroBackground, '100vw')}
+          {...responsiveImg(heroBackground, '100vw')}
           alt=""
           fetchPriority="high"
           className="h-full w-full object-cover object-[center_80%]"

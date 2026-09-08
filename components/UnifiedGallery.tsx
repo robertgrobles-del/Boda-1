@@ -4,15 +4,14 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Lightbox } from './Lightbox';
 import { EVENT_DATA, API_CONFIG, PHOTOS } from '../constants';
 import { responsiveImg } from '../utils/images';
+import { useSiteSettings } from './useSiteSettings';
 
 import { Skeleton } from './Skeleton';
 
-const galleryImages = PHOTOS.gallery;
 const fullSize = (u: string) => (u.startsWith('http') ? `${u}?auto=format&fit=crop&q=80&w=1600` : u);
 
 // Par de fotos del encabezado ("Captura los momentos"): el novio y la novia.
 const headerPair = ['/images/preboda/imagen_21.jpg', '/images/preboda/imagen_22.jpg'];
-const lightboxImages = [...headerPair, ...galleryImages.map(fullSize)];
 
 // Anchos de tarjeta: ~80vw en móvil, 360px en escritorio
 const CARD_SIZES = '(min-width: 768px) 360px, 80vw';
@@ -36,6 +35,9 @@ const GalleryImage: React.FC<{ src: string; alt: string; sizes?: string; classNa
 
 export const UnifiedGallery: React.FC<{ id: string }> = ({ id }) => {
     const reduceMotion = useReducedMotion();
+    const { galleryUrls } = useSiteSettings();
+    const galleryImages = galleryUrls.length ? galleryUrls : PHOTOS.gallery;
+    const lightboxImages = [...headerPair, ...galleryImages.map(fullSize)];
     const [paused, setPaused] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 

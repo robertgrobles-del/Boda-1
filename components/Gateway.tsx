@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { PHOTOS } from '../constants';
 import { getInviteeName } from '../utils/invitee';
+import { useSiteImage } from './useSiteSettings';
 
 interface GatewayProps {
   onEnter: () => void;
@@ -16,6 +17,7 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
   const reduceMotion = useReducedMotion();
   const btnRef = useRef<HTMLButtonElement>(null);
   const invitee = getInviteeName();
+  const gatewayBg = useSiteImage('gateway', PHOTOS.gateway);
 
   useEffect(() => {
     btnRef.current?.focus();
@@ -37,7 +39,7 @@ export const Gateway: React.FC<GatewayProps> = ({ onEnter }) => {
     >
       {/* Foto de fondo */}
       <div className="absolute inset-0 z-0">
-        <img src={PHOTOS.gateway} alt="" className="h-full w-full object-cover object-center" />
+        <img src={gatewayBg} alt="" className="h-full w-full object-cover object-center" />
         <div className="absolute inset-0 bg-black/45 md:bg-black/40" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
       </div>

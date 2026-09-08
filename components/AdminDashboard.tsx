@@ -9,28 +9,8 @@ import {
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
 import { SeatingChart } from './SeatingChart';
-
-const DEFAULT_WA_TEMPLATE = `👋 {SALUDO}
-
-💍 *¡Estás cordialmente invitado/a a nuestra boda!* ✨
-Stephanie & Dalvin 🕊️
-
-🗓 *Fecha:* Sábado, 7 de Noviembre de 2026 - 5:00 PM
-⛪ *Ceremonia:* Catedral Castrense de Santa Bárbara
-🎉 *Recepción:* Club Deportivo Naco · Salón Montás
-
-Para confirmar tu asistencia, por favor accede a nuestra web oficial utilizando *este mismo número de teléfono* y tu *PIN exclusivo*:
-
-📲 *Teléfono registrado:* {TELEFONO}
-🔑 *PIN de acceso:* {PIN}
-🎟️ *Pases reservados:* {PASES} persona(s)
-
-🌐 *Confirma tu asistencia en el siguiente enlace:*
-{ENLACE}
-
-{NOTA_ACCESO}
-
-¡Esperamos contar con tu grata presencia en este día tan especial! ❤️`;
+import { AdminConfig } from './AdminConfig';
+import { DEFAULT_WA_TEMPLATE } from './waTemplate';
 
 interface Guest {
   id: number;
@@ -97,8 +77,24 @@ export const AdminDashboard: React.FC = () => {
   const [newMaxGuests, setNewMaxGuests] = useState('2');
   const [newAccess, setNewAccess] = useState<'both' | 'ceremony' | 'reception'>('both');
   const [settings, setSettings] = useState<any>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [subPage, setSubPage] = useState<'dashboard' | 'config'>(
+    () => (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin/config') ? 'config' : 'dashboard'),
+  );
+  const goConfig = () => {
+    window.history.pushState(null, '', '/admin/config');
+    setSubPage('config');
+    loadSettings();
+  };
+  const goDashboard = () => {
+    window.history.pushState(null, '', '/admin');
+    setSubPage('dashboard');
+  };
+  useEffect(() => {
+    const onPop = () => setSubPage(window.location.pathname.startsWith('/admin/config') ? 'config' : 'dashboard');
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   const aforo = settings?.aforo ? String(settings.aforo) : '';
   const loadSettings = async (key = apiKey) => {
     try {
@@ -122,21 +118,9 @@ export const AdminDashboard: React.FC = () => {
   const [messages, setMessages] = useState<{ id: number; name: string; message: string; createdAt: string }[]>([]);
   const [activeView, setActiveView] = useState<'rsvps' | 'allowed' | 'messages' | 'seating'>('rsvps');
 
-  // WhatsApp Template and Sender state
-  const [waTemplate, setWaTemplate] = useState(() => {
-    const saved = localStorage.getItem('sd_wa_template');
-    if (!saved) return DEFAULT_WA_TEMPLATE;
-    // Migración: se eliminó la imagen de invitación → quitar restos de plantillas viejas
-    let t = saved
-      .replace(/^.*(\{IMAGEN\}|Ver invitación digital).*$\n?/gm, '')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-    // Migración: añadir la nota condicional de "solo ceremonia" si la plantilla no la tiene
-    if (!/\{ACCESO\}|\{NOTA_ACCESO\}/.test(t)) t = `${t}\n\n{NOTA_ACCESO}`;
-    return t;
-  });
+  // Plantilla de WhatsApp: se edita en Configuración y se guarda en la BD (settings.waTemplate).
+  const waTemplate: string = (settings?.waTemplate && String(settings.waTemplate).trim()) || DEFAULT_WA_TEMPLATE;
   const autoSendWa = settings?.autoSendWa ?? true;
-  const [showTemplateSettings, setShowTemplateSettings] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
   const [waMenuOpenId, setWaMenuOpenId] = useState<number | null>(null);
   const [editingGuest, setEditingGuest] = useState<AllowedGuest | null>(null);
@@ -402,21 +386,6 @@ export const AdminDashboard: React.FC = () => {
       toast('Error de conexión con el servidor.', 'error');
     } finally {
       setSavingEdit(false);
-    }
-  };
-
-  // Save template
-  const handleSaveTemplate = () => {
-    localStorage.setItem('sd_wa_template', waTemplate);
-    toast('Plantilla de WhatsApp guardada exitosamente.', 'success');
-  };
-
-  // Reset template
-  const handleResetTemplate = () => {
-    if (window.confirm('¿Restablecer la plantilla a los valores por defecto?')) {
-      setWaTemplate(DEFAULT_WA_TEMPLATE);
-      localStorage.setItem('sd_wa_template', DEFAULT_WA_TEMPLATE);
-      toast('Plantilla restablecida por defecto.', 'success');
     }
   };
 
@@ -750,6 +719,22 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
+  if (subPage === 'config') {
+    return (
+      <div data-admintheme={dark ? 'dark' : undefined} className="min-h-screen bg-[#fdfaf6] text-stone-800">
+        <AdminConfig
+          apiKey={apiKey}
+          settings={settings}
+          setSettings={setSettings}
+          patchSettings={patchSettings}
+          loadSettings={loadSettings}
+          onBack={goDashboard}
+          toast={toast}
+        />
+      </div>
+    );
+  }
+
   return (
     <div data-admintheme={dark ? 'dark' : undefined} className="min-h-screen bg-[#fdfaf6] py-8 px-4 sm:py-12 sm:px-6 lg:px-16 text-stone-800">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -786,7 +771,7 @@ export const AdminDashboard: React.FC = () => {
                   <button role="menuitem" onClick={() => { setMenuOpen(false); exportGuestsToCSV(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
                     <Download size={15} className="text-[#b35a44]" /> Exportar CSV
                   </button>
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); setSettingsOpen(true); loadSettings(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); goConfig(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
                     <Sliders size={15} className="text-[#4a5d23]" /> Configuración
                   </button>
                   <div className="my-1.5 border-t border-stone-100" />
@@ -1046,15 +1031,11 @@ export const AdminDashboard: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => setShowTemplateSettings(!showTemplateSettings)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                    showTemplateSettings 
-                      ? 'bg-[#4a5d23] text-white shadow-md' 
-                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                  }`}
+                  onClick={goConfig}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-stone-100 text-stone-700 hover:bg-stone-200 transition-all"
                 >
                   <Sliders size={14} />
-                  {showTemplateSettings ? 'Ocultar Plantilla' : 'Editar Plantilla WhatsApp'}
+                  Editar plantilla en Configuración
                 </button>
               </div>
             </div>
@@ -1099,132 +1080,6 @@ export const AdminDashboard: React.FC = () => {
               );
             })()}
 
-            {/* Collapsible / Editable Template Editor */}
-            <AnimatePresence>
-              {showTemplateSettings && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.35 }}
-                  className="overflow-hidden"
-                >
-                  <div className="bg-white p-6 md:p-8 rounded-3xl border-2 border-emerald-100 shadow-lg grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Left: Template Inputs */}
-                    <div className="lg:col-span-7 space-y-5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-lg font-bold text-stone-800 flex items-center gap-2">
-                            <FileText size={18} className="text-[#4a5d23]" />
-                            Plantilla del Mensaje de WhatsApp
-                          </h3>
-                          <p className="text-xs text-stone-500">
-                            Personaliza el mensaje que recibirán tus invitados con su PIN y enlace oficial.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Variables Tags */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                          Etiquetas dinámicas (haz clic para insertar):
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {[
-                            { tag: '{SALUDO}', label: 'Hola + Nombre' },
-                            { tag: '{NOMBRE}', label: 'Nombre del Invitado' },
-                            { tag: '{ACCESO}', label: 'Ceremonia y recepción / Solo ceremonia / Solo recepción' },
-                            { tag: '{NOTA_ACCESO}', label: 'Nota si es solo ceremonia (si no, no aparece)' },
-                            { tag: '{TELEFONO}', label: 'Teléfono' },
-                            { tag: '{PIN}', label: 'PIN Exclusivo' },
-                            { tag: '{PASES}', label: 'Pases Permitidos' },
-                            { tag: '{ENLACE}', label: 'Enlace personalizado' },
-                          ].map((item) => (
-                            <button
-                              key={item.tag}
-                              type="button"
-                              onClick={() => setWaTemplate((prev) => prev + ` ${item.tag} `)}
-                              className="text-[10px] font-mono font-bold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/60 px-2.5 py-1 rounded-lg transition-all"
-                            >
-                              + {item.tag} <span className="text-emerald-600/70 font-sans font-normal">({item.label})</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Template Textarea */}
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
-                          Contenido del Mensaje
-                        </label>
-                        <textarea
-                          rows={10}
-                          value={waTemplate}
-                          onChange={(e) => setWaTemplate(e.target.value)}
-                          className="w-full px-4 py-3 border border-stone-200 rounded-2xl text-xs md:text-sm font-mono leading-relaxed focus:outline-none focus:border-[#4a5d23] bg-stone-50/50"
-                          placeholder="Escribe la plantilla de invitación..."
-                        />
-                      </div>
-
-                      {/* Template Buttons */}
-                      <div className="flex flex-wrap items-center gap-3 pt-2">
-                        <button
-                          type="button"
-                          onClick={handleSaveTemplate}
-                          className="px-5 py-2.5 bg-[#4a5d23] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#3b4c1b] transition-all shadow-sm flex items-center gap-2"
-                        >
-                          <Check size={14} /> Guardar Cambios
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleResetTemplate}
-                          className="px-4 py-2.5 border border-stone-200 text-stone-600 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-all flex items-center gap-1.5"
-                        >
-                          <RefreshCw size={13} /> Restablecer
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSendWhatsApp('8095551234', '1234', 2, newName.trim() || 'Familia Pérez', newAccess)}
-                          className="px-4 py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-100 transition-all flex items-center gap-1.5"
-                        >
-                          <Send size={13} /> Probar Mensaje en WhatsApp
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Right: Live WhatsApp Bubble Preview */}
-                    <div className="lg:col-span-5 flex flex-col">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 flex items-center gap-1.5">
-                          <MessageCircle size={13} className="text-emerald-600" />
-                          Vista Previa (WhatsApp)
-                        </span>
-                        <span className="text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                          Ejemplo en vivo
-                        </span>
-                      </div>
-
-                      <div className="flex-grow bg-[#efeae2] p-4 md:p-5 rounded-2xl border border-[#d1c7b7] flex flex-col justify-start relative shadow-inner overflow-hidden">
-                        {/* WhatsApp Message Bubble */}
-                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/60 max-w-full text-xs text-stone-800 space-y-3 relative">
-                          <div className="whitespace-pre-wrap font-sans leading-relaxed text-[11px] text-stone-700">
-                            {buildWhatsAppMessage('829-923-4460', '8421', 2, newName.trim() || 'Familia Pérez', newAccess)}
-                          </div>
-
-                          <div className="text-[9px] text-stone-400 text-right font-mono">
-                            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ✓✓
-                          </div>
-                        </div>
-
-                        <p className="mt-3 text-[10px] text-stone-500 text-center italic">
-                          Los valores se sustituirán automáticamente por el nombre, número, PIN, pases y enlace personalizado de cada invitado.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             <div className="space-y-8">
               {/* Form to add allowed guest */}
@@ -1784,126 +1639,6 @@ export const AdminDashboard: React.FC = () => {
                 </button>
               </div>
             </motion.form>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Modal: Configuración */}
-      <AnimatePresence>
-        {settingsOpen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
-            onClick={() => setSettingsOpen(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 10 }}
-              onClick={(e) => e.stopPropagation()}
-              className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl md:p-8"
-            >
-              <div className="mb-5 flex items-start justify-between">
-                <h3 className="text-lg font-bold text-stone-800">Configuración</h3>
-                <button type="button" onClick={() => setSettingsOpen(false)} className="rounded-full p-1.5 text-stone-400 hover:bg-stone-100"><X size={18} /></button>
-              </div>
-
-              {!settings ? (
-                <p className="py-8 text-center text-sm italic text-stone-400">Cargando…</p>
-              ) : (() => {
-                const Row = (label: string, checked: boolean, onChange: (v: boolean) => void, hint?: string) => (
-                  <label className="flex items-start justify-between gap-3 rounded-xl border border-stone-200 px-3.5 py-3 cursor-pointer">
-                    <span className="text-xs">
-                      <span className="font-bold text-stone-700">{label}</span>
-                      {hint && <span className="mt-0.5 block text-[10px] font-normal text-stone-400">{hint}</span>}
-                    </span>
-                    <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#4a5d23]" />
-                  </label>
-                );
-                return (
-                  <div className="space-y-5">
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Anuncio (barra superior del sitio)</p>
-                      {Row('Mostrar el anuncio', settings.announceShow, (v) => patchSettings({ announceShow: v }))}
-                      <input
-                        type="text"
-                        maxLength={140}
-                        placeholder="Ej: Cambio de hora: la ceremonia inicia a las 5:00 PM"
-                        value={settings.announceText || ''}
-                        onChange={(e) => setSettings((s: any) => ({ ...s, announceText: e.target.value }))}
-                        onBlur={(e) => patchSettings({ announceText: e.target.value })}
-                        className="w-full rounded-lg border border-stone-200 px-3 py-2 text-xs"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Confirmaciones</p>
-                      {Row('Aceptar nuevas confirmaciones', settings.rsvpOpen, (v) => patchSettings({ rsvpOpen: v }), 'Al desactivar, el formulario RSVP queda cerrado.')}
-                      <div className="flex items-center justify-between rounded-xl border border-stone-200 px-3.5 py-2.5 text-xs">
-                        <span className="font-bold text-stone-700">Fecha límite (texto del form)</span>
-                        <input type="date" value={settings.rsvpDeadline || ''} onChange={(e) => patchSettings({ rsvpDeadline: e.target.value })} className="rounded-lg border border-stone-200 px-2 py-1 text-xs" />
-                      </div>
-                      <div className="flex items-center justify-between rounded-xl border border-stone-200 px-3.5 py-2.5 text-xs">
-                        <span className="font-bold text-stone-700">Personas por mesa (por defecto)</span>
-                        <input type="number" min={1} max={20} value={settings.tableSizeDefault || 8} onChange={(e) => patchSettings({ tableSizeDefault: parseInt(e.target.value, 10) || 8 })} className="w-16 rounded-lg border border-stone-200 px-2 py-1 text-center text-xs" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Sitio de invitados</p>
-                      {Row('Mostrar contador "X confirmaron"', settings.showCounter, (v) => patchSettings({ showCounter: v }))}
-                      {Row('Mostrar el libro de mensajes', settings.showGuestbook, (v) => patchSettings({ showGuestbook: v }))}
-                      {Row('Sección "Nuestra historia"', settings.showStory, (v) => patchSettings({ showStory: v }))}
-                      {Row('Sección "Padres / padrinos"', settings.showParents, (v) => patchSettings({ showParents: v }))}
-                      {Row('Sección "Galería"', settings.showGallery, (v) => patchSettings({ showGallery: v }))}
-                      {Row('Sección "Código de vestimenta"', settings.showDressCode, (v) => patchSettings({ showDressCode: v }))}
-                      {Row('Sección "Mesa de regalos"', settings.showGifts, (v) => patchSettings({ showGifts: v }))}
-                      <div className="flex items-center justify-between rounded-xl border border-stone-200 px-3.5 py-2.5 text-xs">
-                        <span className="font-bold text-stone-700">Fecha y hora del evento<span className="mt-0.5 block text-[10px] font-normal text-stone-400">Para la cuenta regresiva. Vacío = usar la predeterminada.</span></span>
-                        <input type="datetime-local" value={settings.eventDateTime || ''} onChange={(e) => patchSettings({ eventDateTime: e.target.value })} className="rounded-lg border border-stone-200 px-2 py-1 text-xs" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Página de gracias</p>
-                      {Row('Mostrar /gracias automáticamente', settings.graciasAuto, (v) => patchSettings({ graciasAuto: v }), 'El sitio muestra la pantalla de agradecimiento en vez de la invitación.')}
-                      <div className="flex items-center justify-between rounded-xl border border-stone-200 px-3.5 py-2.5 text-xs">
-                        <span className="font-bold text-stone-700">Desde el día</span>
-                        <input type="date" value={settings.graciasFrom || ''} onChange={(e) => patchSettings({ graciasFrom: e.target.value })} className="rounded-lg border border-stone-200 px-2 py-1 text-xs" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Notificaciones por correo</p>
-                      {Row('Avisarme al confirmar un invitado', settings.emailNotify, (v) => patchSettings({ emailNotify: v }))}
-                      {Row('Enviar correo de confirmación al invitado', settings.emailGuest, (v) => patchSettings({ emailGuest: v }))}
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <select value={settings.emailProvider} onChange={(e) => patchSettings({ emailProvider: e.target.value })} className="rounded-lg border border-stone-200 px-2 py-2">
-                          <option value="gmail">Gmail</option>
-                          <option value="outlook">Outlook / Hotmail</option>
-                        </select>
-                        <input type="email" placeholder="correo remitente" value={settings.emailFrom || ''} onChange={(e) => patchSettings({ emailFrom: e.target.value })} className="rounded-lg border border-stone-200 px-2 py-2" />
-                      </div>
-                      <input type="email" placeholder="correo de los novios (destino del aviso)" value={settings.emailTo || ''} onChange={(e) => patchSettings({ emailTo: e.target.value })} className="w-full rounded-lg border border-stone-200 px-2 py-2 text-xs" />
-                      <p className="text-[10px] text-stone-400">
-                        {settings.emailPassSet
-                          ? '✓ Contraseña configurada (EMAIL_PASS).'
-                          : '⚠ Falta la contraseña: añade la variable EMAIL_PASS en Vercel (contraseña de aplicación de Gmail/Outlook).'}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/settings/test-email`, { method: 'POST', headers: { 'x-api-key': apiKey } });
-                          const d = await res.json().catch(() => ({}));
-                          toast(res.ok ? 'Correo de prueba enviado.' : (d.error || 'No se pudo enviar.'), res.ok ? 'success' : 'error');
-                        }}
-                        className="rounded-full border border-stone-200 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50"
-                      >
-                        Enviar correo de prueba
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

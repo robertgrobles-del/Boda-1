@@ -4,6 +4,7 @@ import { Check, Copy, Store, Landmark, ExternalLink } from 'lucide-react';
 import { CASA_CUESTA, BANK_ACCOUNTS } from '../constants';
 import { useToast } from './Toast';
 import { SectionHeader } from './SectionHeader';
+import { useSiteSettings } from './useSiteSettings';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 32 },
@@ -43,6 +44,11 @@ const CopyRow: React.FC<{ label: string; display: string; copyValue: string }> =
 };
 
 export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
+  const s = useSiteSettings();
+  const casaUrl = s.registryCasaUrl || CASA_CUESTA.url;
+  const casaNote = s.registryCasaNote || CASA_CUESTA.note;
+  const casaList = s.registryCasaListNumber || CASA_CUESTA.listNumber;
+  const banks = s.registryBanks.length ? s.registryBanks : BANK_ACCOUNTS;
   return (
     <section id={id} className="relative flex min-h-screen items-center overflow-hidden bg-cream py-24 md:py-32">
       <div className="pointer-events-none absolute left-0 top-0 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-olive/5 blur-3xl" />
@@ -56,7 +62,7 @@ export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
               <span className="font-signature text-olive">Mesa de</span> <span className="italic">Regalos</span>
             </>
           }
-          description={'"Su presencia es nuestro mayor regalo. Si además desean tener un detalle con nosotros, aquí están nuestras opciones."'}
+          description={s.registryIntro}
           className="mb-14 md:mb-16"
         />
 
@@ -64,7 +70,7 @@ export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
           {/* 1 · Casa Cuesta */}
           <motion.a
             variants={cardVariants}
-            href={CASA_CUESTA.url}
+            href={casaUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="group flex flex-col items-center gap-5 rounded-[2rem] border border-stone-100 bg-white p-8 text-center shadow-[0_15px_40px_rgba(0,0,0,0.03)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_30px_60px_rgba(0,0,0,0.07)] sm:flex-row sm:text-left md:p-10"
@@ -74,8 +80,8 @@ export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
             </div>
             <div className="flex-grow">
               <h3 className="font-serif text-xl text-stone-800">Lista de regalos · Casa Cuesta</h3>
-              <p className="mt-1 text-sm text-stone-500">{CASA_CUESTA.note}</p>
-              <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.15em] text-olive">Lista No. {CASA_CUESTA.listNumber}</p>
+              <p className="mt-1 text-sm text-stone-500">{casaNote}</p>
+              <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.15em] text-olive">Lista No. {casaList}</p>
             </div>
             <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-olive px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-white transition-colors group-hover:bg-olive-dark">
               Ver lista <ExternalLink size={13} />
@@ -84,7 +90,7 @@ export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
 
           {/* 2 · Cuentas de banco */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {BANK_ACCOUNTS.map((acc) => (
+            {banks.map((acc) => (
               <motion.div
                 key={acc.bank}
                 variants={cardVariants}

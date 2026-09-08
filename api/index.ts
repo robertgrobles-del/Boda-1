@@ -79,6 +79,24 @@ const DEFAULT_SETTINGS = {
     showGifts: true,
     // Fecha y hora del evento (ISO, p.ej. "2026-11-07T16:00"). Vacío = usar la de constants.
     eventDateTime: '',
+    // Bloqueo del sitio: 'off' | 'link' (cualquier ?invitado=) | 'list' (solo nombres en la lista) | 'password'
+    lockMode: 'off' as 'off' | 'link' | 'list' | 'password',
+    sitePassword: '',            // contraseña única (solo cuando lockMode === 'password'); NUNCA se expone en /api/settings
+    // Plantilla del mensaje de WhatsApp (vacío = usar la de por defecto del panel)
+    waTemplate: '',
+    // Textos editables — Código de vestimenta
+    dressFormalTitle: 'Formal / Elegante',
+    dressFormalText: 'Te esperamos elegante para la ocasión.',
+    dressColorsTitle: 'Colores',
+    dressColorsText: 'Inspírate en la paleta de otoño. Reservado el blanco y el beige para la novia.',
+    // Textos editables — Mesa de regalos
+    registryIntro: '"Su presencia es nuestro mayor regalo. Si además desean tener un detalle con nosotros, aquí están nuestras opciones."',
+    registryCasaNote: 'Disponible de forma digital y física',
+    registryCasaListNumber: '194090',
+    registryCasaUrl: 'https://listaderegalos.casacuesta.com/Event/Stephanie-DalvinDaniel?utm_source=share',
+    registryBanks: [] as Array<{ bank: string; type: string; number: string; holder: string; cedula: string }>,
+    // Galería: si tiene URLs, reemplazan a las fotos por defecto de la galería del sitio
+    galleryUrls: [] as string[],
 };
 type Settings = typeof DEFAULT_SETTINGS;
 
@@ -685,6 +703,11 @@ app.post('/api/upload', async (req, res) => {
 // Público: solo lo que necesita el sitio de invitados
 app.get('/api/settings', async (_req, res) => {
     const s = await getSettings();
+    let images: Record<string, number> = {};
+    try {
+        const assets = await prisma.siteAsset.findMany({ select: { slot: true, updatedAt: true } });
+        images = Object.fromEntries(assets.map((a) => [a.slot, a.updatedAt.getTime()]));
+    } catch { /* noop */ }
     res.set('Cache-Control', 'public, max-age=30');
     res.json({
         showCounter: s.showCounter,
@@ -701,7 +724,101 @@ app.get('/api/settings', async (_req, res) => {
         showDressCode: s.showDressCode,
         showGifts: s.showGifts,
         eventDateTime: s.eventDateTime,
+        lockMode: s.lockMode,
+        dressFormalTitle: s.dressFormalTitle,
+        dressFormalText: s.dressFormalText,
+        dressColorsTitle: s.dressColorsTitle,
+        dressColorsText: s.dressColorsText,
+        registryIntro: s.registryIntro,
+        registryCasaNote: s.registryCasaNote,
+        registryCasaListNumber: s.registryCasaListNumber,
+        registryCasaUrl: s.registryCasaUrl,
+        registryBanks: s.registryBanks,
+        galleryUrls: s.galleryUrls,
+        images,
     });
+});
+
+// Verificar la contraseña del sitio (modo "solo con enlace / contraseña")
+app.post('/api/site/unlock', async (req, res) => {
+    const s = await getSettings();
+    const pass = String(req.body?.password || '');
+    const ok = s.lockMode === 'password' && s.sitePassword !== '' && pass === s.sitePassword;
+    res.json({ ok });
+});
+
+// Servir una imagen del sitio (override del panel) o caer al archivo estático.
+app.get('/api/img/:slot', async (req, res) => {
+    const slot = String(req.params.slot).replace(/[^\w-]/g, '').slice(0, 40);
+    try {
+        const asset = await prisma.siteAsset.findUnique({ where: { slot } });
+        if (asset) {
+            if (asset.kind === 'url' && asset.url) {
+                res.set('Cache-Control', 'public, max-age=3600');
+                return res.redirect(302, asset.url);
+            }
+            if (asset.kind === 'data' && asset.data) {
+                const buf = Buffer.from(asset.data, 'base64');
+                res.set('Content-Type', asset.mime || 'image/jpeg');
+                res.set('Cache-Control', 'public, max-age=86400');
+                return res.end(buf);
+            }
+        }
+    } catch { /* noop */ }
+    // Sin override: la portada OG necesita SIEMPRE una imagen → cae al archivo estático.
+    if (slot === 'og') return res.redirect(302, '/images/og-image.jpg?v=4');
+    return res.status(404).end();
+});
+
+// Admin: gestión de imágenes del sitio
+app.get('/api/admin/assets', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const assets = await prisma.siteAsset.findMany();
+    res.json(assets.map((a) => ({ slot: a.slot, kind: a.kind, url: a.url, hasData: Boolean(a.data), mime: a.mime, updatedAt: a.updatedAt })));
+});
+
+app.put('/api/admin/assets/:slot', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const slot = String(req.params.slot).replace(/[^\w-]/g, '').slice(0, 40);
+    if (!slot) return res.status(400).json({ error: 'Slot inválido.' });
+    const { url, dataUrl } = req.body || {};
+    try {
+        if (typeof url === 'string' && /^https?:\/\//.test(url)) {
+            await prisma.siteAsset.upsert({
+                where: { slot },
+                update: { kind: 'url', url, data: null, mime: null },
+                create: { slot, kind: 'url', url },
+            });
+            return res.json({ success: true });
+        }
+        if (typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
+            const m = /^data:([\w/+.-]+);base64,(.+)$/s.exec(dataUrl);
+            if (!m) return res.status(400).json({ error: 'Imagen inválida.' });
+            const mime = m[1];
+            const b64 = m[2];
+            // Límite ~4 MB en base64 (~3 MB de imagen)
+            if (b64.length > 5_600_000) return res.status(413).json({ error: 'La imagen es muy grande (máx. ~3 MB).' });
+            await prisma.siteAsset.upsert({
+                where: { slot },
+                update: { kind: 'data', data: b64, mime, url: null },
+                create: { slot, kind: 'data', data: b64, mime },
+            });
+            return res.json({ success: true });
+        }
+        return res.status(400).json({ error: 'Envía una URL pública o una imagen.' });
+    } catch (error) {
+        console.error('Asset save error:', error);
+        res.status(500).json({ error: 'No se pudo guardar la imagen.' });
+    }
+});
+
+app.delete('/api/admin/assets/:slot', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const slot = String(req.params.slot).replace(/[^\w-]/g, '').slice(0, 40);
+    try {
+        await prisma.siteAsset.delete({ where: { slot } });
+    } catch { /* ya no existe */ }
+    res.json({ success: true });
 });
 
 // Admin: todos los ajustes

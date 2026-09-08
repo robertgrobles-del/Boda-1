@@ -53,6 +53,18 @@ model Setting {
   data Json @default("{}")
 }
 
+// Imágenes del sitio editables desde el panel (portada, gateway, historia, OG, etc.).
+// slot = nombre lógico ("heroBackground", "gateway", "og"…).
+// kind "url" → `url` es un enlace público; kind "data" → `data` es base64 y `mime` el tipo.
+model SiteAsset {
+  slot      String   @id
+  kind      String   @default("url")
+  url       String?
+  data      String?
+  mime      String?
+  updatedAt DateTime @updatedAt
+}
+
 model GuestMessage {
   id        Int      @id @default(autoincrement())
   name      String

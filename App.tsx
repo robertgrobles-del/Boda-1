@@ -22,7 +22,8 @@ import { MemoriesPage } from './components/MemoriesPage';
 import { LegalPage } from './components/LegalPage';
 import { GraciasPage } from './components/GraciasPage';
 import { InviteeProvider } from './components/InviteeContext';
-import { useSiteSettings } from './components/useSiteSettings';
+import { useSiteSettings, useSiteImage } from './components/useSiteSettings';
+import { SiteGate } from './components/SiteGate';
 import { Calendar, Apple } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { EVENT_DATA, PHOTOS, CALENDAR_URLS, buildIcsDataUri } from './constants';
@@ -30,7 +31,7 @@ import { EVENT_DATA, PHOTOS, CALENDAR_URLS, buildIcsDataUri } from './constants'
 type Route = 'home' | 'admin' | 'memories' | 'privacidad' | 'terminos' | 'gracias';
 
 const routeFromPath = (path: string): Route => {
-  if (path === '/admin') return 'admin';
+  if (path === '/admin' || path.startsWith('/admin/')) return 'admin';
   if (path === '/memories') return 'memories';
   if (path === '/privacidad') return 'privacidad';
   if (path === '/terminos') return 'terminos';
@@ -48,6 +49,7 @@ const App: React.FC = () => {
   const [showGateway, setShowGateway] = useState(true);
 
   const siteSettings = useSiteSettings();
+  const bandImg = useSiteImage('band', PHOTOS.band);
   const graciasTakeover =
     siteSettings.graciasAuto &&
     new Date().toISOString().slice(0, 10) >= siteSettings.graciasFrom;
@@ -114,6 +116,7 @@ const App: React.FC = () => {
   return (
     <ToastProvider>
      <InviteeProvider>
+      <SiteGate>
       <div className="relative min-h-screen overflow-x-hidden bg-cream selection:bg-olive selection:text-white">
         <AnimatePresence>
           {showGateway && <Gateway onEnter={closeGateway} />}
@@ -154,7 +157,7 @@ const App: React.FC = () => {
             {siteSettings.showParents && <Parents />}
             <Countdown targetDate={siteSettings.eventDateTime || EVENT_DATA.date} />
             <EventDetails id="detalles" />
-            <PhotoBand src={PHOTOS.band} quote="No podemos esperar para celebrar contigo" />
+            <PhotoBand src={bandImg} quote="No podemos esperar para celebrar contigo" />
             {siteSettings.showGallery && <UnifiedGallery id="galeria" />}
             {siteSettings.showDressCode && <DressCode />}
             <NoKids />
@@ -198,6 +201,7 @@ const App: React.FC = () => {
           </footer>
         </motion.div>
       </div>
+      </SiteGate>
      </InviteeProvider>
     </ToastProvider>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useSiteSettings } from './useSiteSettings';
 
 // Paleta de otoño sugerida para los invitados.
 const AUTUMN_PALETTE: { name: string; hex: string }[] = [
@@ -18,6 +19,7 @@ const AUTUMN_PALETTE: { name: string; hex: string }[] = [
 ];
 
 export const DressCode: React.FC = () => {
+  const { dressFormalTitle, dressFormalText, dressColorsTitle, dressColorsText } = useSiteSettings();
   return (
     <section className="relative flex h-full min-h-[60vh] items-start justify-center border-b border-stone-100 bg-white pb-16 pt-16 min-[481px]:pb-32 min-[481px]:pt-32">
       <div className="mx-auto w-full max-w-4xl px-6">
@@ -40,9 +42,9 @@ export const DressCode: React.FC = () => {
                 <path d="M4 11s2 6 8 6 8-6 8-6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <h3 className="mb-2 text-lg font-bold text-stone-800 min-[481px]:mb-3 min-[481px]:text-xl">Formal / Elegante</h3>
+            <h3 className="mb-2 text-lg font-bold text-stone-800 min-[481px]:mb-3 min-[481px]:text-xl">{dressFormalTitle}</h3>
             <p className="max-w-[220px] text-[11px] leading-relaxed text-stone-600 min-[481px]:text-xs">
-              Te esperamos elegante para la ocasión.
+              {dressFormalText}
             </p>
           </motion.div>
 
@@ -61,10 +63,9 @@ export const DressCode: React.FC = () => {
                 <circle cx="12" cy="13.5" r="1.5" fill="currentColor" />
               </svg>
             </div>
-            <h3 className="mb-2 text-lg font-bold text-stone-800 min-[481px]:mb-3 min-[481px]:text-xl">Colores</h3>
+            <h3 className="mb-2 text-lg font-bold text-stone-800 min-[481px]:mb-3 min-[481px]:text-xl">{dressColorsTitle}</h3>
             <p className="max-w-[220px] text-[11px] leading-relaxed text-stone-600 min-[481px]:text-xs">
-              Inspírate en la <span className="font-semibold text-olive">paleta de otoño</span>.<br />
-              Reservado el blanco y el beige para la novia.
+              {dressColorsText}
             </p>
           </motion.div>
         </div>
