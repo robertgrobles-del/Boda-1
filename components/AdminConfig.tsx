@@ -72,8 +72,11 @@ const PRES_DEFAULTS: Record<string, any> = {
   dressFormalTitle: 'Formal / Elegante', dressFormalText: 'Te esperamos elegante para la ocasión.',
   dressColorsTitle: 'Colores', dressColorsText: 'Inspírate en la paleta de otoño. Reservado el blanco y el beige para la novia.',
   registryIntro: '"Su presencia es nuestro mayor regalo. Si además desean tener un detalle con nosotros, aquí están nuestras opciones."',
+  registryCuestaOn: true,
   registryCasaNote: 'Disponible de forma digital y física', registryCasaListNumber: '194090',
   registryCasaUrl: 'https://listaderegalos.casacuesta.com/Event/Stephanie-DalvinDaniel?utm_source=share',
+  registryAmazonOn: false, registryAmazonNote: 'Lista de bodas de Amazon', registryAmazonUrl: '',
+  registryStores: [], registryBanksOn: true,
   registryBanks: [], galleryUrls: [], theme: 'clasico',
 };
 
@@ -127,9 +130,11 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
   const [wa, setWa] = useState('');
   useEffect(() => { setWa((settings?.waTemplate && String(settings.waTemplate)) || DEFAULT_WA_TEMPLATE); }, [settings?.waTemplate]);
 
-  // --- Cuentas de banco (por portal) ---
+  // --- Mesa de regalos (por portal) ---
   const banks: any[] = Array.isArray(pv('registryBanks')) ? pv('registryBanks') : [];
   const setBanks = (b: any[]) => pset({ registryBanks: b });
+  const stores: any[] = Array.isArray(pv('registryStores')) ? pv('registryStores') : [];
+  const setStores = (x: any[]) => pset({ registryStores: x });
 
   // --- Imágenes (por portal) ---
   const [assets, setAssets] = useState<Record<string, any>>({});
@@ -325,16 +330,65 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
 
       case 'regalos':
         return card(<>
-          {heading(`Mesa de regalos · ${portalLabel}`)}
+          {heading(`Mesa de regalos · ${portalLabel}`, 'Activa cada bloque que quieras mostrar.')}
           {pText('Introducción', 'registryIntro', { area: true })}
-          {pText('Casa Cuesta · nota', 'registryCasaNote')}
-          {pText('Casa Cuesta · número de lista', 'registryCasaListNumber')}
-          {pText('Casa Cuesta · enlace', 'registryCasaUrl')}
+
+          {/* Casa Cuesta */}
+          <div className="rounded-xl border border-stone-200 p-3 space-y-2">
+            {row('Lista de bodas · Casa Cuesta', pv('registryCuestaOn'), (v) => patchPortal({ registryCuestaOn: v }))}
+            {pv('registryCuestaOn') && (<>
+              {pText('Nota', 'registryCasaNote')}
+              {pText('Número de lista', 'registryCasaListNumber')}
+              {pText('Enlace', 'registryCasaUrl')}
+            </>)}
+          </div>
+
+          {/* Amazon */}
+          <div className="rounded-xl border border-stone-200 p-3 space-y-2">
+            {row('Lista de bodas · Amazon', pv('registryAmazonOn'), (v) => patchPortal({ registryAmazonOn: v }))}
+            {pv('registryAmazonOn') && (<>
+              {pText('Nota', 'registryAmazonNote')}
+              {pText('Enlace de la lista de Amazon', 'registryAmazonUrl')}
+            </>)}
+          </div>
+
+          {/* Otras tiendas */}
+          <div className="rounded-xl border border-stone-200 px-3.5 py-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Otras tiendas (Alis, Ikea, etc.)</span>
+              <button type="button" onClick={() => setStores([...stores, { name: '', note: '', url: '' }])} className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#4a5d23]"><Plus size={12} /> Agregar</button>
+            </div>
+            {stores.length === 0 && <p className="mt-2 text-[10px] italic text-stone-400">Ninguna tienda adicional.</p>}
+            <div className="mt-2 space-y-3">
+              {stores.map((st, i) => (
+                <div key={i} className="rounded-lg bg-stone-50 p-2.5 space-y-1.5">
+                  <input placeholder="Nombre de la tienda" value={st.name || ''}
+                    onChange={(e) => setStores(stores.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                    className="w-full rounded border border-stone-200 px-2 py-1 text-xs" />
+                  <input placeholder="Nota (opcional)" value={st.note || ''}
+                    onChange={(e) => setStores(stores.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))}
+                    className="w-full rounded border border-stone-200 px-2 py-1 text-xs" />
+                  <input placeholder="https://…" value={st.url || ''}
+                    onChange={(e) => setStores(stores.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))}
+                    className="w-full rounded border border-stone-200 px-2 py-1 text-xs" />
+                  <button type="button" onClick={() => setStores(stores.filter((_, j) => j !== i))} className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-600"><Trash2 size={11} /> Quitar</button>
+                </div>
+              ))}
+            </div>
+            {stores.length > 0 && (
+              <button type="button" onClick={() => patchPortal({ registryStores: stores }).then(() => toast('Tiendas guardadas.', 'success'))} className="mt-3 flex items-center gap-2 rounded-lg bg-[#4a5d23] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#3b4c1b]">
+                <Check size={12} /> Guardar tiendas
+              </button>
+            )}
+          </div>
+
+          {/* Cuentas de banco */}
           <div className="rounded-xl border border-stone-200 px-3.5 py-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Cuentas de banco</span>
               <button type="button" onClick={() => setBanks([...banks, { bank: '', type: '', number: '', holder: '', cedula: '' }])} className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#4a5d23]"><Plus size={12} /> Agregar</button>
             </div>
+            {row('Mostrar las cuentas de banco', pv('registryBanksOn'), (v) => patchPortal({ registryBanksOn: v }))}
             {banks.length === 0 && <p className="mt-2 text-[10px] italic text-stone-400">Sin cuentas configuradas — el sitio usa las de por defecto.</p>}
             <div className="mt-2 space-y-3">
               {banks.map((b, i) => (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Copy, Store, Landmark, ExternalLink } from 'lucide-react';
+import { Check, Copy, Store, Landmark, ExternalLink, ShoppingBag, Gift } from 'lucide-react';
 import { CASA_CUESTA, BANK_ACCOUNTS } from '../constants';
 import { useToast } from './Toast';
 import { SectionHeader } from './SectionHeader';
@@ -43,12 +43,45 @@ const CopyRow: React.FC<{ label: string; display: string; copyValue: string }> =
   );
 };
 
+const StoreCard: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  note?: string;
+  listNumber?: string;
+  url: string;
+}> = ({ icon, title, note, listNumber, url }) => (
+  <motion.a
+    variants={cardVariants}
+    href={url}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="group flex flex-col items-center gap-5 rounded-[2rem] border border-stone-100 bg-white p-8 text-center shadow-[0_15px_40px_rgba(0,0,0,0.03)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_30px_60px_rgba(0,0,0,0.07)] sm:flex-row sm:text-left md:p-10"
+  >
+    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-olive-light text-terracotta">
+      {icon}
+    </div>
+    <div className="flex-grow">
+      <h3 className="font-serif text-xl text-stone-800">{title}</h3>
+      {note && <p className="mt-1 text-sm text-stone-500">{note}</p>}
+      {listNumber && <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.15em] text-olive">Lista No. {listNumber}</p>}
+    </div>
+    <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-olive px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-white transition-colors group-hover:bg-olive-dark">
+      Ver lista <ExternalLink size={13} />
+    </span>
+  </motion.a>
+);
+
 export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
   const s = useSiteSettings();
-  const casaUrl = s.registryCasaUrl || CASA_CUESTA.url;
-  const casaNote = s.registryCasaNote || CASA_CUESTA.note;
-  const casaList = s.registryCasaListNumber || CASA_CUESTA.listNumber;
+
+  const cuestaUrl = s.registryCasaUrl || CASA_CUESTA.url;
+  const showCuesta = s.registryCuestaOn && !!cuestaUrl;
+  const showAmazon = s.registryAmazonOn && !!s.registryAmazonUrl;
+  const stores = (s.registryStores || []).filter((x) => x && x.name && x.url);
+
   const banks = s.registryBanks.length ? s.registryBanks : BANK_ACCOUNTS;
+  const showBanks = s.registryBanksOn && banks.length > 0;
+
   return (
     <section id={id} className="relative flex min-h-screen items-center overflow-hidden bg-cream py-24 md:py-32">
       <div className="pointer-events-none absolute left-0 top-0 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-olive/5 blur-3xl" />
@@ -67,53 +100,56 @@ export const GiftRegistry: React.FC<{ id: string }> = ({ id }) => {
         />
 
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} className="space-y-6">
-          {/* 1 · Casa Cuesta */}
-          <motion.a
-            variants={cardVariants}
-            href={casaUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex flex-col items-center gap-5 rounded-[2rem] border border-stone-100 bg-white p-8 text-center shadow-[0_15px_40px_rgba(0,0,0,0.03)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_30px_60px_rgba(0,0,0,0.07)] sm:flex-row sm:text-left md:p-10"
-          >
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-olive-light text-terracotta">
-              <Store size={26} />
-            </div>
-            <div className="flex-grow">
-              <h3 className="font-serif text-xl text-stone-800">Lista de regalos · Casa Cuesta</h3>
-              <p className="mt-1 text-sm text-stone-500">{casaNote}</p>
-              <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.15em] text-olive">Lista No. {casaList}</p>
-            </div>
-            <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-olive px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-white transition-colors group-hover:bg-olive-dark">
-              Ver lista <ExternalLink size={13} />
-            </span>
-          </motion.a>
+          {showCuesta && (
+            <StoreCard
+              icon={<Store size={26} />}
+              title="Lista de regalos · Casa Cuesta"
+              note={s.registryCasaNote || CASA_CUESTA.note}
+              listNumber={s.registryCasaListNumber || CASA_CUESTA.listNumber}
+              url={cuestaUrl}
+            />
+          )}
 
-          {/* 2 · Cuentas de banco */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {banks.map((acc) => (
-              <motion.div
-                key={acc.bank}
-                variants={cardVariants}
-                className="flex flex-col rounded-[2rem] border border-stone-100 bg-white p-7 text-left shadow-[0_15px_40px_rgba(0,0,0,0.03)] md:p-8"
-              >
-                <div className="mb-5 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-olive-light text-terracotta">
-                    <Landmark size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-lg text-stone-800">{acc.bank}</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-olive">{acc.type}</p>
-                  </div>
-                </div>
+          {showAmazon && (
+            <StoreCard
+              icon={<ShoppingBag size={26} />}
+              title="Lista de bodas · Amazon"
+              note={s.registryAmazonNote}
+              url={s.registryAmazonUrl}
+            />
+          )}
 
-                <div className="space-y-2.5">
-                  <CopyRow label="No. de cuenta" display={acc.number} copyValue={acc.number} />
-                  <CopyRow label="Cédula" display={maskCedula(acc.cedula)} copyValue={acc.cedula} />
-                  <p className="pl-1 pt-1 text-xs italic text-stone-500">A nombre de {acc.holder}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          {stores.map((st, i) => (
+            <StoreCard key={`${st.name}-${i}`} icon={<Gift size={26} />} title={st.name} note={st.note} url={st.url} />
+          ))}
+
+          {showBanks && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {banks.map((acc) => (
+                <motion.div
+                  key={acc.bank}
+                  variants={cardVariants}
+                  className="flex flex-col rounded-[2rem] border border-stone-100 bg-white p-7 text-left shadow-[0_15px_40px_rgba(0,0,0,0.03)] md:p-8"
+                >
+                  <div className="mb-5 flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-olive-light text-terracotta">
+                      <Landmark size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-serif text-lg text-stone-800">{acc.bank}</h3>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-olive">{acc.type}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <CopyRow label="No. de cuenta" display={acc.number} copyValue={acc.number} />
+                    <CopyRow label="Cédula" display={maskCedula(acc.cedula)} copyValue={acc.cedula} />
+                    <p className="pl-1 pt-1 text-xs italic text-stone-500">A nombre de {acc.holder}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
     </section>

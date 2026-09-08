@@ -89,11 +89,18 @@ const DEFAULT_SETTINGS = {
     dressFormalText: 'Te esperamos elegante para la ocasión.',
     dressColorsTitle: 'Colores',
     dressColorsText: 'Inspírate en la paleta de otoño. Reservado el blanco y el beige para la novia.',
-    // Textos editables — Mesa de regalos
+    // Mesa de regalos — cada bloque se activa por separado
     registryIntro: '"Su presencia es nuestro mayor regalo. Si además desean tener un detalle con nosotros, aquí están nuestras opciones."',
+    registryCuestaOn: true,
     registryCasaNote: 'Disponible de forma digital y física',
     registryCasaListNumber: '194090',
     registryCasaUrl: 'https://listaderegalos.casacuesta.com/Event/Stephanie-DalvinDaniel?utm_source=share',
+    registryAmazonOn: false,
+    registryAmazonNote: 'Lista de bodas de Amazon',
+    registryAmazonUrl: '',
+    // Otras tiendas (Alis, Ikea, etc.)
+    registryStores: [] as Array<{ name: string; note: string; url: string }>,
+    registryBanksOn: true,
     registryBanks: [] as Array<{ bank: string; type: string; number: string; holder: string; cedula: string }>,
     // Galería: si tiene URLs, reemplazan a las fotos por defecto de la galería del sitio
     galleryUrls: [] as string[],
@@ -124,7 +131,10 @@ const PRESENTATION_KEYS = [
     'showCounter', 'showGuestbook',
     'eventDateTime',
     'dressFormalTitle', 'dressFormalText', 'dressColorsTitle', 'dressColorsText',
-    'registryIntro', 'registryCasaNote', 'registryCasaListNumber', 'registryCasaUrl', 'registryBanks',
+    'registryIntro',
+    'registryCuestaOn', 'registryCasaNote', 'registryCasaListNumber', 'registryCasaUrl',
+    'registryAmazonOn', 'registryAmazonNote', 'registryAmazonUrl',
+    'registryStores', 'registryBanksOn', 'registryBanks',
     'galleryUrls', 'theme',
 ] as const;
 type PresentationKey = typeof PRESENTATION_KEYS[number];

@@ -9,6 +9,12 @@ export interface BankAccount {
   cedula: string;
 }
 
+export interface RegistryStore {
+  name: string;
+  note: string;
+  url: string;
+}
+
 export interface SiteSettings {
   showCounter: boolean;
   showGuestbook: boolean;
@@ -30,9 +36,15 @@ export interface SiteSettings {
   dressColorsTitle: string;
   dressColorsText: string;
   registryIntro: string;
+  registryCuestaOn: boolean;
   registryCasaNote: string;
   registryCasaListNumber: string;
   registryCasaUrl: string;
+  registryAmazonOn: boolean;
+  registryAmazonNote: string;
+  registryAmazonUrl: string;
+  registryStores: RegistryStore[];
+  registryBanksOn: boolean;
   registryBanks: BankAccount[];
   galleryUrls: string[];
   theme: 'clasico' | 'rosa' | 'jardin' | 'arena';
@@ -63,9 +75,15 @@ const DEFAULTS: SiteSettings = {
   dressColorsTitle: 'Colores',
   dressColorsText: 'Inspírate en la paleta de otoño. Reservado el blanco y el beige para la novia.',
   registryIntro: '"Su presencia es nuestro mayor regalo. Si además desean tener un detalle con nosotros, aquí están nuestras opciones."',
+  registryCuestaOn: true,
   registryCasaNote: 'Disponible de forma digital y física',
   registryCasaListNumber: '194090',
   registryCasaUrl: 'https://listaderegalos.casacuesta.com/Event/Stephanie-DalvinDaniel?utm_source=share',
+  registryAmazonOn: false,
+  registryAmazonNote: 'Lista de bodas de Amazon',
+  registryAmazonUrl: '',
+  registryStores: [],
+  registryBanksOn: true,
   registryBanks: [],
   galleryUrls: [],
   theme: 'clasico',
