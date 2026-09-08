@@ -34,6 +34,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   const [assignments, setAssignments] = useState<Assignments>({});
   const [tableLabels, setTableLabels] = useState<Record<number, string>>({});
   const [locked, setLocked] = useState<Set<number>>(new Set());
+  const [capacities, setCapacities] = useState<Record<number, number>>({});
   const tableRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -93,6 +94,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
       setTableLabels(labelsObj);
       setLocked(new Set<number>(lockedArr));
       setPositions(data.positions || {});
+      setCapacities(data.capacities || {});
       setDirty(false);
       historyRef.current = [{ a: norm, l: labelsObj, k: lockedArr }];
       setHistIdx(0);
@@ -159,7 +161,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
       const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/seating/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
-        body: JSON.stringify({ assignments, tables: tableLabels, locked: [...locked], positions }),
+        body: JSON.stringify({ assignments, tables: tableLabels, locked: [...locked], positions, capacities }),
       });
       if (!res.ok) throw new Error();
       setDirty(false);
@@ -171,12 +173,14 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     }
   };
 
+  const capOf = useCallback((n: number) => capacities[n] || tableSize, [capacities, tableSize]);
+
   // Mapa visual de asientos de una mesa (respeta el asiento fijo; rellena huecos con los demás).
   const seatMapOf = useCallback(
     (tableN: number, a: Assignments = assignments) => {
       const seated = people.filter((p) => a[p.key]?.table === tableN);
       const slots = Math.max(
-        tableSize,
+        capOf(tableN),
         seated.length,
         ...seated.map((p) => (a[p.key]?.seat ?? -1) + 1),
         1,
@@ -199,8 +203,20 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
       });
       return map;
     },
-    [people, assignments, tableSize],
+    [people, assignments, capOf],
   );
+
+  const setCapacity = (n: number, delta: number) => {
+    setCapacities((m) => {
+      const cur = m[n] || tableSize;
+      const next = Math.max(1, Math.min(40, cur + delta));
+      const out = { ...m };
+      if (next === tableSize) delete out[n];
+      else out[n] = next;
+      return out;
+    });
+    setDirty(true);
+  };
 
   const nextFreeSeat = (tableN: number, exclude?: string) => {
     const a = { ...assignments };
@@ -320,6 +336,15 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
       }
       return next;
     });
+    setCapacities((m) => {
+      const next: Record<number, number> = {};
+      for (const [k, v] of Object.entries(m)) {
+        const num = Number(k);
+        if (num === n) continue;
+        next[num > n ? num - 1 : num] = v;
+      }
+      return next;
+    });
     setTableCount((c) => Math.max(1, c - 1));
     setDirty(true);
   };
@@ -406,7 +431,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     const perTable = new Map<number, number>();
     Object.values(assignments).forEach((s) => perTable.set(s.table, (perTable.get(s.table) || 0) + 1));
     perTable.forEach((c, t) => {
-      if (c > tableSize) w.push(`Mesa ${t} tiene ${c} personas (excede ${tableSize}).`);
+      if (c > capOf(t)) w.push(`Mesa ${t} tiene ${c} personas (excede ${capOf(t)}).`);
     });
     // etiqueta con mesa pero gente sin sentar ahí
     const labelByTag = new Map<string, number>();
@@ -609,8 +634,9 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     const map = seatMapOf(n);
     const seatedCount = map.filter(Boolean).length;
     const slots = map.length;
-    const over8 = seatedCount > tableSize;
-    const full = seatedCount === tableSize;
+    const cap = capOf(n);
+    const over8 = seatedCount > cap;
+    const full = seatedCount === cap;
     const dietCount = map.filter((p) => p?.dietary).length;
     const isLocked = locked.has(n);
 
@@ -668,13 +694,30 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
               </button>
             )}
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setCapacity(n, -1); }}
+                className="rounded-full px-1 text-[10px] font-bold leading-none text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                title="Quitar un asiento"
+              >
+                −
+              </button>
               <span
                 className={`rounded-full px-1.5 text-[9px] font-bold ${
                   over8 ? 'bg-red-100 text-red-600' : full ? 'bg-amber-100 text-amber-700' : 'text-[#4a5d23]'
                 }`}
+                title={cap !== tableSize ? `Capacidad personalizada: ${cap}` : `Capacidad ${cap}`}
               >
-                {seatedCount}/{tableSize}
+                {seatedCount}/{cap}{cap !== tableSize ? '*' : ''}
               </span>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setCapacity(n, 1); }}
+                className="rounded-full px-1 text-[10px] font-bold leading-none text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                title="Agregar un asiento (para que quepa una familia)"
+              >
+                +
+              </button>
               {dietCount > 0 && (
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-1 text-[8px] font-bold text-amber-700" title="Restricciones alimentarias en esta mesa">
                   <UtensilsCrossed size={8} /> {dietCount}
@@ -773,6 +816,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     const p = posOf(n);
     const map = seatMapOf(n);
     const cnt = map.filter(Boolean).length;
+    const cap = capOf(n);
     const isLocked = locked.has(n);
     const anyHit = !!searchQ && map.some((x) => x && matches(x));
     return (
@@ -815,10 +859,10 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
           )}
           <span
             className={`text-[9px] font-bold ${
-              cnt > tableSize ? 'text-red-600' : cnt === tableSize ? 'text-amber-700' : 'text-[#4a5d23]'
+              cnt > cap ? 'text-red-600' : cnt === cap ? 'text-amber-700' : 'text-[#4a5d23]'
             }`}
           >
-            {cnt}/{tableSize}
+            {cnt}/{cap}
           </span>
         </div>
         {isLocked && <Lock size={11} className="absolute -right-1 -top-1 rounded-full bg-amber-100 p-0.5 text-amber-700" />}

@@ -1121,13 +1121,15 @@ app.get('/api/admin/seating', async (req, res) => {
         const tables: Record<number, string> = {};
         const locked: number[] = [];
         const positions: Record<number, { x: number; y: number }> = {};
+        const capacities: Record<number, number> = {};
         metas.forEach((m: any) => {
             if (m.label) tables[m.tableNumber] = m.label;
             if (m.locked) locked.push(m.tableNumber);
             if (m.x != null && m.y != null) positions[m.tableNumber] = { x: m.x, y: m.y };
+            if (m.capacity != null && m.capacity > 0) capacities[m.tableNumber] = m.capacity;
         });
 
-        res.json({ people, assignments, tables, locked, positions });
+        res.json({ people, assignments, tables, locked, positions, capacities });
     } catch (error) {
         console.error('Seating GET error:', error);
         res.status(500).json({ error: 'Failed to load seating' });
@@ -1138,7 +1140,7 @@ app.get('/api/admin/seating', async (req, res) => {
 app.post('/api/admin/seating/save', async (req, res) => {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { assignments, tables, locked, positions } = req.body || {};
+    const { assignments, tables, locked, positions, capacities } = req.body || {};
 
     try {
         const people = await buildSeatingPeople();
@@ -1171,11 +1173,19 @@ app.post('/api/admin/seating/save', async (req, res) => {
             }
         });
 
-        const metaNums = new Set<number>([...labels.keys(), ...lockedSet, ...pos.keys()]);
+        const caps = new Map<number, number>();
+        Object.entries(capacities || {}).forEach(([n, c]: [string, any]) => {
+            const num = parseInt(n, 10);
+            const cap = parseInt(c, 10);
+            if (num >= 1 && Number.isFinite(cap) && cap > 0 && cap <= 40) caps.set(num, cap);
+        });
+
+        const metaNums = new Set<number>([...labels.keys(), ...lockedSet, ...pos.keys(), ...caps.keys()]);
         const metaRows = [...metaNums].map((tableNumber) => ({
             tableNumber,
             label: labels.get(tableNumber) || '',
             locked: lockedSet.has(tableNumber),
+            capacity: caps.get(tableNumber) ?? null,
             x: pos.get(tableNumber)?.x ?? null,
             y: pos.get(tableNumber)?.y ?? null,
         }));

@@ -42,6 +42,7 @@ model TableMeta {
   tableNumber Int     @unique
   label       String  @default("")
   locked      Boolean @default(false) // mesa fija: auto-asignar la ignora
+  capacity    Int? // capacidad propia de esta mesa (si null, usa el tamaño global)
   x           Float? // posición en el plano del salón (fracción 0..1)
   y           Float?
 }
