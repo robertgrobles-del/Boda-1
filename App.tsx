@@ -50,7 +50,7 @@ const App: React.FC = () => {
 
   const siteSettings = useSiteSettings();
   const bandImg = useSiteImage('band', PHOTOS.band);
-  useEffect(() => { applyTheme(siteSettings.theme); }, [siteSettings.theme]);
+  useEffect(() => { applyTheme(siteSettings.theme, siteSettings.palette); }, [siteSettings.theme, siteSettings.palette]);
   const graciasTakeover =
     siteSettings.graciasAuto &&
     new Date().toISOString().slice(0, 10) >= siteSettings.graciasFrom;

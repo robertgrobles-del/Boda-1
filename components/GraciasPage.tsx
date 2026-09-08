@@ -37,8 +37,8 @@ export const GraciasPage: React.FC = () => {
   const [items, setItems] = useState<{ id: string; name: string }[] | null>(null);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [inviteeName, setInviteeName] = useState<string | null>(() => getInviteeName());
-  const { theme } = useSiteSettings();
-  useEffect(() => { applyTheme(theme); }, [theme]);
+  const { theme, palette } = useSiteSettings();
+  useEffect(() => { applyTheme(theme, palette); }, [theme, palette]);
 
   useEffect(() => {
     document.title = `Gracias · ${EVENT_DATA.hashtag.replace('#', '')}`;

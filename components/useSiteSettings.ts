@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { API_CONFIG } from '../constants';
+import { paletteToVars, CUSTOM_VAR_NAMES, type Palette } from '../utils/palette';
 
 export interface BankAccount {
   bank: string;
@@ -47,7 +48,9 @@ export interface SiteSettings {
   registryBanksOn: boolean;
   registryBanks: BankAccount[];
   galleryUrls: string[];
-  theme: 'clasico' | 'rosa' | 'jardin' | 'arena';
+  theme: 'clasico' | 'rosa' | 'jardin' | 'arena' | 'custom';
+  paletteSeeds: string[];
+  palette: Palette | null;
   /** slot -> versión (ms) de la imagen sobreescrita desde el panel */
   images: Record<string, number>;
   /** portal activo (o el de ?portalPreview=N) */
@@ -87,16 +90,27 @@ const DEFAULTS: SiteSettings = {
   registryBanks: [],
   galleryUrls: [],
   theme: 'clasico',
+  paletteSeeds: [],
+  palette: null,
   images: {},
   _portal: 1,
 };
 
 /** Aplica el tema del portal (paleta + tipografías) al <html>. */
-export function applyTheme(theme: string) {
+export function applyTheme(theme: string, palette?: Palette | null) {
   try {
     const el = document.documentElement;
-    if (theme && theme !== 'clasico') el.setAttribute('data-portaltheme', theme);
-    else el.removeAttribute('data-portaltheme');
+    // Siempre limpiar las variables personalizadas antes de decidir.
+    CUSTOM_VAR_NAMES.forEach((v) => el.style.removeProperty(v));
+    if (theme === 'custom' && palette && palette.primary) {
+      el.setAttribute('data-portaltheme', 'custom');
+      const vars = paletteToVars(palette);
+      Object.entries(vars).forEach(([k, val]) => el.style.setProperty(k, val));
+    } else if (theme && theme !== 'clasico') {
+      el.setAttribute('data-portaltheme', theme);
+    } else {
+      el.removeAttribute('data-portaltheme');
+    }
   } catch { /* noop */ }
 }
 
@@ -135,7 +149,7 @@ const load = (): Promise<SiteSettings> => {
     .then((r) => (r.ok ? r.json() : {}))
     .then((d) => {
       cache = { ...DEFAULTS, ...(d || {}) };
-      applyTheme(cache.theme);
+      applyTheme(cache.theme, cache.palette);
       listeners.forEach((fn) => fn(cache!));
       return cache;
     })

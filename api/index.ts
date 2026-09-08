@@ -105,7 +105,10 @@ const DEFAULT_SETTINGS = {
     // Galería: si tiene URLs, reemplazan a las fotos por defecto de la galería del sitio
     galleryUrls: [] as string[],
     // Tema visual del portal: paleta de color + tipografías (mismo layout)
-    theme: 'clasico' as 'clasico' | 'rosa' | 'jardin' | 'arena',
+    theme: 'clasico' as 'clasico' | 'rosa' | 'jardin' | 'arena' | 'custom',
+    // Tema personalizado: colores base elegidos y la paleta resultante
+    paletteSeeds: [] as string[],
+    palette: null as null | { primary: string; accent: string; bg: string; ink: string },
 };
 type Settings = typeof DEFAULT_SETTINGS;
 
@@ -135,7 +138,7 @@ const PRESENTATION_KEYS = [
     'registryCuestaOn', 'registryCasaNote', 'registryCasaListNumber', 'registryCasaUrl',
     'registryAmazonOn', 'registryAmazonNote', 'registryAmazonUrl',
     'registryStores', 'registryBanksOn', 'registryBanks',
-    'galleryUrls', 'theme',
+    'galleryUrls', 'theme', 'paletteSeeds', 'palette',
 ] as const;
 type PresentationKey = typeof PRESENTATION_KEYS[number];
 const PRESENTATION_SET = new Set<string>(PRESENTATION_KEYS as readonly string[]);

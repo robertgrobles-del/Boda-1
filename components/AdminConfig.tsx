@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Check, RefreshCw, Trash2, Upload, Plus, Image as ImageIcon, Eye, Star } from 'lucide-react';
+import { ArrowLeft, Check, RefreshCw, Trash2, Upload, Plus, Image as ImageIcon, Eye, Star, Wand2 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { DEFAULT_WA_TEMPLATE } from './waTemplate';
+import { generatePalette, paletteToVars, type Palette } from '../utils/palette';
 
 type Toast = (msg: string, type?: 'success' | 'error') => void;
 
@@ -77,7 +78,7 @@ const PRES_DEFAULTS: Record<string, any> = {
   registryCasaUrl: 'https://listaderegalos.casacuesta.com/Event/Stephanie-DalvinDaniel?utm_source=share',
   registryAmazonOn: false, registryAmazonNote: 'Lista de bodas de Amazon', registryAmazonUrl: '',
   registryStores: [], registryBanksOn: true,
-  registryBanks: [], galleryUrls: [], theme: 'clasico',
+  registryBanks: [], galleryUrls: [], theme: 'clasico', paletteSeeds: [], palette: null,
 };
 
 export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, patchSettings, loadSettings, onBack, toast }) => {
@@ -135,6 +136,22 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
   const setBanks = (b: any[]) => pset({ registryBanks: b });
   const stores: any[] = Array.isArray(pv('registryStores')) ? pv('registryStores') : [];
   const setStores = (x: any[]) => pset({ registryStores: x });
+
+  // --- Diseño personalizado (por portal) ---
+  const [seeds, setSeeds] = useState<string[]>(['#4a5d23']);
+  useEffect(() => {
+    const ps = portalData.paletteSeeds;
+    setSeeds(Array.isArray(ps) && ps.length ? ps : ['#4a5d23']);
+    // eslint-disable-next-line
+  }, [editPortal]);
+  const curPalette: Palette = (pv('palette') as Palette) || generatePalette(seeds);
+  const genPalette = () => {
+    const p = generatePalette(seeds);
+    patchPortal({ theme: 'custom', paletteSeeds: seeds, palette: p });
+    toast('Paleta generada.', 'success');
+  };
+  const setPaletteColor = (k: keyof Palette, hex: string) =>
+    patchPortal({ theme: 'custom', palette: { ...curPalette, [k]: hex } });
 
   // --- Imágenes (por portal) ---
   const [assets, setAssets] = useState<Record<string, any>>({});
@@ -272,12 +289,15 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
           </p>
         </>);
 
-      case 'diseno':
+      case 'diseno': {
+        const themeId = pv('theme') || 'clasico';
+        const isCustom = themeId === 'custom';
+        const vars = paletteToVars(curPalette);
         return card(<>
-          {heading(`Diseño · ${portalLabel}`, 'Cada portal puede tener una paleta y tipografías distintas (el mismo layout).')}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {heading(`Diseño · ${portalLabel}`, 'Paleta de color y tipografías del portal (mismo layout).')}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {THEMES.map((t) => {
-              const on = (pv('theme') || 'clasico') === t.id;
+              const on = themeId === t.id;
               return (
                 <button key={t.id} onClick={() => patchPortal({ theme: t.id })}
                   className={`rounded-xl border-2 p-2 text-left transition-all ${on ? 'border-[#4a5d23]' : 'border-stone-200 hover:border-stone-300'}`}>
@@ -290,11 +310,63 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
                 </button>
               );
             })}
+            <button onClick={() => patchPortal({ theme: 'custom', paletteSeeds: seeds, palette: curPalette })}
+              className={`rounded-xl border-2 p-2 text-left transition-all ${isCustom ? 'border-[#4a5d23]' : 'border-stone-200 hover:border-stone-300'}`}>
+              <div className="mb-2 flex h-12 items-center justify-center gap-1.5 rounded-lg" style={{ background: curPalette.bg }}>
+                <span className="h-5 w-5 rounded-full" style={{ background: curPalette.primary }} />
+                <span className="h-5 w-5 rounded-full" style={{ background: curPalette.accent }} />
+              </div>
+              <p className="text-xs font-bold text-stone-700">Personalizado{isCustom && ' ✓'}</p>
+              <p className="text-[9px] text-stone-400">Tus colores</p>
+            </button>
           </div>
+
+          {isCustom && (
+            <div className="rounded-xl border border-stone-200 p-3 space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Colores base (1 a 3)</p>
+              {seeds.map((c, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(c) ? c : '#4a5d23'}
+                    onChange={(e) => setSeeds(seeds.map((x, j) => (j === i ? e.target.value : x)))}
+                    className="h-8 w-10 shrink-0 rounded border border-stone-200" />
+                  <input type="text" value={c} placeholder="#4a5d23"
+                    onChange={(e) => setSeeds(seeds.map((x, j) => (j === i ? e.target.value : x)))}
+                    className="w-28 rounded border border-stone-200 px-2 py-1 font-mono text-xs" />
+                  {seeds.length > 1 && (
+                    <button onClick={() => setSeeds(seeds.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
+                  )}
+                </div>
+              ))}
+              <div className="flex flex-wrap gap-2">
+                {seeds.length < 3 && (
+                  <button onClick={() => setSeeds([...seeds, '#b35a44'])} className="flex items-center gap-1 rounded-lg border border-stone-200 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50"><Plus size={11} /> Color</button>
+                )}
+                <button onClick={genPalette} className="flex items-center gap-1.5 rounded-lg bg-[#4a5d23] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#3b4c1b]"><Wand2 size={12} /> Generar paleta</button>
+              </div>
+
+              <p className="pt-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">Paleta — puedes ajustar cada color</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {(['primary', 'accent', 'bg', 'ink'] as const).map((k) => (
+                  <label key={k} className="flex items-center gap-2 rounded-lg border border-stone-200 p-1.5">
+                    <input type="color" value={curPalette[k]} onChange={(e) => setPaletteColor(k, e.target.value)} className="h-7 w-8 shrink-0 rounded" />
+                    <span className="text-[10px] font-bold text-stone-600">{{ primary: 'Principal', accent: 'Acento', bg: 'Fondo', ink: 'Texto' }[k]}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="flex overflow-hidden rounded-lg border border-stone-200">
+                {Object.values(vars).map((v, i) => (
+                  <span key={i} className="h-8 flex-1" style={{ background: `rgb(${v})` }} />
+                ))}
+              </div>
+            </div>
+          )}
+
           <button onClick={preview} className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
             <Eye size={12} /> Ver este portal
           </button>
         </>);
+      }
 
       case 'anuncio':
         return card(<>
