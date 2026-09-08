@@ -229,7 +229,17 @@
             .gallery-marquee { overflow-x: auto; }
         }
 
-        /* --- Panel de administración: base visual --- */
+        /* --- Panel de administración: escala + base visual --- */
+        /* En las rutas /admin* solo se monta el panel, así que subir la raíz
+           agranda de forma proporcional textos, paddings y gaps (utilidades rem). */
+        html.admin-viewport { font-size: 17px; }
+        /* Las utilidades de píxel fijo no escalan con la raíz: se suben aquí. */
+        [data-admin] .text-\[8px\]  { font-size: 10px; }
+        [data-admin] .text-\[9px\]  { font-size: 10.5px; letter-spacing: .06em; }
+        [data-admin] .text-\[10px\] { font-size: 11.5px; }
+        [data-admin] .text-\[11px\] { font-size: 12.5px; }
+        [data-admin] .text-xs  { font-size: .8125rem; line-height: 1.15rem; }
+        [data-admin] .text-sm  { line-height: 1.35rem; }
         [data-admin] { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
         [data-admin] ::selection { background: rgba(74,93,35,.16); }
         [data-admin] :focus-visible { outline: 2px solid #4a5d23; outline-offset: 2px; border-radius: 8px; }

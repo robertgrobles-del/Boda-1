@@ -93,7 +93,12 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const onPop = () => setSubPage(window.location.pathname.startsWith('/admin/config') ? 'config' : 'dashboard');
     window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    // Escala tipográfica del panel (solo se monta el admin en /admin*).
+    document.documentElement.classList.add('admin-viewport');
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      document.documentElement.classList.remove('admin-viewport');
+    };
   }, []);
   const aforo = settings?.aforo ? String(settings.aforo) : '';
   const loadSettings = async (key = apiKey) => {
@@ -750,39 +755,39 @@ export const AdminDashboard: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setMenuOpen((o) => !o)}
-              className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm transition-colors hover:bg-stone-50"
+              className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-5 py-3 text-sm font-bold uppercase tracking-wider shadow-sm transition-colors hover:bg-stone-50"
               aria-haspopup="menu"
               aria-expanded={menuOpen}
             >
-              <Menu size={15} className="text-[#4a5d23]" /> Menú
-              <ChevronDown size={13} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+              <Menu size={17} className="text-[#4a5d23]" /> Menú
+              <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                 <div
                   role="menu"
-                  className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-stone-200 bg-white py-1.5 shadow-xl"
+                  className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 shadow-xl"
                 >
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); setImportOpen(true); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
-                    <Plus size={15} className="text-[#4a5d23]" /> Importar
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); setImportOpen(true); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                    <Plus size={17} className="text-[#4a5d23]" /> Importar
                   </button>
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleFixEncoding(); }} disabled={fixingEnc} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50 disabled:opacity-50">
-                    <Wand2 size={15} className={`text-[#4a5d23] ${fixingEnc ? 'animate-pulse' : ''}`} /> Reparar acentos
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleFixEncoding(); }} disabled={fixingEnc} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50 disabled:opacity-50">
+                    <Wand2 size={17} className={`text-[#4a5d23] ${fixingEnc ? 'animate-pulse' : ''}`} /> Reparar acentos
                   </button>
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); exportGuestsToCSV(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
-                    <Download size={15} className="text-[#b35a44]" /> Exportar CSV
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); exportGuestsToCSV(); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                    <Download size={17} className="text-[#b35a44]" /> Exportar CSV
                   </button>
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); goConfig(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
-                    <Sliders size={15} className="text-[#4a5d23]" /> Configuración
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); goConfig(); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                    <Sliders size={17} className="text-[#4a5d23]" /> Configuración
                   </button>
                   <div className="my-1.5 border-t border-stone-100" />
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); setDark((d) => !d); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
-                    {dark ? <Sun size={15} className="text-[#b35a44]" /> : <Moon size={15} className="text-[#4a5d23]" />}
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); setDark((d) => !d); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                    {dark ? <Sun size={17} className="text-[#b35a44]" /> : <Moon size={17} className="text-[#4a5d23]" />}
                     {dark ? 'Modo claro' : 'Modo oscuro'}
                   </button>
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleLogout(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
-                    <LogOut size={15} /> Salir
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleLogout(); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                    <LogOut size={17} /> Salir
                   </button>
                 </div>
               </>
@@ -801,13 +806,13 @@ export const AdminDashboard: React.FC = () => {
             <button
               key={key}
               onClick={() => setActiveView(key)}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+              className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${
                 activeView === key ? 'bg-[#4a5d23] text-white shadow-sm' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700'
               }`}
             >
               {label}
               {count !== undefined && (
-                <span className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${activeView === key ? 'bg-white/20' : 'bg-stone-100 text-stone-500'}`}>
+                <span className={`rounded-md px-1.5 py-0.5 text-[11px] tabular-nums ${activeView === key ? 'bg-white/20' : 'bg-stone-100 text-stone-500'}`}>
                   {count}
                 </span>
               )}

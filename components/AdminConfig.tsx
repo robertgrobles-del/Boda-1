@@ -206,21 +206,21 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
 
   // --- helpers de campo ---
   const card = (children: React.ReactNode) => (
-    <div className="admin-card p-4 sm:p-6 space-y-3">{children}</div>
+    <div className="admin-card p-5 sm:p-7 space-y-4">{children}</div>
   );
   const heading = (title: string, sub?: string) => (
-    <div className="mb-2 border-b border-stone-100 pb-3">
-      <h2 className="admin-title text-xl text-stone-800">{title}</h2>
-      {sub && <p className="mt-1 text-xs leading-relaxed text-stone-400">{sub}</p>}
+    <div className="mb-3 border-b border-stone-100 pb-4">
+      <h2 className="admin-title text-2xl text-stone-800">{title}</h2>
+      {sub && <p className="mt-1.5 text-sm leading-relaxed text-stone-400">{sub}</p>}
     </div>
   );
   const row = (label: string, val: boolean, on: (v: boolean) => void, hint?: string) => (
-    <label className="flex items-start justify-between gap-3 rounded-xl border border-stone-200 px-3.5 py-3 cursor-pointer">
-      <span className="text-xs">
+    <label className="flex items-start justify-between gap-3 rounded-xl border border-stone-200 px-4 py-3.5 cursor-pointer hover:border-stone-300">
+      <span className="text-sm">
         <span className="font-bold text-stone-700">{label}</span>
-        {hint && <span className="mt-0.5 block text-[10px] font-normal text-stone-400">{hint}</span>}
+        {hint && <span className="mt-0.5 block text-xs font-normal text-stone-400">{hint}</span>}
       </span>
-      <input type="checkbox" checked={!!val} onChange={(e) => on(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#4a5d23]" />
+      <input type="checkbox" checked={!!val} onChange={(e) => on(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[#4a5d23]" />
     </label>
   );
   const textField = (
@@ -228,16 +228,16 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
     onLocal: (v: string) => void, onCommit: (v: string) => void,
     opts: { area?: boolean; placeholder?: string },
   ) => (
-    <div className="rounded-xl border border-stone-200 px-3.5 py-2.5">
-      <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-400">{label}</label>
+    <div className="rounded-xl border border-stone-200 px-4 py-3">
+      <label className="block text-xs font-bold uppercase tracking-wider text-stone-400">{label}</label>
       {opts.area ? (
         <textarea rows={2} value={value} placeholder={opts.placeholder}
           onChange={(e) => onLocal(e.target.value)} onBlur={(e) => onCommit(e.target.value)}
-          className="mt-1 w-full resize-y rounded-lg border border-stone-200 px-2 py-1.5 text-xs" />
+          className="mt-1.5 w-full resize-y rounded-lg border border-stone-200 px-3 py-2 text-sm" />
       ) : (
         <input type="text" value={value} placeholder={opts.placeholder}
           onChange={(e) => onLocal(e.target.value)} onBlur={(e) => onCommit(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-stone-200 px-2 py-1.5 text-xs" />
+          className="mt-1.5 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm" />
       )}
     </div>
   );
@@ -436,13 +436,13 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
                 <div key={i} className="rounded-lg bg-stone-50 p-2.5 space-y-1.5">
                   <input placeholder="Nombre de la tienda" value={st.name || ''}
                     onChange={(e) => setStores(stores.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
-                    className="w-full rounded border border-stone-200 px-2 py-1 text-xs" />
+                    className="w-full rounded-lg border border-stone-200 px-2.5 py-1.5 text-sm" />
                   <input placeholder="Nota (opcional)" value={st.note || ''}
                     onChange={(e) => setStores(stores.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))}
-                    className="w-full rounded border border-stone-200 px-2 py-1 text-xs" />
+                    className="w-full rounded-lg border border-stone-200 px-2.5 py-1.5 text-sm" />
                   <input placeholder="https://…" value={st.url || ''}
                     onChange={(e) => setStores(stores.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))}
-                    className="w-full rounded border border-stone-200 px-2 py-1 text-xs" />
+                    className="w-full rounded-lg border border-stone-200 px-2.5 py-1.5 text-sm" />
                   <button type="button" onClick={() => setStores(stores.filter((_, j) => j !== i))} className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-600"><Trash2 size={11} /> Quitar</button>
                 </div>
               ))}
@@ -473,7 +473,7 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
                         placeholder={{ bank: 'Banco', type: 'Tipo de cuenta', number: 'No. de cuenta', holder: 'A nombre de', cedula: 'Cédula' }[f]}
                         value={b[f] || ''}
                         onChange={(e) => setBanks(banks.map((x, j) => (j === i ? { ...x, [f]: e.target.value } : x)))}
-                        className="rounded border border-stone-200 px-2 py-1 text-xs" />
+                        className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-sm" />
                     ))}
                   </div>
                   <button type="button" onClick={() => setBanks(banks.filter((_, j) => j !== i))} className="mt-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-600"><Trash2 size={11} /> Quitar</button>
@@ -645,7 +645,7 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
     <button
       key={item.id}
       onClick={() => setNav(item.id)}
-      className={`whitespace-nowrap rounded-lg px-3 py-2 text-left text-xs font-bold transition-colors ${
+      className={`whitespace-nowrap rounded-lg px-3.5 py-2.5 text-left text-sm font-bold transition-colors ${
         nav === item.id
           ? 'bg-[#f1f4ea] text-[#4a5d23] md:border-l-2 md:border-[#4a5d23] md:rounded-l-none'
           : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700'
@@ -679,14 +679,14 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
 
       <div className="flex gap-7">
         {/* sidebar (escritorio) */}
-        <aside className="hidden w-48 shrink-0 md:block">
-          <div className="sticky top-20 space-y-4">
-            <div className="space-y-0.5">
-              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-[0.15em] text-stone-400">Portal · {portalLabel}</p>
+        <aside className="hidden w-56 shrink-0 md:block">
+          <div className="sticky top-20 space-y-5">
+            <div className="space-y-1">
+              <p className="px-3.5 pb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-stone-400">Portal · {portalLabel}</p>
               {NAV.filter((i) => i.scope === 'x' || i.scope === 'p').map((i) => navBtn(i))}
             </div>
-            <div className="space-y-0.5">
-              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-[0.15em] text-stone-400">General</p>
+            <div className="space-y-1">
+              <p className="px-3.5 pb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-stone-400">General</p>
               {NAV.filter((i) => i.scope === 'g').map((i) => navBtn(i))}
             </div>
           </div>
