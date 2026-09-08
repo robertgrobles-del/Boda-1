@@ -4,7 +4,7 @@ import {
   Users, CheckCircle, XCircle, Search, Download, Key, LogOut,
   Smartphone, Plus, MessageSquare, Trash2, Send, Copy, ExternalLink,
   RefreshCw, Sliders, FileText, Check,
-  MessageCircle, MoreVertical, Pencil, X, ChevronDown
+  MessageCircle, MoreVertical, Pencil, X, ChevronDown, Wand2
 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
@@ -444,6 +444,28 @@ export const AdminDashboard: React.FC = () => {
     toast('Sesión cerrada.', 'success');
   };
 
+  const [fixingEnc, setFixingEnc] = useState(false);
+  const handleFixEncoding = async () => {
+    if (!window.confirm('Reparar los acentos mal codificados (ej. "PÃ©rez" → "Pérez") en nombres y mensajes. ¿Continuar?')) return;
+    setFixingEnc(true);
+    try {
+      const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/fix-encoding`, {
+        method: 'POST',
+        headers: { 'x-api-key': apiKey },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error();
+      toast(data.fixed ? `${data.fixed} registro(s) corregidos.` : 'No había nada que corregir.', 'success');
+      fetchGuests();
+      fetchAllowedGuests();
+      fetchMessages();
+    } catch {
+      toast('No se pudo reparar la codificación.', 'error');
+    } finally {
+      setFixingEnc(false);
+    }
+  };
+
   const handleAddAllowedGuest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPhone.trim() || !newPin.trim()) return;
@@ -599,10 +621,18 @@ export const AdminDashboard: React.FC = () => {
             <h1 className="text-3xl font-bold text-stone-800 md:text-4xl">Panel de Administración</h1>
             <p className="text-stone-500 text-xs italic mt-1">Stephanie & Dalvin · Control de RSVP & Seguridad de Lista</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleFixEncoding}
+              disabled={fixingEnc}
+              className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm disabled:opacity-50"
+              title='Corrige acentos mal guardados (ej. "PÃ©rez" → "Pérez")'
+            >
+              <Wand2 size={14} className={`text-[#4a5d23] ${fixingEnc ? 'animate-pulse' : ''}`} /> Reparar acentos
+            </button>
             <button
               onClick={exportGuestsToCSV}
-              className="flex items-center gap-2 px-5 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
+              className="flex items-center gap-2 px-4 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
             >
               <Download size={14} className="text-[#b35a44]" /> Exportar CSV
             </button>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Users, Plus, RefreshCw, X, Wand2, Tag, Save, Trash2 } from 'lucide-react';
+import { Users, Plus, RefreshCw, X, Wand2, Tag, Save, Trash2, Lock, Unlock, AlertTriangle, Download, UtensilsCrossed } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
 
@@ -9,6 +9,7 @@ interface Person {
   party: string;
   rsvpId: number;
   tag?: string | null;
+  dietary?: string | null;
 }
 type Seat = { table: number; seat: number | null };
 type Assignments = Record<string, Seat>;
@@ -32,6 +33,8 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   const [people, setPeople] = useState<Person[]>([]);
   const [assignments, setAssignments] = useState<Assignments>({});
   const [tableLabels, setTableLabels] = useState<Record<number, string>>({});
+  const [locked, setLocked] = useState<Set<number>>(new Set());
+  const tableRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -70,6 +73,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
       setTableLabels(
         Object.fromEntries(Object.entries(data.tables || {}).map(([k, v]) => [Number(k), v as string])),
       );
+      setLocked(new Set<number>((data.locked || []).map(Number)));
       setDirty(false);
       setTableCount((prev) => {
         const maxT = Math.max(0, ...Object.values(norm).map((s) => s.table));
@@ -97,7 +101,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
       const res = await fetch(`${API_CONFIG.backendUrl}/api/admin/seating/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
-        body: JSON.stringify({ assignments, tables: tableLabels }),
+        body: JSON.stringify({ assignments, tables: tableLabels, locked: [...locked] }),
       });
       if (!res.ok) throw new Error();
       setDirty(false);
@@ -191,6 +195,16 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     setDirty(true);
   };
 
+  const toggleLock = (n: number) => {
+    setLocked((s) => {
+      const next = new Set(s);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+    setDirty(true);
+  };
+
   const addTable = () => setTableCount((c) => c + 1);
 
   const deleteTable = (n: number, seatedCount: number) => {
@@ -210,6 +224,14 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
         if (num === n) continue;
         next[num > n ? num - 1 : num] = v;
       }
+      return next;
+    });
+    setLocked((s) => {
+      const next = new Set<number>();
+      s.forEach((num) => {
+        if (num === n) return;
+        next.add(num > n ? num - 1 : num);
+      });
       return next;
     });
     setTableCount((c) => Math.max(1, c - 1));
@@ -264,6 +286,82 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   };
   const selectedPerson = selected ? people.find((p) => p.key === selected) : null;
 
+  const searchQ = search.trim().toLowerCase();
+  const matches = useCallback(
+    (p: Person) => !!searchQ && (p.name.toLowerCase().includes(searchQ) || p.party.toLowerCase().includes(searchQ)),
+    [searchQ],
+  );
+
+  // Al buscar, hacer scroll a la mesa del primer invitado sentado que coincide
+  useEffect(() => {
+    if (!searchQ) return;
+    const hit = people.find((p) => assignments[p.key] && matches(p));
+    const t = hit ? assignments[hit.key].table : null;
+    if (t && tableRefs.current[t]) {
+      tableRefs.current[t]!.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [searchQ, people, assignments, matches]);
+
+  // --- avisos automáticos ---
+  const warnings = useMemo(() => {
+    const w: string[] = [];
+    // familias divididas
+    const partyTables = new Map<string, Set<number>>();
+    people.forEach((p) => {
+      const t = assignments[p.key]?.table;
+      if (!t) return;
+      if (!partyTables.has(p.party)) partyTables.set(p.party, new Set());
+      partyTables.get(p.party)!.add(t);
+    });
+    partyTables.forEach((set, party) => {
+      if (set.size > 1) w.push(`"${party}" está repartida en ${set.size} mesas (${[...set].sort((a, b) => a - b).join(', ')}).`);
+    });
+    // mesas sobre capacidad
+    const perTable = new Map<number, number>();
+    Object.values(assignments).forEach((s) => perTable.set(s.table, (perTable.get(s.table) || 0) + 1));
+    perTable.forEach((c, t) => {
+      if (c > tableSize) w.push(`Mesa ${t} tiene ${c} personas (excede ${tableSize}).`);
+    });
+    // etiqueta con mesa pero gente sin sentar ahí
+    const labelByTag = new Map<string, number>();
+    Object.entries(tableLabels).forEach(([n, l]) => labelByTag.set(l.trim().toLowerCase(), Number(n)));
+    const stray = new Map<string, number>();
+    people.forEach((p) => {
+      if (!p.tag) return;
+      const t = labelByTag.get(p.tag.trim().toLowerCase());
+      if (!t) return;
+      if ((assignments[p.key]?.table ?? 0) !== t) stray.set(p.tag, (stray.get(p.tag) || 0) + 1);
+    });
+    stray.forEach((c, tg) => w.push(`${c} de "${tg}" no están en su mesa (etiqueta ${tg}). Usa "Auto-asignar".`));
+    return w;
+  }, [people, assignments, tableLabels, tableSize]);
+
+  // --- exportar "Mesa → invitados" a CSV ---
+  const exportCSV = () => {
+    const rows: string[][] = [['Mesa', 'Etiqueta', 'Asiento', 'Invitado', 'Familia', 'Restricción']];
+    for (let n = 1; n <= effectiveCount; n++) {
+      const map = seatMapOf(n);
+      map.forEach((p, i) => {
+        if (!p) return;
+        rows.push([
+          String(n),
+          tableLabels[n] || '',
+          String(i + 1),
+          p.name,
+          p.party,
+          p.dietary || '',
+        ]);
+      });
+    }
+    unassigned.forEach((p) => rows.push(['—', '', '', p.name, p.party, p.dietary || '']));
+    const csv = '﻿' + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mesas_boda.csv';
+    a.click();
+  };
+
   // --- drag helpers ---
   const startDrag = (key: string) => (e: React.DragEvent) => {
     e.dataTransfer.setData('text/plain', key);
@@ -293,6 +391,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   // React desmonta el nodo que se está arrastrando → cancela el drag.
   const chip = (p: Person, opts: { onPick: () => void; compact?: boolean }) => {
     const isSel = selected === p.key;
+    const isHit = matches(p);
     return (
       <div
         role="button"
@@ -301,18 +400,21 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
         onDragStart={startDrag(p.key)}
         onDragEnd={endDrag}
         onClick={(e) => { e.stopPropagation(); opts.onPick(); }}
-        title={`${p.name} · ${p.party}${p.tag ? ` · ${p.tag}` : ''}`}
+        title={`${p.name} · ${p.party}${p.tag ? ` · ${p.tag}` : ''}${p.dietary ? ` · ⚠ ${p.dietary}` : ''}`}
         className={`flex cursor-grab items-center gap-1 rounded-full border bg-white py-1 text-[10px] font-medium shadow-sm transition-all active:cursor-grabbing ${
           opts.compact ? 'px-1.5' : 'pl-2 pr-2.5'
-        } ${isSel ? 'ring-2 ring-[#4a5d23] ring-offset-1' : 'hover:-translate-y-0.5 hover:shadow-md'} ${
-          dragKey === p.key ? 'opacity-30' : ''
-        }`}
+        } ${
+          isSel ? 'ring-2 ring-[#4a5d23] ring-offset-1'
+          : isHit ? 'ring-2 ring-amber-400 ring-offset-1'
+          : 'hover:-translate-y-0.5 hover:shadow-md'
+        } ${dragKey === p.key ? 'opacity-30' : ''}`}
         style={{ borderColor: `${partyColor(p.party)}77` }}
       >
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: partyColor(p.party) }} />
         <span className={`truncate ${opts.compact ? 'max-w-[4rem]' : 'max-w-[8.5rem]'} text-stone-700`}>
           {opts.compact ? firstName(p.name) : p.name}
         </span>
+        {p.dietary && <UtensilsCrossed size={9} className="shrink-0 text-amber-600" />}
       </div>
     );
   };
@@ -323,17 +425,33 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     const slots = map.length;
     const over8 = seatedCount > tableSize;
     const full = seatedCount === tableSize;
+    const dietCount = map.filter((p) => p?.dietary).length;
+    const isLocked = locked.has(n);
 
     return (
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center" ref={(el) => { tableRefs.current[n] = el; }}>
         <div className="relative aspect-square w-full max-w-[270px]">
+          {/* candado */}
+          <button
+            type="button"
+            onClick={() => toggleLock(n)}
+            title={isLocked ? 'Mesa fija — desbloquear' : 'Fijar mesa (auto-asignar la ignora)'}
+            className={`absolute right-1 top-1 z-20 rounded-full p-1 shadow-sm transition-colors ${
+              isLocked ? 'bg-amber-100 text-amber-700' : 'bg-white text-stone-300 hover:text-stone-600'
+            }`}
+          >
+            {isLocked ? <Lock size={12} /> : <Unlock size={12} />}
+          </button>
+
           {/* mesa (círculo central) — soltar/clic aquí = primer asiento libre */}
           <div
             {...over(`t${n}`)}
             onDrop={(e) => { e.preventDefault(); const k = e.dataTransfer.getData('text/plain'); endDrag(); if (k) toTable(k, n); }}
             onClick={() => { if (selected) toTable(selected, n); }}
             className={`absolute inset-[26%] flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-full border-2 p-2 text-center transition-all ${
-              dragOver === `t${n}` ? 'scale-105 border-[#4a5d23] bg-[#4a5d23]/15' : 'border-[#4a5d23]/25 bg-[#f1f4ea]/70'
+              dragOver === `t${n}` ? 'scale-105 border-[#4a5d23] bg-[#4a5d23]/15'
+              : isLocked ? 'border-amber-300 bg-amber-50/70'
+              : 'border-[#4a5d23]/25 bg-[#f1f4ea]/70'
             }`}
           >
             <span className="text-xs font-bold text-stone-700">Mesa {n}</span>
@@ -363,13 +481,20 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
                 {tableLabels[n] || '+ etiqueta'}
               </button>
             )}
-            <span
-              className={`rounded-full px-1.5 text-[9px] font-bold ${
-                over8 ? 'bg-red-100 text-red-600' : full ? 'bg-amber-100 text-amber-700' : 'text-[#4a5d23]'
-              }`}
-            >
-              {seatedCount}/{tableSize}
-            </span>
+            <div className="flex items-center gap-1">
+              <span
+                className={`rounded-full px-1.5 text-[9px] font-bold ${
+                  over8 ? 'bg-red-100 text-red-600' : full ? 'bg-amber-100 text-amber-700' : 'text-[#4a5d23]'
+                }`}
+              >
+                {seatedCount}/{tableSize}
+              </span>
+              {dietCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-1 text-[8px] font-bold text-amber-700" title="Restricciones alimentarias en esta mesa">
+                  <UtensilsCrossed size={8} /> {dietCount}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* asientos concretos alrededor */}
@@ -479,6 +604,14 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
           </button>
           <button
             type="button"
+            onClick={exportCSV}
+            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50"
+            title="Descargar Excel/CSV: mesa → invitados"
+          >
+            <Download size={13} /> Exportar
+          </button>
+          <button
+            type="button"
             onClick={() => load()}
             className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50"
             title="Recargar"
@@ -487,6 +620,19 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
           </button>
         </div>
       </div>
+
+      {warnings.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-700">
+            <AlertTriangle size={13} /> Avisos ({warnings.length})
+          </div>
+          <ul className="list-inside list-disc space-y-0.5 text-xs text-amber-800">
+            {warnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Barra de guardado (sticky) */}
       <div

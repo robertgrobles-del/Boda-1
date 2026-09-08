@@ -38,9 +38,10 @@ model SeatAssignment {
 
 // Metadatos de una mesa de la recepción (su etiqueta / grupo).
 model TableMeta {
-  id          Int    @id @default(autoincrement())
-  tableNumber Int    @unique
-  label       String
+  id          Int     @id @default(autoincrement())
+  tableNumber Int     @unique
+  label       String  @default("")
+  locked      Boolean @default(false) // mesa fija: auto-asignar la ignora
 }
 
 model GuestMessage {

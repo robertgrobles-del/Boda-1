@@ -845,6 +845,18 @@ const onlyDigits = (s: any) => String(s || '').replace(/\D/g, '');
 const normLabel = (s: any) =>
     String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
+/** Detecta/repara texto con doble codificación UTF-8 (p.ej. "PÃ©rez" → "Pérez"). */
+const looksMojibake = (s: string) => /Ã[\x80-\xbf]|Â[\x80-\xbf\xa0-\xbf]|â‚¬|â€|Ã‚|Ã©|Ã±|Ã³|Ã¡|Ã­|Ãº/.test(s);
+const fixMojibake = (s: any): string => {
+    const str = String(s ?? '');
+    if (!str || !looksMojibake(str)) return str;
+    try {
+        const fixed = Buffer.from(str, 'latin1').toString('utf8');
+        if (!fixed.includes('�') && Buffer.from(fixed, 'utf8').toString('latin1') === str) return fixed;
+    } catch { /* noop */ }
+    return str;
+};
+
 /** Expande las confirmaciones (que van a la recepción) a personas individuales. */
 const buildSeatingPeople = async () => {
     const [rsvps, allowed] = await Promise.all([
@@ -855,20 +867,22 @@ const buildSeatingPeople = async () => {
     const byPhone = new Map<string, any>();
     allowed.forEach((a: any) => byPhone.set(onlyDigits(a.phone), a));
 
-    const people: { key: string; name: string; party: string; rsvpId: number; tag: string | null }[] = [];
-    for (const r of rsvps) {
+    const people: { key: string; name: string; party: string; rsvpId: number; tag: string | null; dietary: string | null }[] = [];
+    for (const r of rsvps as any[]) {
         const ag = r.phone ? byPhone.get(onlyDigits(r.phone)) : null;
         if (ag && ag.ceremonyOnly) continue; // no van a la recepción
         let names: string[] = [];
         try { names = JSON.parse(r.guestNames || '[]'); } catch { /* noop */ }
         const count = Math.max(r.guestsCount || 0, names.filter(Boolean).length, 1);
+        const party = fixMojibake(r.name);
         for (let i = 0; i < count; i++) {
             people.push({
                 key: `${r.id}:${i}`,
-                name: names[i] || (i === 0 ? r.name : `${r.name} (${i + 1})`),
-                party: r.name,
+                name: fixMojibake(names[i] || (i === 0 ? r.name : `${r.name} (${i + 1})`)),
+                party,
                 rsvpId: r.id,
                 tag: (ag && ag.tag) || null,
+                dietary: (r.dietary && String(r.dietary).trim()) || null,
             });
         }
     }
@@ -900,9 +914,13 @@ app.get('/api/admin/seating', async (req, res) => {
         });
 
         const tables: Record<number, string> = {};
-        metas.forEach((m: any) => { tables[m.tableNumber] = m.label; });
+        const locked: number[] = [];
+        metas.forEach((m: any) => {
+            if (m.label) tables[m.tableNumber] = m.label;
+            if (m.locked) locked.push(m.tableNumber);
+        });
 
-        res.json({ people, assignments, tables });
+        res.json({ people, assignments, tables, locked });
     } catch (error) {
         console.error('Seating GET error:', error);
         res.status(500).json({ error: 'Failed to load seating' });
@@ -913,7 +931,7 @@ app.get('/api/admin/seating', async (req, res) => {
 app.post('/api/admin/seating/save', async (req, res) => {
     if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { assignments, tables } = req.body || {};
+    const { assignments, tables, locked } = req.body || {};
 
     try {
         const people = await buildSeatingPeople();
@@ -928,10 +946,20 @@ app.post('/api/admin/seating/save', async (req, res) => {
             })
             .filter((r) => validKeys.has(r.personKey) && Number.isFinite(r.tableNumber) && r.tableNumber >= 1);
 
-        const metaRows = Object.entries(tables || {})
-            .map(([n, label]) => [parseInt(n, 10), String(label || '').trim().slice(0, 40)] as [number, string])
-            .filter(([n, label]) => Number.isFinite(n) && n >= 1 && !!label)
-            .map(([tableNumber, label]) => ({ tableNumber, label }));
+        // Una fila TableMeta por cada mesa que tenga etiqueta y/o esté bloqueada
+        const lockedSet = new Set<number>((Array.isArray(locked) ? locked : []).map((n: any) => parseInt(n, 10)).filter(Boolean));
+        const labels = new Map<number, string>();
+        Object.entries(tables || {}).forEach(([n, label]) => {
+            const num = parseInt(n, 10);
+            const clean = String(label || '').trim().slice(0, 40);
+            if (num >= 1 && clean) labels.set(num, clean);
+        });
+        const metaNums = new Set<number>([...labels.keys(), ...lockedSet]);
+        const metaRows = [...metaNums].map((tableNumber) => ({
+            tableNumber,
+            label: labels.get(tableNumber) || '',
+            locked: lockedSet.has(tableNumber),
+        }));
 
         await prisma.seatAssignment.deleteMany({});
         await prisma.tableMeta.deleteMany({});
@@ -978,8 +1006,10 @@ app.post('/api/admin/seating/autoassign', async (req, res) => {
             prisma.tableMeta.findMany(),
         ]);
         const assigned = new Set(rows.map((r) => r.personKey));
-        const tableByTag = new Map<string, number>();
-        metas.forEach((m: any) => tableByTag.set(normLabel(m.label), m.tableNumber));
+        const tableByTag = new Map<string, number>(); // las mesas bloqueadas quedan fuera
+        metas.forEach((m: any) => {
+            if (m.label && !m.locked) tableByTag.set(normLabel(m.label), m.tableNumber);
+        });
 
         // asientos ya ocupados por mesa
         const occupied = new Map<number, Set<number>>();
@@ -1014,6 +1044,64 @@ app.post('/api/admin/seating/autoassign', async (req, res) => {
     } catch (error) {
         console.error('Autoassign error:', error);
         res.status(500).json({ error: 'Failed to auto-assign' });
+    }
+});
+
+// POST: reparar nombres con doble codificación UTF-8 ("PÃ©rez" → "Pérez")
+app.post('/api/admin/fix-encoding', async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        let fixed = 0;
+
+        const rsvps = await prisma.rSVP.findMany();
+        for (const r of rsvps as any[]) {
+            const data: any = {};
+            const name = fixMojibake(r.name);
+            if (name !== r.name) data.name = name;
+            if (r.guestNames) {
+                try {
+                    const arr = JSON.parse(r.guestNames);
+                    if (Array.isArray(arr)) {
+                        const arr2 = arr.map((x) => (typeof x === 'string' ? fixMojibake(x) : x));
+                        const j = JSON.stringify(arr2);
+                        if (j !== r.guestNames) data.guestNames = j;
+                    }
+                } catch { /* noop */ }
+            }
+            if (r.message && fixMojibake(r.message) !== r.message) data.message = fixMojibake(r.message);
+            if (r.dietary && fixMojibake(r.dietary) !== r.dietary) data.dietary = fixMojibake(r.dietary);
+            if (Object.keys(data).length) {
+                await prisma.rSVP.update({ where: { id: r.id }, data });
+                fixed++;
+            }
+        }
+
+        const allowed = await prisma.allowedGuest.findMany();
+        for (const a of allowed as any[]) {
+            const data: any = {};
+            if (a.name && fixMojibake(a.name) !== a.name) data.name = fixMojibake(a.name);
+            if (a.tag && fixMojibake(a.tag) !== a.tag) data.tag = fixMojibake(a.tag);
+            if (Object.keys(data).length) {
+                await prisma.allowedGuest.update({ where: { id: a.id }, data });
+                fixed++;
+            }
+        }
+
+        const msgs = await prisma.guestMessage.findMany();
+        for (const m of msgs as any[]) {
+            const data: any = {};
+            if (fixMojibake(m.name) !== m.name) data.name = fixMojibake(m.name);
+            if (fixMojibake(m.message) !== m.message) data.message = fixMojibake(m.message);
+            if (Object.keys(data).length) {
+                await prisma.guestMessage.update({ where: { id: m.id }, data });
+                fixed++;
+            }
+        }
+
+        res.json({ success: true, fixed });
+    } catch (error) {
+        console.error('Fix encoding error:', error);
+        res.status(500).json({ error: 'Failed to fix encoding' });
     }
 });
 
