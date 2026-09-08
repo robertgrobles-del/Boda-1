@@ -20,18 +20,20 @@ import { ToastProvider } from './components/Toast';
 import { AdminDashboard } from './components/AdminDashboard';
 import { MemoriesPage } from './components/MemoriesPage';
 import { LegalPage } from './components/LegalPage';
+import { GraciasPage } from './components/GraciasPage';
 import { InviteeProvider } from './components/InviteeContext';
 import { Calendar, Apple } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { EVENT_DATA, PHOTOS, CALENDAR_URLS, buildIcsDataUri } from './constants';
 
-type Route = 'home' | 'admin' | 'memories' | 'privacidad' | 'terminos';
+type Route = 'home' | 'admin' | 'memories' | 'privacidad' | 'terminos' | 'gracias';
 
 const routeFromPath = (path: string): Route => {
   if (path === '/admin') return 'admin';
   if (path === '/memories') return 'memories';
   if (path === '/privacidad') return 'privacidad';
   if (path === '/terminos') return 'terminos';
+  if (path === '/gracias') return 'gracias';
   return 'home';
 };
 
@@ -91,6 +93,14 @@ const App: React.FC = () => {
     return (
       <ToastProvider>
         <LegalPage kind={currentRoute} />
+      </ToastProvider>
+    );
+  }
+
+  if (currentRoute === 'gracias') {
+    return (
+      <ToastProvider>
+        <GraciasPage />
       </ToastProvider>
     );
   }

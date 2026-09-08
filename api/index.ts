@@ -628,6 +628,72 @@ app.post('/api/upload', async (req, res) => {
     }
 });
 
+// --- Galería post-boda: fotos que subieron los invitados (Google Drive) ------
+
+let galleryCache: { at: number; items: { id: string; name: string }[] } = { at: 0, items: [] };
+
+app.get('/api/gallery', async (_req, res) => {
+    const mainFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    const hasCreds = Boolean(process.env.GOOGLE_REFRESH_TOKEN || process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    if (!mainFolderId || !hasCreds) return res.json({ items: [] });
+
+    // Cache 5 min (listar Drive es lento)
+    if (Date.now() - galleryCache.at < 5 * 60 * 1000 && galleryCache.items.length) {
+        return res.json({ items: galleryCache.items });
+    }
+
+    try {
+        const token = await getGoogleAccessToken();
+        const auth = { headers: { Authorization: `Bearer ${token}` } };
+
+        // Carpeta principal + subcarpetas
+        const subRes = await fetch(
+            `https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100&fields=files(id)&q=${encodeURIComponent(
+                `'${mainFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            )}`,
+            auth,
+        );
+        const subs = subRes.ok ? ((await subRes.json()).files || []).map((f: any) => f.id) : [];
+        const folders = [mainFolderId, ...subs];
+
+        const items: { id: string; name: string }[] = [];
+        for (const fid of folders) {
+            const r = await fetch(
+                `https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=1000&orderBy=createdTime desc&fields=files(id,name)&q=${encodeURIComponent(
+                    `'${fid}' in parents and mimeType contains 'image/' and trashed=false`,
+                )}`,
+                auth,
+            );
+            if (r.ok) ((await r.json()).files || []).forEach((f: any) => items.push({ id: f.id, name: f.name }));
+        }
+
+        galleryCache = { at: Date.now(), items };
+        res.json({ items });
+    } catch (error: any) {
+        console.error('Gallery list error:', error);
+        res.status(500).json({ items: [], error: String(error?.message || error).slice(0, 150) });
+    }
+});
+
+app.get('/api/gallery/img/:id', async (req, res) => {
+    const id = String(req.params.id || '').replace(/[^\w-]/g, '');
+    if (!id) return res.status(400).end();
+    try {
+        const token = await getGoogleAccessToken();
+        const r = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!r.ok || !r.body) return res.status(r.status).end();
+        res.set('Content-Type', r.headers.get('content-type') || 'image/jpeg');
+        res.set('Cache-Control', 'public, max-age=86400, s-maxage=604800');
+        const buf = Buffer.from(await r.arrayBuffer());
+        res.end(buf);
+    } catch (error) {
+        console.error('Gallery img error:', error);
+        res.status(500).end();
+    }
+});
+
 // 2.5 Guestbook — Libro de mensajes para los novios
 app.post('/api/messages', async (req, res) => {
     try {
