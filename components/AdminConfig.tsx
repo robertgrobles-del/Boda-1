@@ -206,12 +206,12 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
 
   // --- helpers de campo ---
   const card = (children: React.ReactNode) => (
-    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6 space-y-3">{children}</div>
+    <div className="admin-card p-4 sm:p-6 space-y-3">{children}</div>
   );
   const heading = (title: string, sub?: string) => (
-    <div className="mb-1">
-      <h2 className="font-serif text-xl text-stone-800">{title}</h2>
-      {sub && <p className="mt-0.5 text-xs text-stone-400">{sub}</p>}
+    <div className="mb-2 border-b border-stone-100 pb-3">
+      <h2 className="admin-title text-xl text-stone-800">{title}</h2>
+      {sub && <p className="mt-1 text-xs leading-relaxed text-stone-400">{sub}</p>}
     </div>
   );
   const row = (label: string, val: boolean, on: (v: boolean) => void, hint?: string) => (
@@ -646,7 +646,9 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
       key={item.id}
       onClick={() => setNav(item.id)}
       className={`whitespace-nowrap rounded-lg px-3 py-2 text-left text-xs font-bold transition-colors ${
-        nav === item.id ? 'bg-[#4a5d23] text-white' : 'text-stone-600 hover:bg-stone-100'
+        nav === item.id
+          ? 'bg-[#f1f4ea] text-[#4a5d23] md:border-l-2 md:border-[#4a5d23] md:rounded-l-none'
+          : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700'
       } ${mobile ? '' : 'w-full'}`}
     >
       {item.label}
@@ -654,12 +656,20 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
   );
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 md:py-10">
-      <div className="mb-5 flex items-center justify-between">
+    <div className="mx-auto max-w-5xl px-4 pb-14">
+      <div className="sticky top-0 z-20 -mx-4 mb-5 flex items-center justify-between border-b border-stone-200/80 bg-[#fdfaf6]/90 px-4 py-3.5 backdrop-blur">
         <button onClick={onBack} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-stone-500 hover:text-stone-800">
           <ArrowLeft size={14} /> Volver al panel
         </button>
-        <h1 className="font-serif text-lg text-stone-800">Configuración</h1>
+        <div className="flex items-center gap-2">
+          <span className="hidden text-[10px] font-bold uppercase tracking-wider text-stone-400 sm:inline">Editando</span>
+          <span className="rounded-md bg-[#f1f4ea] px-2 py-0.5 text-[11px] font-bold text-[#4a5d23]">{portalLabel}</span>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <p className="admin-eyebrow">Configuración</p>
+        <h1 className="admin-title mt-0.5 text-2xl text-stone-800">Ajustes del sitio</h1>
       </div>
 
       {/* nav horizontal (móvil) */}
@@ -667,16 +677,16 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
         {NAV.map((i) => navBtn(i, true))}
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex gap-7">
         {/* sidebar (escritorio) */}
         <aside className="hidden w-48 shrink-0 md:block">
-          <div className="sticky top-6 space-y-4">
+          <div className="sticky top-20 space-y-4">
             <div className="space-y-0.5">
-              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-wider text-stone-400">Portal</p>
+              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-[0.15em] text-stone-400">Portal · {portalLabel}</p>
               {NAV.filter((i) => i.scope === 'x' || i.scope === 'p').map((i) => navBtn(i))}
             </div>
             <div className="space-y-0.5">
-              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-wider text-stone-400">General</p>
+              <p className="px-3 pb-1 text-[9px] font-bold uppercase tracking-[0.15em] text-stone-400">General</p>
               {NAV.filter((i) => i.scope === 'g').map((i) => navBtn(i))}
             </div>
           </div>

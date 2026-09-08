@@ -682,25 +682,27 @@ export const AdminDashboard: React.FC = () => {
 
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-[#fdfaf6] flex items-center justify-center px-6">
-        <div className="w-full max-w-md bg-white p-8 rounded-3xl border border-stone-200/50 shadow-2xl">
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-16 h-16 bg-[#f1f4ea] rounded-full flex items-center justify-center mb-4">
-              <Key className="text-[#4a5d23]" size={28} />
-            </div>
-            <h1 className="text-2xl text-stone-800 font-bold mb-1">Acceso Administrativo</h1>
-            <p className="text-stone-500 text-xs italic">Stephanie & Dalvin - Boda 2026</p>
+      <div data-admin data-admintheme={dark ? 'dark' : undefined} className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fdfaf6] px-6 text-stone-800">
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[#4a5d23]/10 blur-3xl" />
+        <div className="relative w-full max-w-sm">
+          <div className="mb-8 text-center">
+            <span className="font-signature text-5xl text-[#4a5d23]">S&amp;D</span>
+            <p className="admin-eyebrow mt-3">Panel de administración</p>
+            <h1 className="admin-title mt-1 text-2xl text-stone-800">Stephanie &amp; Dalvin</h1>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="admin-key" className="text-[10px] font-bold text-stone-600 ml-1 uppercase tracking-wider">Clave de Acceso</label>
+          <form onSubmit={handleLogin} className="admin-card space-y-4 p-6 sm:p-7">
+            <div className="space-y-1.5">
+              <label htmlFor="admin-key" className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                <Key size={12} className="text-[#4a5d23]" /> Clave de acceso
+              </label>
               <input
                 id="admin-key"
                 type="password"
                 required
-                className="w-full px-4 py-3.5 border border-stone-200 bg-[#fdfaf6] rounded-xl focus:outline-none focus:border-[#4a5d23] focus:bg-white transition-all text-sm text-stone-700"
-                placeholder="Ingresa la API Key"
+                autoFocus
+                className="w-full rounded-xl border border-stone-200 bg-[#fdfaf6] px-4 py-3 text-sm text-stone-700"
+                placeholder="••••••••"
                 value={apiKeyInput}
                 onChange={(e) => setApiKeyInput(e.target.value)}
               />
@@ -709,9 +711,9 @@ export const AdminDashboard: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 rounded-xl bg-[#4a5d23] hover:bg-[#3b4c1b] text-white font-bold text-xs uppercase tracking-widest transition-all shadow-md disabled:opacity-50"
+              className="w-full rounded-xl bg-[#4a5d23] py-3.5 text-xs font-bold uppercase tracking-widest text-white shadow-sm transition-colors hover:bg-[#3b4c1b] disabled:opacity-50"
             >
-              {loading ? 'Verificando...' : 'Acceder al Panel'}
+              {loading ? 'Verificando…' : 'Entrar'}
             </button>
           </form>
         </div>
@@ -721,7 +723,7 @@ export const AdminDashboard: React.FC = () => {
 
   if (subPage === 'config') {
     return (
-      <div data-admintheme={dark ? 'dark' : undefined} className="min-h-screen bg-[#fdfaf6] text-stone-800">
+      <div data-admin data-admintheme={dark ? 'dark' : undefined} className="min-h-screen bg-[#fdfaf6] text-stone-800">
         <AdminConfig
           apiKey={apiKey}
           settings={settings}
@@ -736,23 +738,23 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div data-admintheme={dark ? 'dark' : undefined} className="min-h-screen bg-[#fdfaf6] py-8 px-4 sm:py-12 sm:px-6 lg:px-16 text-stone-800">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
+    <div data-admin data-admintheme={dark ? 'dark' : undefined} className="min-h-screen bg-[#fdfaf6] py-8 px-4 sm:py-10 sm:px-6 lg:px-14 text-stone-800">
+      <div className="max-w-7xl mx-auto space-y-7">
+
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-200">
+        <div className="flex flex-col gap-4 border-b border-stone-200/80 pb-6 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-stone-800 md:text-4xl">Panel de Administración</h1>
-            <p className="text-stone-500 text-xs italic mt-1">Stephanie & Dalvin · Control de RSVP & Seguridad de Lista</p>
+            <p className="admin-eyebrow">Stephanie &amp; Dalvin · Boda 2026</p>
+            <h1 className="admin-title mt-1 text-3xl text-stone-800 md:text-[2.5rem] md:leading-tight">Panel de administración</h1>
           </div>
           <div className="relative">
             <button
               onClick={() => setMenuOpen((o) => !o)}
-              className="flex items-center gap-2 px-5 py-3 rounded-full border border-stone-200 bg-white text-xs font-bold uppercase tracking-wider hover:bg-stone-50 transition-colors shadow-sm"
+              className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm transition-colors hover:bg-stone-50"
               aria-haspopup="menu"
               aria-expanded={menuOpen}
             >
-              <Menu size={16} className="text-[#4a5d23]" /> Menú
+              <Menu size={15} className="text-[#4a5d23]" /> Menú
               <ChevronDown size={13} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
             {menuOpen && (
@@ -789,21 +791,26 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex flex-wrap gap-2 rounded-2xl bg-white p-1.5 border border-stone-200/60 shadow-sm w-fit">
+        <div className="flex w-full flex-wrap gap-1 overflow-x-auto rounded-xl border border-stone-200/80 bg-white p-1 shadow-sm sm:w-fit">
           {([
-            ['rsvps', `Confirmaciones${summary ? ` (${summary.totalRSVPs})` : ''}`],
-            ['allowed', `Invitados Autorizados (${allowedGuests.length})`],
-            ['seating', 'Mesas'],
-            ['messages', `Mensajes (${messages.length})`],
-          ] as const).map(([key, label]) => (
+            ['rsvps', 'Confirmaciones', summary?.totalRSVPs],
+            ['allowed', 'Invitados', allowedGuests.length],
+            ['seating', 'Mesas', undefined],
+            ['messages', 'Mensajes', messages.length],
+          ] as const).map(([key, label, count]) => (
             <button
               key={key}
               onClick={() => setActiveView(key)}
-              className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all ${
-                activeView === key ? 'bg-[#4a5d23] text-white shadow' : 'text-stone-500 hover:bg-stone-100'
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                activeView === key ? 'bg-[#4a5d23] text-white shadow-sm' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700'
               }`}
             >
               {label}
+              {count !== undefined && (
+                <span className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${activeView === key ? 'bg-white/20' : 'bg-stone-100 text-stone-500'}`}>
+                  {count}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -824,11 +831,11 @@ export const AdminDashboard: React.FC = () => {
               return (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                   {cards.map((c) => (
-                    <div key={c.label} className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
+                    <div key={c.label} className="admin-card flex items-center gap-3 p-4 transition-transform hover:-translate-y-0.5">
                       <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${c.bg}`}>{c.icon}</div>
                       <div className="min-w-0">
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-stone-400">{c.label}</span>
-                        <span className="text-2xl font-bold text-stone-800">{c.value}</span>
+                        <span className="text-2xl font-bold tabular-nums text-stone-800">{c.value}</span>
                       </div>
                     </div>
                   ))}
@@ -864,7 +871,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               );
               return (
-                <div className="grid gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-100 md:grid-cols-3">
+                <div className="admin-card grid gap-5 p-5 md:grid-cols-3">
                   <Bar label="Respuestas" total={totalPhones} parts={[
                     { v: summary.accepted, c: 'bg-green-500', t: 'Sí' },
                     { v: summary.declined, c: 'bg-red-400', t: 'No' },
@@ -895,7 +902,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Guests Table */}
-            <div className="bg-white rounded-3xl border border-stone-200/50 shadow-sm overflow-hidden">
+            <div className="admin-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -1007,7 +1014,7 @@ export const AdminDashboard: React.FC = () => {
         ) : activeView === 'allowed' ? (
           <div className="space-y-8">
             {/* Top Toolbar / Template Toggle */}
-            <div className="bg-white p-6 rounded-3xl border border-stone-200/50 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="bg-white p-6 admin-card flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center">
                   <MessageCircle size={22} />
@@ -1046,7 +1053,7 @@ export const AdminDashboard: React.FC = () => {
               const aforoNum = parseInt(aforo, 10) || 0;
               const disp = aforoNum > 0 ? aforoNum - asignados : null;
               return (
-                <div className="bg-white p-5 rounded-3xl border border-stone-200/50 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="bg-white p-5 admin-card flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex items-center gap-3">
                     <label htmlFor="aforo" className="text-xs font-bold uppercase tracking-wider text-stone-500">Aforo total del evento</label>
                     <input
@@ -1083,7 +1090,7 @@ export const AdminDashboard: React.FC = () => {
 
             <div className="space-y-8">
               {/* Form to add allowed guest */}
-              <div className="bg-white p-6 md:p-8 rounded-3xl border border-stone-200/50 shadow-sm space-y-6">
+              <div className="bg-white p-6 md:p-8 admin-card space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-[#f1f4ea] rounded-full flex items-center justify-center">
                     <Smartphone className="text-[#4a5d23]" size={20} />
@@ -1218,7 +1225,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Allowed Guests List */}
-              <div className="bg-white rounded-3xl border border-stone-200/50 shadow-sm">
+              <div className="admin-card">
                 <div className="p-6 border-b border-stone-100 rounded-t-3xl flex flex-col gap-4">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
@@ -1451,7 +1458,7 @@ export const AdminDashboard: React.FC = () => {
         ) : activeView === 'seating' ? (
           <SeatingChart apiKey={apiKey} />
         ) : (
-          <div className="bg-white rounded-3xl border border-stone-200/50 shadow-sm overflow-hidden">
+          <div className="admin-card overflow-hidden">
             <div className="p-6 border-b border-stone-100 flex items-center gap-3">
               <div className="w-10 h-10 bg-[#f1f4ea] rounded-full flex items-center justify-center">
                 <MessageSquare className="text-[#4a5d23]" size={20} />
