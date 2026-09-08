@@ -44,6 +44,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   const [dragOver, setDragOver] = useState<string | null>(null); // 'pool' | 't{n}' | 't{n}s{i}'
   const [editingLabel, setEditingLabel] = useState<number | null>(null);
   const [labelDraft, setLabelDraft] = useState('');
+  const [exportOpen, setExportOpen] = useState(false);
 
   const [tableSize, setTableSize] = useState<number>(() => {
     const v = parseInt(localStorage.getItem(LS_SIZE) || '', 10);
@@ -362,6 +363,90 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     a.click();
   };
 
+  const esc = (s: string) =>
+    String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+
+  const openPrint = (title: string, body: string, style: string) => {
+    const w = window.open('', '_blank');
+    if (!w) {
+      toast('Permite las ventanas emergentes para imprimir.', 'error');
+      return;
+    }
+    w.document.write(
+      `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(title)}</title>` +
+      `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>` +
+      `<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital@0;1&family=Great+Vibes&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">` +
+      `<style>*{box-sizing:border-box;margin:0}body{font-family:'Inter',system-ui,sans-serif;color:#1a1a1a}${style}</style>` +
+      `</head><body>${body}<script>window.onload=function(){setTimeout(function(){window.print()},500)}</script></body></html>`,
+    );
+    w.document.close();
+  };
+
+  // A6 — tarjetas de sitio (place cards)
+  const printPlaceCards = () => {
+    const cards: { name: string; table: number }[] = [];
+    for (let n = 1; n <= effectiveCount; n++) {
+      seatMapOf(n).forEach((p) => { if (p) cards.push({ name: p.name, table: n }); });
+    }
+    if (!cards.length) { toast('No hay invitados sentados aún.', 'error'); return; }
+    const body = `<div class="grid">${cards
+      .map(
+        (c) =>
+          `<div class="card"><div class="eyebrow">Stephanie &amp; Dalvin</div>` +
+          `<div class="name">${esc(c.name)}</div><div class="mesa">Mesa ${c.table}</div></div>`,
+      )
+      .join('')}</div>`;
+    openPrint(
+      'Tarjetas de sitio',
+      body,
+      `.grid{display:grid;grid-template-columns:1fr 1fr}` +
+        `.card{height:6.6cm;border:1px dashed #d6d6d6;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:.7cm;page-break-inside:avoid}` +
+        `.eyebrow{font-size:8pt;letter-spacing:.3em;text-transform:uppercase;color:#4a5d23}` +
+        `.name{font-family:'Great Vibes',cursive;font-size:30pt;line-height:1.05;margin:.25cm 0}` +
+        `.mesa{font-size:11pt;letter-spacing:.15em;text-transform:uppercase;color:#b35a44;font-weight:700}` +
+        `@page{margin:1cm}`,
+    );
+  };
+
+  // A4 — plano / roster imprimible por mesa
+  const printPlan = () => {
+    let sections = '';
+    for (let n = 1; n <= effectiveCount; n++) {
+      const map = seatMapOf(n);
+      const cnt = map.filter(Boolean).length;
+      if (!cnt && !tableLabels[n]) continue;
+      const list = map
+        .map((p, i) => (p ? `<li><b>${i + 1}.</b> ${esc(p.name)}${p.dietary ? ` <em>· ${esc(p.dietary)}</em>` : ''}</li>` : ''))
+        .join('');
+      sections +=
+        `<div class="t"><h2>Mesa ${n}${tableLabels[n] ? ` <span class="lbl">${esc(tableLabels[n])}</span>` : ''}` +
+        `<span class="cap">${cnt}/${tableSize}</span></h2><ol>${list}</ol></div>`;
+    }
+    const unass = unassigned.length
+      ? `<div class="t"><h2>Sin asignar <span class="cap">${unassigned.length}</span></h2><ol>${unassigned
+          .map((p) => `<li>${esc(p.name)}</li>`)
+          .join('')}</ol></div>`
+      : '';
+    const body =
+      `<h1>Plano de mesas · Recepción</h1>` +
+      `<p class="sub">Stephanie &amp; Dalvin — ${totals.assigned}/${totals.total} sentados · impreso ${new Date().toLocaleDateString()}</p>` +
+      `<div class="cols">${sections}${unass}</div>`;
+    openPrint(
+      'Plano de mesas',
+      body,
+      `h1{font-family:'Playfair Display',serif;font-size:20pt;margin-bottom:.1cm}` +
+        `.sub{color:#666;font-size:9pt;margin-bottom:.5cm}` +
+        `.cols{column-count:3;column-gap:.7cm}` +
+        `.t{break-inside:avoid;border:1px solid #e5e5e5;border-radius:8px;padding:.35cm;margin-bottom:.35cm}` +
+        `h2{font-size:11pt;display:flex;align-items:center;gap:.2cm;border-bottom:1px solid #eee;padding-bottom:.15cm;margin-bottom:.15cm}` +
+        `.lbl{background:#eef2e3;color:#4a5d23;font-size:8pt;padding:1px 6px;border-radius:99px}` +
+        `.cap{margin-left:auto;color:#888;font-size:9pt;font-weight:400}` +
+        `ol{margin:0;padding-left:1.1em;font-size:9.5pt;line-height:1.5}` +
+        `em{color:#b35a44;font-style:normal;font-size:8pt}` +
+        `@media print{@page{margin:1cm}.cols{column-count:3}}`,
+    );
+  };
+
   // --- drag helpers ---
   const startDrag = (key: string) => (e: React.DragEvent) => {
     e.dataTransfer.setData('text/plain', key);
@@ -602,14 +687,31 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
           >
             <Plus size={13} /> Mesa
           </button>
-          <button
-            type="button"
-            onClick={exportCSV}
-            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50"
-            title="Descargar Excel/CSV: mesa → invitados"
-          >
-            <Download size={13} /> Exportar
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setExportOpen((o) => !o)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50"
+            >
+              <Download size={13} /> Exportar
+            </button>
+            {exportOpen && (
+              <>
+                <button type="button" aria-label="Cerrar" className="fixed inset-0 z-30 cursor-default" onClick={() => setExportOpen(false)} />
+                <div className="absolute right-0 top-10 z-40 w-52 overflow-hidden rounded-xl border border-stone-200 bg-white py-1 text-left shadow-lg">
+                  <button type="button" onClick={() => { setExportOpen(false); exportCSV(); }} className="block w-full px-3.5 py-2 text-left text-xs text-stone-700 hover:bg-stone-50">
+                    Excel / CSV (mesa → invitados)
+                  </button>
+                  <button type="button" onClick={() => { setExportOpen(false); printPlan(); }} className="block w-full px-3.5 py-2 text-left text-xs text-stone-700 hover:bg-stone-50">
+                    Plano imprimible (PDF)
+                  </button>
+                  <button type="button" onClick={() => { setExportOpen(false); printPlaceCards(); }} className="block w-full px-3.5 py-2 text-left text-xs text-stone-700 hover:bg-stone-50">
+                    Tarjetas de sitio (PDF)
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => load()}
