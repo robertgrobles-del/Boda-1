@@ -268,9 +268,12 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   const startDrag = (key: string) => (e: React.DragEvent) => {
     e.dataTransfer.setData('text/plain', key);
     e.dataTransfer.effectAllowed = 'move';
-    setDragKey(key);
-    setSelected(null);
-    document.body.classList.add('select-none');
+    // Diferido: cambiar el estado en pleno dragstart puede cancelar el arrastre.
+    requestAnimationFrame(() => {
+      setDragKey(key);
+      setSelected(null);
+      document.body.classList.add('select-none');
+    });
   };
   const endDrag = () => {
     setDragKey(null);
@@ -285,7 +288,10 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     },
   });
 
-  const Chip: React.FC<{ p: Person; onPick: () => void; compact?: boolean }> = ({ p, onPick, compact }) => {
+  // Nota: `chip` y `renderTable` son FUNCIONES (no componentes) a propósito:
+  // definirlos como componentes dentro del render los recrea en cada estado y
+  // React desmonta el nodo que se está arrastrando → cancela el drag.
+  const chip = (p: Person, opts: { onPick: () => void; compact?: boolean }) => {
     const isSel = selected === p.key;
     return (
       <div
@@ -294,24 +300,24 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
         draggable
         onDragStart={startDrag(p.key)}
         onDragEnd={endDrag}
-        onClick={(e) => { e.stopPropagation(); onPick(); }}
+        onClick={(e) => { e.stopPropagation(); opts.onPick(); }}
         title={`${p.name} · ${p.party}${p.tag ? ` · ${p.tag}` : ''}`}
         className={`flex cursor-grab items-center gap-1 rounded-full border bg-white py-1 text-[10px] font-medium shadow-sm transition-all active:cursor-grabbing ${
-          compact ? 'px-1.5' : 'pl-2 pr-2.5'
+          opts.compact ? 'px-1.5' : 'pl-2 pr-2.5'
         } ${isSel ? 'ring-2 ring-[#4a5d23] ring-offset-1' : 'hover:-translate-y-0.5 hover:shadow-md'} ${
           dragKey === p.key ? 'opacity-30' : ''
         }`}
         style={{ borderColor: `${partyColor(p.party)}77` }}
       >
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: partyColor(p.party) }} />
-        <span className={`truncate ${compact ? 'max-w-[4rem]' : 'max-w-[8.5rem]'} text-stone-700`}>
-          {compact ? firstName(p.name) : p.name}
+        <span className={`truncate ${opts.compact ? 'max-w-[4rem]' : 'max-w-[8.5rem]'} text-stone-700`}>
+          {opts.compact ? firstName(p.name) : p.name}
         </span>
       </div>
     );
   };
 
-  const Table: React.FC<{ n: number }> = ({ n }) => {
+  const renderTable = (n: number) => {
     const map = seatMapOf(n);
     const seatedCount = map.filter(Boolean).length;
     const slots = map.length;
@@ -380,7 +386,9 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
             return (
               <div
                 key={i}
-                className="absolute z-10"
+                className={`absolute z-10 flex items-center justify-center rounded-full p-2 transition-colors ${
+                  dragOver === seatId ? 'bg-[#4a5d23]/10' : ''
+                }`}
                 style={style}
                 {...over(seatId)}
                 onDrop={(e) => {
@@ -396,18 +404,17 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
                 }}
               >
                 {p ? (
-                  <Chip
-                    p={p}
-                    compact
-                    onPick={() => {
+                  chip(p, {
+                    compact: true,
+                    onPick: () => {
                       if (selected && selected !== p.key) placeAt(selected, n, i);
                       else setSelected((s) => (s === p.key ? null : p.key));
-                    }}
-                  />
+                    },
+                  })
                 ) : (
                   <span
-                    className={`block h-6 w-6 cursor-pointer rounded-full border-2 border-dashed transition-all ${
-                      dragOver === seatId ? 'scale-125 border-[#4a5d23] bg-[#4a5d23]/20' : hot ? 'border-[#4a5d23]/50' : 'border-stone-300'
+                    className={`block h-8 w-8 cursor-pointer rounded-full border-2 border-dashed transition-all ${
+                      dragOver === seatId ? 'scale-125 border-[#4a5d23] bg-[#4a5d23]/25' : hot ? 'border-[#4a5d23]/50 bg-[#4a5d23]/5' : 'border-stone-300'
                     }`}
                   />
                 )}
@@ -571,11 +578,9 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {g.items.map((p) => (
-                          <Chip
-                            key={p.key}
-                            p={p}
-                            onPick={() => setSelected((s) => (s === p.key ? null : p.key))}
-                          />
+                          <React.Fragment key={p.key}>
+                            {chip(p, { onPick: () => setSelected((s) => (s === p.key ? null : p.key)) })}
+                          </React.Fragment>
                         ))}
                       </div>
                     </div>
@@ -588,7 +593,7 @@ export const SeatingChart: React.FC<{ apiKey: string }> = ({ apiKey }) => {
           {/* Grilla de mesas redondas */}
           <div className="grid gap-x-6 gap-y-8 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
             {Array.from({ length: effectiveCount }, (_, i) => i + 1).map((n) => (
-              <Table key={n} n={n} />
+              <React.Fragment key={n}>{renderTable(n)}</React.Fragment>
             ))}
           </div>
         </div>
