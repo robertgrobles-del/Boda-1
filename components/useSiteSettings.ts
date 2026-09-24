@@ -32,6 +32,22 @@ export interface SiteSettings {
   showGifts: boolean;
   eventDateTime: string;
   lockMode: 'off' | 'link' | 'list' | 'password';
+  ceremonyTime: string;
+  ceremonyTitle: string;
+  ceremonyPlace: string;
+  ceremonyAddress: string;
+  ceremonyMapsUrl: string;
+  ceremonyParkingUrl: string;
+  ceremonyParkingNote: string;
+  ceremonyPhoto: string;
+  receptionTime: string;
+  receptionTitle: string;
+  receptionPlace: string;
+  receptionAddress: string;
+  receptionMapsUrl: string;
+  receptionParkingUrl: string;
+  receptionParkingNote: string;
+  receptionPhoto: string;
   dressFormalTitle: string;
   dressFormalText: string;
   dressColorsTitle: string;
@@ -73,6 +89,22 @@ const DEFAULTS: SiteSettings = {
   showGifts: true,
   eventDateTime: '',
   lockMode: 'off',
+  ceremonyTime: '5:00 PM',
+  ceremonyTitle: 'Ceremonia',
+  ceremonyPlace: 'Catedral Castrense de Santa Bárbara',
+  ceremonyAddress: 'C. General Gabino Puello, Ciudad Colonial, Santo Domingo',
+  ceremonyMapsUrl: 'https://maps.app.goo.gl/WaFNqHx5AjT2VEDk7',
+  ceremonyParkingUrl: 'https://maps.app.goo.gl/MiDWQpUH42F3vZC67',
+  ceremonyParkingNote: 'Opción de parqueo recomendada, cerca de la iglesia',
+  ceremonyPhoto: '',
+  receptionTime: '7:30 PM',
+  receptionTitle: 'Recepción',
+  receptionPlace: 'Club Deportivo Naco · Salón Montás',
+  receptionAddress: 'C. Salvador Sturla, Santo Domingo',
+  receptionMapsUrl: 'https://maps.app.goo.gl/prvLNchVxpEeSWnK7',
+  receptionParkingUrl: '',
+  receptionParkingNote: '⚠️ Nota: El salón no cuenta con parqueo',
+  receptionPhoto: '',
   dressFormalTitle: 'Formal / Elegante',
   dressFormalText: 'Te esperamos elegante para la ocasión.',
   dressColorsTitle: 'Colores',

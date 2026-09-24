@@ -4,7 +4,7 @@ import {
   Users, CheckCircle, XCircle, Search, Download, Key, LogOut,
   Smartphone, Plus, MessageSquare, Trash2, Send, Copy, ExternalLink,
   RefreshCw, Sliders, FileText, Check,
-  MessageCircle, MoreVertical, Pencil, X, ChevronDown, Wand2, Menu, Moon, Sun
+  MessageCircle, MoreVertical, Pencil, X, ChevronDown, Wand2, Menu, Moon, Sun, MapPin
 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
@@ -78,17 +78,25 @@ export const AdminDashboard: React.FC = () => {
   const [newAccess, setNewAccess] = useState<'both' | 'ceremony' | 'reception'>('both');
   const [settings, setSettings] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [configSection, setConfigSection] = useState<string>('portales');
   const [subPage, setSubPage] = useState<'dashboard' | 'config'>(
     () => (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin/config') ? 'config' : 'dashboard'),
   );
-  const goConfig = () => {
+  const goConfig = (sec = 'portales') => {
+    setConfigSection(sec);
     window.history.pushState(null, '', '/admin/config');
     setSubPage('config');
     loadSettings();
   };
+  const openConfigSection = (sec: string) => {
+    goConfig(sec);
+    setSidebarOpen(false);
+  };
   const goDashboard = () => {
     window.history.pushState(null, '', '/admin');
     setSubPage('dashboard');
+    setSidebarOpen(false);
   };
   useEffect(() => {
     const onPop = () => setSubPage(window.location.pathname.startsWith('/admin/config') ? 'config' : 'dashboard');
@@ -726,99 +734,271 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
-  if (subPage === 'config') {
-    return (
-      <div data-admin data-admintheme={dark ? 'dark' : undefined} className="min-h-screen bg-[#fdfaf6] text-stone-800">
-        <AdminConfig
-          apiKey={apiKey}
-          settings={settings}
-          setSettings={setSettings}
-          patchSettings={patchSettings}
-          loadSettings={loadSettings}
-          onBack={goDashboard}
-          toast={toast}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div data-admin data-admintheme={dark ? 'dark' : undefined} className="min-h-screen bg-[#fdfaf6] py-8 px-4 sm:py-10 sm:px-6 lg:px-14 text-stone-800">
-      <div className="max-w-7xl mx-auto space-y-7">
+    <div data-admin data-admintheme={dark ? 'dark' : undefined} className="min-h-screen bg-[#f8fafc] text-stone-800 transition-colors duration-200">
+      {/* Mobile Drawer Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-stone-950/40 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-        {/* Header */}
-        <div className="flex flex-col gap-4 border-b border-stone-200/80 pb-6 md:flex-row md:items-end md:justify-between">
+      {/* Sidebar Layout */}
+      <aside
+        className={`fixed top-0 bottom-0 left-0 z-50 flex w-72 flex-col border-r border-stone-200/80 bg-white shadow-xl transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* Sidebar Brand Header */}
+        <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4a5d23] text-white shadow-md shadow-[#4a5d23]/25">
+              <span className="font-signature text-xl">S&amp;D</span>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-stone-800">Stephanie &amp; Dalvin</h2>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#4a5d23]">PANEL ADMINISTRATIVO</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 lg:hidden"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Sidebar Nav Links */}
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+          {/* PANEL PRINCIPAL */}
           <div>
-            <p className="admin-eyebrow">Stephanie &amp; Dalvin · Boda 2026</p>
-            <h1 className="admin-title mt-1 text-3xl text-stone-800 md:text-[2.5rem] md:leading-tight">Panel de administración</h1>
+            <p className="px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">Panel Principal</p>
+            <nav className="mt-2 space-y-1">
+              <button
+                onClick={() => { goDashboard(); setActiveView('rsvps'); }}
+                className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
+                  subPage === 'dashboard' && activeView === 'rsvps'
+                    ? 'bg-[#4a5d23] text-white shadow-sm'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Users size={16} /> Confirmaciones
+                </span>
+                {summary?.totalRSVPs !== undefined && (
+                  <span className={`rounded-md px-2 py-0.5 text-[10px] tabular-nums ${subPage === 'dashboard' && activeView === 'rsvps' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'}`}>
+                    {summary.totalRSVPs}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => { goDashboard(); setActiveView('allowed'); }}
+                className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
+                  subPage === 'dashboard' && activeView === 'allowed'
+                    ? 'bg-[#4a5d23] text-white shadow-sm'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Smartphone size={16} /> Invitados y Pases
+                </span>
+                <span className={`rounded-md px-2 py-0.5 text-[10px] tabular-nums ${subPage === 'dashboard' && activeView === 'allowed' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'}`}>
+                  {allowedGuests.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => { goDashboard(); setActiveView('seating'); }}
+                className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
+                  subPage === 'dashboard' && activeView === 'seating'
+                    ? 'bg-[#4a5d23] text-white shadow-sm'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <FileText size={16} /> Distribución Mesas
+                </span>
+              </button>
+
+              <button
+                onClick={() => { goDashboard(); setActiveView('messages'); }}
+                className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
+                  subPage === 'dashboard' && activeView === 'messages'
+                    ? 'bg-[#4a5d23] text-white shadow-sm'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <MessageSquare size={16} /> Libro de Visitas
+                </span>
+                <span className={`rounded-md px-2 py-0.5 text-[10px] tabular-nums ${subPage === 'dashboard' && activeView === 'messages' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'}`}>
+                  {messages.length}
+                </span>
+              </button>
+            </nav>
           </div>
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              className="flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-5 py-3 text-sm font-bold uppercase tracking-wider shadow-sm transition-colors hover:bg-stone-50"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-            >
-              <Menu size={17} className="text-[#4a5d23]" /> Menú
-              <ChevronDown size={14} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div
-                  role="menu"
-                  className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 shadow-xl"
+
+          {/* CONFIGURACIÓN DEL SITIO */}
+          <div>
+            <p className="px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">Configuración del Sitio</p>
+            <nav className="mt-2 space-y-1">
+              {[
+                { id: 'portales', label: 'Portales de Invitados', icon: <Wand2 size={16} /> },
+                { id: 'diseno', label: 'Diseño y Temas', icon: <Sliders size={16} /> },
+                { id: 'evento', label: 'Lugar y Evento', icon: <MapPin size={16} /> },
+                { id: 'anuncio', label: 'Anuncios', icon: <MessageCircle size={16} /> },
+                { id: 'secciones', label: 'Secciones Visibles', icon: <CheckCircle size={16} /> },
+                { id: 'vestimenta', label: 'Código Vestimenta', icon: <FileText size={16} /> },
+                { id: 'regalos', label: 'Mesa de Regalos', icon: <Check size={16} /> },
+                { id: 'fotos', label: 'Fotos y Galería', icon: <Plus size={16} /> },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => openConfigSection(item.id)}
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
+                    subPage === 'config' && configSection === item.id
+                      ? 'bg-[#4a5d23] text-white shadow-sm'
+                      : 'text-stone-600 hover:bg-stone-100'
+                  }`}
                 >
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); setImportOpen(true); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
-                    <Plus size={17} className="text-[#4a5d23]" /> Importar
-                  </button>
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleFixEncoding(); }} disabled={fixingEnc} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50 disabled:opacity-50">
-                    <Wand2 size={17} className={`text-[#4a5d23] ${fixingEnc ? 'animate-pulse' : ''}`} /> Reparar acentos
-                  </button>
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); exportGuestsToCSV(); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
-                    <Download size={17} className="text-[#b35a44]" /> Exportar CSV
-                  </button>
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); goConfig(); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
-                    <Sliders size={17} className="text-[#4a5d23]" /> Configuración
-                  </button>
-                  <div className="my-1.5 border-t border-stone-100" />
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); setDark((d) => !d); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
-                    {dark ? <Sun size={17} className="text-[#b35a44]" /> : <Moon size={17} className="text-[#4a5d23]" />}
-                    {dark ? 'Modo claro' : 'Modo oscuro'}
-                  </button>
-                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleLogout(); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
-                    <LogOut size={17} /> Salir
-                  </button>
-                </div>
-              </>
-            )}
+                  {item.icon}
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* SISTEMA Y AJUSTES */}
+          <div>
+            <p className="px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">Sistema y Ajustes</p>
+            <nav className="mt-2 space-y-1">
+              {[
+                { id: 'bloqueo', label: 'Acceso y Bloqueo', icon: <Key size={16} /> },
+                { id: 'confirmaciones', label: 'Aforo y Fechas RSVP', icon: <Users size={16} /> },
+                { id: 'whatsapp', label: 'Plantilla WhatsApp', icon: <Smartphone size={16} /> },
+                { id: 'correo', label: 'Servidor Correo', icon: <Send size={16} /> },
+                { id: 'gracias', label: 'Pantalla de Gracias', icon: <Star size={16} /> },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => openConfigSection(item.id)}
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
+                    subPage === 'config' && configSection === item.id
+                      ? 'bg-[#4a5d23] text-white shadow-sm'
+                      : 'text-stone-600 hover:bg-stone-100'
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex w-full flex-wrap gap-1 overflow-x-auto rounded-xl border border-stone-200/80 bg-white p-1 shadow-sm sm:w-fit">
-          {([
-            ['rsvps', 'Confirmaciones', summary?.totalRSVPs],
-            ['allowed', 'Invitados', allowedGuests.length],
-            ['seating', 'Mesas', undefined],
-            ['messages', 'Mensajes', messages.length],
-          ] as const).map(([key, label, count]) => (
+        {/* Sidebar Footer */}
+        <div className="border-t border-stone-100 p-4 space-y-2">
+          <div className="flex items-center justify-between px-2 text-xs">
+            <span className="flex items-center gap-2 font-bold text-stone-500">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Servidor activo
+            </span>
             <button
-              key={key}
-              onClick={() => setActiveView(key)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${
-                activeView === key ? 'bg-[#4a5d23] text-white shadow-sm' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700'
-              }`}
+              onClick={() => setDark((d) => !d)}
+              className="rounded-lg border border-stone-200 bg-stone-50 p-1.5 text-stone-600 hover:bg-stone-100 transition-colors"
+              title={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             >
-              {label}
-              {count !== undefined && (
-                <span className={`rounded-md px-1.5 py-0.5 text-[11px] tabular-nums ${activeView === key ? 'bg-white/20' : 'bg-stone-100 text-stone-500'}`}>
-                  {count}
-                </span>
-              )}
+              {dark ? <Sun size={15} className="text-amber-500" /> : <Moon size={15} className="text-stone-600" />}
             </button>
-          ))}
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50/50 py-2 text-xs font-bold text-red-600 hover:bg-red-100/60 transition-colors"
+          >
+            <LogOut size={14} /> Cerrar Sesión
+          </button>
         </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="lg:pl-72 flex flex-col min-h-screen">
+        {/* Top Navbar Header */}
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-stone-200/80 bg-white/90 px-4 sm:px-6 lg:px-8 backdrop-blur">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-xl border border-stone-200 bg-stone-50 p-2 text-stone-600 hover:bg-stone-100 lg:hidden"
+            >
+              <Menu size={20} />
+            </button>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                {subPage === 'config' ? 'Ajustes de Configuración' : 'Dashboard Principal'}
+              </span>
+              <h1 className="text-sm font-bold text-stone-800">
+                {subPage === 'config'
+                  ? `Configuración · ${configSection.charAt(0).toUpperCase() + configSection.slice(1)}`
+                  : activeView === 'rsvps'
+                  ? 'Confirmaciones de Asistencia (RSVPs)'
+                  : activeView === 'allowed'
+                  ? 'Lista de Invitados y Pases'
+                  : activeView === 'seating'
+                  ? 'Distribución de Mesas'
+                  : 'Libro de Visitas'}
+              </h1>
+            </div>
+          </div>
+
+          {/* Quick Header Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setImportOpen(true)}
+              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm hover:bg-stone-50 transition-colors"
+            >
+              <Plus size={14} className="text-[#4a5d23]" /> Importar
+            </button>
+
+            <button
+              onClick={handleFixEncoding}
+              disabled={fixingEnc}
+              className="hidden md:flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50 transition-colors"
+            >
+              <Wand2 size={14} className={`text-[#4a5d23] ${fixingEnc ? 'animate-pulse' : ''}`} /> Reparar acentos
+            </button>
+
+            <button
+              onClick={exportGuestsToCSV}
+              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm hover:bg-stone-50 transition-colors"
+            >
+              <Download size={14} className="text-[#b35a44]" /> Exportar CSV
+            </button>
+
+            <button
+              onClick={() => window.open('/?portalPreview=1', '_blank')}
+              className="flex items-center gap-1.5 rounded-xl bg-[#4a5d23] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-[#3b4c1b] transition-colors"
+            >
+              <ExternalLink size={14} /> Ver Sitio
+            </button>
+          </div>
+        </header>
+
+        {/* Main Canvas View */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+          {subPage === 'config' ? (
+            <AdminConfig
+              apiKey={apiKey}
+              settings={settings}
+              setSettings={setSettings}
+              patchSettings={patchSettings}
+              loadSettings={loadSettings}
+              onBack={goDashboard}
+              toast={toast}
+              initialSection={configSection}
+            />
+          ) : (
+            <>
 
         {activeView === 'rsvps' ? (
           <>
@@ -1500,9 +1680,12 @@ export const AdminDashboard: React.FC = () => {
               )}
             </div>
           </div>
+            )}
+          </>
         )}
-
-      </div>
+      </main>
+    </div>
+  </div>
 
       {/* Modal: editar teléfono autorizado */}
       <AnimatePresence>

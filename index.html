@@ -230,10 +230,7 @@
         }
 
         /* --- Panel de administración: escala + base visual --- */
-        /* En las rutas /admin* solo se monta el panel, así que subir la raíz
-           agranda de forma proporcional textos, paddings y gaps (utilidades rem). */
-        html.admin-viewport { font-size: 17px; }
-        /* Las utilidades de píxel fijo no escalan con la raíz: se suben aquí. */
+        html.admin-viewport { font-size: 16px; }
         [data-admin] .text-\[8px\]  { font-size: 10px; }
         [data-admin] .text-\[9px\]  { font-size: 10.5px; letter-spacing: .06em; }
         [data-admin] .text-\[10px\] { font-size: 11.5px; }
@@ -244,14 +241,18 @@
         [data-admin] ::selection { background: rgba(74,93,35,.16); }
         [data-admin] :focus-visible { outline: 2px solid #4a5d23; outline-offset: 2px; border-radius: 8px; }
         [data-admin] .admin-card {
-            background: #fff;
-            border: 1px solid rgba(231,229,228,.85);
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.8);
             border-radius: 1rem;
-            box-shadow: 0 1px 2px rgba(28,25,23,.04), 0 14px 34px -18px rgba(28,25,23,.14);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 6px 16px -4px rgba(0, 0, 0, 0.03);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        [data-admin] .admin-card:hover {
+            border-color: rgba(203, 213, 225, 0.9);
         }
         [data-admin] .admin-eyebrow {
             font-size: .625rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: .22em; color: rgba(74,93,35,.7);
+            letter-spacing: .22em; color: rgba(74,93,35,.85);
         }
         [data-admin] .admin-title { font-family: var(--font-serif), 'Playfair Display', serif; }
         [data-admin] input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=file]),
@@ -263,43 +264,75 @@
         [data-admin] select:focus,
         [data-admin] textarea:focus {
             border-color: #4a5d23 !important;
-            box-shadow: 0 0 0 3px rgba(74,93,35,.13);
+            box-shadow: 0 0 0 3px rgba(74,93,35,.15);
             outline: none;
         }
-        [data-admintheme="dark"] .admin-card {
-            background: #1a1d23 !important;
-            border-color: #33373f !important;
-            box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 34px -18px rgba(0,0,0,.6) !important;
+
+        /* Status Pills */
+        [data-admin] .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        [data-admin] .badge-pill-success {
+            background-color: #dcfce7;
+            color: #15803d;
+        }
+        [data-admin] .badge-pill-warning {
+            background-color: #fef3c7;
+            color: #b45309;
+        }
+        [data-admin] .badge-pill-danger {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+        [data-admin] .badge-pill-info {
+            background-color: #e0f2fe;
+            color: #0369a1;
         }
 
-        /* --- Modo oscuro del panel de administración (scoped) --- */
-        [data-admintheme="dark"] { background:#101216 !important; color:#e6e7ea; }
+        /* --- Modo oscuro del panel de administración --- */
+        [data-admintheme="dark"] .admin-card {
+            background: #181b21 !important;
+            border-color: #2b303b !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.35) !important;
+        }
+        [data-admintheme="dark"] .admin-card:hover {
+            border-color: #3f4654 !important;
+        }
+        [data-admintheme="dark"] { background:#0f1115 !important; color:#e2e8f0; }
         [data-admintheme="dark"] .bg-white,
-        [data-admintheme="dark"] .bg-\[\#fdfaf6\] { background-color:#1a1d23 !important; }
+        [data-admintheme="dark"] .bg-\[\#fdfaf6\] { background-color:#181b21 !important; }
         [data-admintheme="dark"] .bg-stone-50,
         [data-admintheme="dark"] .bg-stone-50\/50,
         [data-admintheme="dark"] .bg-stone-50\/60,
         [data-admintheme="dark"] .bg-stone-100,
         [data-admintheme="dark"] .bg-\[\#f1f4ea\],
         [data-admintheme="dark"] .bg-\[\#f1f4ea\]\/50,
-        [data-admintheme="dark"] .bg-\[\#f1f4ea\]\/60 { background-color:#24272f !important; }
+        [data-admintheme="dark"] .bg-\[\#f1f4ea\]\/60 { background-color:#222630 !important; }
         [data-admintheme="dark"] .text-stone-800,
         [data-admintheme="dark"] .text-stone-700,
         [data-admintheme="dark"] .text-ink,
-        [data-admintheme="dark"] .text-\[\#1f2937\] { color:#e6e7ea !important; }
+        [data-admintheme="dark"] .text-\[\#1f2937\] { color:#f1f5f9 !important; }
         [data-admintheme="dark"] .text-stone-600,
         [data-admintheme="dark"] .text-stone-500,
-        [data-admintheme="dark"] .text-\[\#6b7280\] { color:#a7abb4 !important; }
+        [data-admintheme="dark"] .text-\[\#6b7280\] { color:#94a3b8 !important; }
         [data-admintheme="dark"] .text-stone-400,
-        [data-admintheme="dark"] .text-stone-300 { color:#787d88 !important; }
+        [data-admintheme="dark"] .text-stone-300 { color:#64748b !important; }
         [data-admintheme="dark"] .border-stone-100,
         [data-admintheme="dark"] .border-stone-200,
         [data-admintheme="dark"] .border-stone-200\/50,
         [data-admintheme="dark"] .border-stone-200\/60,
-        [data-admintheme="dark"] .ring-stone-100 { border-color:#33373f !important; --tw-ring-color:#33373f !important; }
+        [data-admintheme="dark"] .ring-stone-100 { border-color:#2b303b !important; --tw-ring-color:#2b303b !important; }
         [data-admintheme="dark"] input,
         [data-admintheme="dark"] select,
-        [data-admintheme="dark"] textarea { background-color:#24272f !important; color:#e6e7ea !important; border-color:#3a3f49 !important; }
+        [data-admintheme="dark"] textarea { background-color:#222630 !important; color:#f1f5f9 !important; border-color:#333a48 !important; }
         [data-admintheme="dark"] .shadow-sm,
         [data-admintheme="dark"] .shadow-md,
         [data-admintheme="dark"] .shadow-lg,

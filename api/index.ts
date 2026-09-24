@@ -107,6 +107,23 @@ const DEFAULT_SETTINGS = {
     // Tema visual del portal: paleta de color + tipografías (mismo layout)
     theme: 'clasico' as 'clasico' | 'rosa' | 'jardin' | 'arena' | 'custom',
     // Tema personalizado: colores base elegidos y la paleta resultante
+    // Ceremonia y Recepción (Lugar, detalles, mapas, parqueo)
+    ceremonyTime: '5:00 PM',
+    ceremonyTitle: 'Ceremonia',
+    ceremonyPlace: 'Catedral Castrense de Santa Bárbara',
+    ceremonyAddress: 'C. General Gabino Puello, Ciudad Colonial, Santo Domingo',
+    ceremonyMapsUrl: 'https://maps.app.goo.gl/WaFNqHx5AjT2VEDk7',
+    ceremonyParkingUrl: 'https://maps.app.goo.gl/MiDWQpUH42F3vZC67',
+    ceremonyParkingNote: 'Opción de parqueo recomendada, cerca de la iglesia',
+    ceremonyPhoto: '',
+    receptionTime: '7:30 PM',
+    receptionTitle: 'Recepción',
+    receptionPlace: 'Club Deportivo Naco · Salón Montás',
+    receptionAddress: 'C. Salvador Sturla, Santo Domingo',
+    receptionMapsUrl: 'https://maps.app.goo.gl/prvLNchVxpEeSWnK7',
+    receptionParkingUrl: '',
+    receptionParkingNote: '⚠️ Nota: El salón no cuenta con parqueo',
+    receptionPhoto: '',
     paletteSeeds: [] as string[],
     palette: null as null | { primary: string; accent: string; bg: string; ink: string },
 };
@@ -133,6 +150,8 @@ const PRESENTATION_KEYS = [
     'showStory', 'showParents', 'showGallery', 'showDressCode', 'showGifts',
     'showCounter', 'showGuestbook',
     'eventDateTime',
+    'ceremonyTime', 'ceremonyTitle', 'ceremonyPlace', 'ceremonyAddress', 'ceremonyMapsUrl', 'ceremonyParkingUrl', 'ceremonyParkingNote', 'ceremonyPhoto',
+    'receptionTime', 'receptionTitle', 'receptionPlace', 'receptionAddress', 'receptionMapsUrl', 'receptionParkingUrl', 'receptionParkingNote', 'receptionPhoto',
     'dressFormalTitle', 'dressFormalText', 'dressColorsTitle', 'dressColorsText',
     'registryIntro',
     'registryCuestaOn', 'registryCasaNote', 'registryCasaListNumber', 'registryCasaUrl',

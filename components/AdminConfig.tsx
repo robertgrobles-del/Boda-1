@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Check, RefreshCw, Trash2, Upload, Plus, Image as ImageIcon, Eye, Star, Wand2 } from 'lucide-react';
+import { ArrowLeft, Check, RefreshCw, Trash2, Upload, Plus, Image as ImageIcon, Eye, Star, Wand2, MapPin, Church, Utensils } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { DEFAULT_WA_TEMPLATE } from './waTemplate';
 import { generatePalette, paletteToVars, type Palette } from '../utils/palette';
@@ -14,6 +14,7 @@ interface Props {
   loadSettings: (key?: string) => Promise<void>;
   onBack: () => void;
   toast: Toast;
+  initialSection?: string;
 }
 
 const IMAGE_SLOTS: { slot: string; label: string; hint: string }[] = [
@@ -21,6 +22,8 @@ const IMAGE_SLOTS: { slot: string; label: string; hint: string }[] = [
   { slot: 'heroPortrait', label: 'Portada (retrato)', hint: 'Foto en arco/hexágono de los novios en la portada.' },
   { slot: 'gateway', label: 'Pantalla de bienvenida', hint: 'Fondo de la pantalla previa ("Entrar").' },
   { slot: 'story', label: 'Sección "Nuestra historia"', hint: 'Foto vertical de la sección del sacramento.' },
+  { slot: 'ceremonyPhoto', label: 'Lugar de la Ceremonia', hint: 'Foto de la iglesia/templo (predeterminada: Catedral Castrense de Santa Bárbara).' },
+  { slot: 'receptionPhoto', label: 'Lugar de la Recepción', hint: 'Foto del salón/local de la fiesta (predeterminada: Club Naco).' },
   { slot: 'band', label: 'Franja intermedia', hint: 'Foto ancha con la frase "No podemos esperar…".' },
   { slot: 'og', label: 'Vista previa (WhatsApp/OG)', hint: 'La imagen que se ve al compartir el enlace. Ideal 1200×630.' },
 ];
@@ -35,6 +38,7 @@ const THEMES = [
 const NAV: { id: string; label: string; scope: 'x' | 'p' | 'g' }[] = [
   { id: 'portales', label: 'Portales', scope: 'x' },
   { id: 'diseno', label: 'Diseño', scope: 'p' },
+  { id: 'evento', label: 'Lugar y Evento', scope: 'p' },
   { id: 'anuncio', label: 'Anuncio', scope: 'p' },
   { id: 'secciones', label: 'Secciones', scope: 'p' },
   { id: 'vestimenta', label: 'Vestimenta', scope: 'p' },
@@ -70,6 +74,22 @@ const PRES_DEFAULTS: Record<string, any> = {
   announceShow: false, announceText: '',
   showStory: true, showParents: true, showGallery: true, showDressCode: true, showGifts: true,
   showCounter: true, showGuestbook: true, eventDateTime: '',
+  ceremonyTime: '5:00 PM',
+  ceremonyTitle: 'Ceremonia',
+  ceremonyPlace: 'Catedral Castrense de Santa Bárbara',
+  ceremonyAddress: 'C. General Gabino Puello, Ciudad Colonial, Santo Domingo',
+  ceremonyMapsUrl: 'https://maps.app.goo.gl/WaFNqHx5AjT2VEDk7',
+  ceremonyParkingUrl: 'https://maps.app.goo.gl/MiDWQpUH42F3vZC67',
+  ceremonyParkingNote: 'Opción de parqueo recomendada, cerca de la iglesia',
+  ceremonyPhoto: '',
+  receptionTime: '7:30 PM',
+  receptionTitle: 'Recepción',
+  receptionPlace: 'Club Deportivo Naco · Salón Montás',
+  receptionAddress: 'C. Salvador Sturla, Santo Domingo',
+  receptionMapsUrl: 'https://maps.app.goo.gl/prvLNchVxpEeSWnK7',
+  receptionParkingUrl: '',
+  receptionParkingNote: '⚠️ Nota: El salón no cuenta con parqueo',
+  receptionPhoto: '',
   dressFormalTitle: 'Formal / Elegante', dressFormalText: 'Te esperamos elegante para la ocasión.',
   dressColorsTitle: 'Colores', dressColorsText: 'Inspírate en la paleta de otoño. Reservado el blanco y el beige para la novia.',
   registryIntro: '"Su presencia es nuestro mayor regalo. Si además desean tener un detalle con nosotros, aquí están nuestras opciones."',
@@ -81,10 +101,14 @@ const PRES_DEFAULTS: Record<string, any> = {
   registryBanks: [], galleryUrls: [], theme: 'clasico', paletteSeeds: [], palette: null,
 };
 
-export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, patchSettings, loadSettings, onBack, toast }) => {
+export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, patchSettings, loadSettings, onBack, toast, initialSection }) => {
   const s = settings;
   const set = (obj: Record<string, any>) => setSettings((p: any) => ({ ...p, ...obj }));
-  const [nav, setNav] = useState<string>('portales');
+  const [nav, setNav] = useState<string>(() => initialSection || 'portales');
+
+  useEffect(() => {
+    if (initialSection) setNav(initialSection);
+  }, [initialSection]);
 
   useEffect(() => { if (!settings) loadSettings(); }, []); // eslint-disable-line
 
@@ -365,6 +389,155 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
           <button onClick={preview} className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
             <Eye size={12} /> Ver este portal
           </button>
+        </>);
+      }
+
+      case 'evento': {
+        const cAsset = assets['ceremonyPhoto'];
+        const cPreview = cAsset ? `${API_CONFIG.backendUrl}/api/img/ceremonyPhoto?portal=${editPortal}&t=${new Date(cAsset.updatedAt).getTime()}` : (pv('ceremonyPhoto') || '/images/Iglesia_Santa_Barbara.webp');
+        const rAsset = assets['receptionPhoto'];
+        const rPreview = rAsset ? `${API_CONFIG.backendUrl}/api/img/receptionPhoto?portal=${editPortal}&t=${new Date(rAsset.updatedAt).getTime()}` : (pv('receptionPhoto') || '/images/club_naco.webp');
+
+        return card(<>
+          {heading(`Lugar y Evento · ${portalLabel}`, 'Personaliza la información de la Ceremonia y de la Recepción (fotos, títulos, horarios, direcciones, enlaces a Google Maps y opciones de parqueo).')}
+
+          {/* Bloque: Ceremonia */}
+          <div className="rounded-2xl border border-stone-200 bg-stone-50/40 p-4 sm:p-5 space-y-4">
+            <div className="flex items-center gap-2.5 border-b border-stone-200 pb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-[#4a5d23]">
+                <Church size={18} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-stone-800">Ceremonia Religiosa</h3>
+                <p className="text-[11px] text-stone-400">Detalles de la iglesia o lugar del sacramento</p>
+              </div>
+            </div>
+
+            {/* Foto de la Ceremonia */}
+            <div className="rounded-xl border border-stone-200 bg-white p-3 space-y-2">
+              <p className="text-xs font-bold text-stone-700">Foto del Lugar</p>
+              <div className="flex items-start gap-3">
+                <div className="flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-stone-100 text-stone-300 border border-stone-200">
+                  {cPreview ? <img src={cPreview} alt="Ceremonia" className="h-full w-full object-cover" /> : <ImageIcon size={24} />}
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input type="file" accept="image/*" ref={(el) => { fileRefs.current['ceremonyPhoto'] = el; }}
+                      onChange={(e) => onPickFile('ceremonyPhoto', e.target.files?.[0])} className="hidden" />
+                    <button type="button" onClick={() => fileRefs.current['ceremonyPhoto']?.click()} className="flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                      <Upload size={11} /> Subir Foto
+                    </button>
+                    {cAsset && (
+                      <button type="button" onClick={() => deleteAsset('ceremonyPhoto')} className="flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-50">
+                        <Trash2 size={11} /> Quitar
+                      </button>
+                    )}
+                    {cAsset && <span className="text-[10px] text-stone-400">{cAsset.kind === 'url' ? 'enlace' : 'archivo'}</span>}
+                  </div>
+                  <input key={`ceremonyPhoto-${editPortal}`} type="url" placeholder="…o pega una URL pública de la imagen"
+                    defaultValue={cAsset?.kind === 'url' ? cAsset.url || '' : pv('ceremonyPhoto') || ''}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const v = (e.target as HTMLInputElement).value.trim();
+                        if (/^https?:\/\//.test(v)) saveAsset('ceremonyPhoto', { url: v });
+                        else toast('La URL debe empezar con http.', 'error');
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v && /^https?:\/\//.test(v) && (!cAsset || cAsset.url !== v)) saveAsset('ceremonyPhoto', { url: v });
+                    }}
+                    className="w-full rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {pText('Título de la sección', 'ceremonyTitle', { placeholder: 'Ceremonia' })}
+              {pText('Hora del evento', 'ceremonyTime', { placeholder: '5:00 PM' })}
+            </div>
+
+            {pText('Nombre del lugar / Templo', 'ceremonyPlace', { placeholder: 'Catedral Castrense de Santa Bárbara' })}
+            {pText('Dirección completa', 'ceremonyAddress', { placeholder: 'C. General Gabino Puello, Ciudad Colonial, Santo Domingo' })}
+            {pText('Enlace de Google Maps (Ubicación)', 'ceremonyMapsUrl', { placeholder: 'https://maps.app.goo.gl/...' })}
+
+            <div className="rounded-xl border border-stone-200 bg-white p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Opciones de Parqueo · Ceremonia</span>
+              </div>
+              {pText('Texto / Nota del parqueo', 'ceremonyParkingNote', { placeholder: 'Opción de parqueo recomendada, cerca de la iglesia' })}
+              {pText('Enlace de Google Maps para el Parqueo', 'ceremonyParkingUrl', { placeholder: 'https://maps.app.goo.gl/... (opcional)' })}
+            </div>
+          </div>
+
+          {/* Bloque: Recepción */}
+          <div className="rounded-2xl border border-stone-200 bg-stone-50/40 p-4 sm:p-5 space-y-4">
+            <div className="flex items-center gap-2.5 border-b border-stone-200 pb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-800">
+                <Utensils size={18} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-stone-800">Recepción / Fiesta</h3>
+                <p className="text-[11px] text-stone-400">Detalles del salón, celebración y banquete</p>
+              </div>
+            </div>
+
+            {/* Foto de la Recepción */}
+            <div className="rounded-xl border border-stone-200 bg-white p-3 space-y-2">
+              <p className="text-xs font-bold text-stone-700">Foto del Lugar</p>
+              <div className="flex items-start gap-3">
+                <div className="flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-stone-100 text-stone-300 border border-stone-200">
+                  {rPreview ? <img src={rPreview} alt="Recepción" className="h-full w-full object-cover" /> : <ImageIcon size={24} />}
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input type="file" accept="image/*" ref={(el) => { fileRefs.current['receptionPhoto'] = el; }}
+                      onChange={(e) => onPickFile('receptionPhoto', e.target.files?.[0])} className="hidden" />
+                    <button type="button" onClick={() => fileRefs.current['receptionPhoto']?.click()} className="flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+                      <Upload size={11} /> Subir Foto
+                    </button>
+                    {rAsset && (
+                      <button type="button" onClick={() => deleteAsset('receptionPhoto')} className="flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-50">
+                        <Trash2 size={11} /> Quitar
+                      </button>
+                    )}
+                    {rAsset && <span className="text-[10px] text-stone-400">{rAsset.kind === 'url' ? 'enlace' : 'archivo'}</span>}
+                  </div>
+                  <input key={`receptionPhoto-${editPortal}`} type="url" placeholder="…o pega una URL pública de la imagen"
+                    defaultValue={rAsset?.kind === 'url' ? rAsset.url || '' : pv('receptionPhoto') || ''}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const v = (e.target as HTMLInputElement).value.trim();
+                        if (/^https?:\/\//.test(v)) saveAsset('receptionPhoto', { url: v });
+                        else toast('La URL debe empezar con http.', 'error');
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v && /^https?:\/\//.test(v) && (!rAsset || rAsset.url !== v)) saveAsset('receptionPhoto', { url: v });
+                    }}
+                    className="w-full rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {pText('Título de la sección', 'receptionTitle', { placeholder: 'Recepción' })}
+              {pText('Hora del evento', 'receptionTime', { placeholder: '7:30 PM' })}
+            </div>
+
+            {pText('Nombre del lugar / Salón', 'receptionPlace', { placeholder: 'Club Deportivo Naco · Salón Montás' })}
+            {pText('Dirección completa', 'receptionAddress', { placeholder: 'C. Salvador Sturla, Santo Domingo' })}
+            {pText('Enlace de Google Maps (Ubicación)', 'receptionMapsUrl', { placeholder: 'https://maps.app.goo.gl/...' })}
+
+            <div className="rounded-xl border border-stone-200 bg-white p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Opciones de Parqueo · Recepción</span>
+              </div>
+              {pText('Texto / Nota del parqueo', 'receptionParkingNote', { placeholder: '⚠️ Nota: El salón no cuenta con parqueo' })}
+              {pText('Enlace de Google Maps para el Parqueo', 'receptionParkingUrl', { placeholder: 'https://maps.app.goo.gl/... (opcional)' })}
+            </div>
+          </div>
         </>);
       }
 
