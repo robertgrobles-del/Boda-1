@@ -1685,7 +1685,6 @@ export const AdminDashboard: React.FC = () => {
         )}
       </main>
     </div>
-  </div>
 
       {/* Modal: editar teléfono autorizado */}
       <AnimatePresence>
