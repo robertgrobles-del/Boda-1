@@ -4,7 +4,7 @@ import {
   Users, CheckCircle, XCircle, Search, Download, Key, LogOut,
   Smartphone, Plus, MessageSquare, Trash2, Send, Copy, ExternalLink,
   RefreshCw, Sliders, FileText, Check,
-  MessageCircle, MoreVertical, Pencil, X, ChevronDown, Wand2, Menu, Moon, Sun, MapPin
+  MessageCircle, MoreVertical, Pencil, X, ChevronDown, Wand2, Menu, Moon, Sun, MapPin, Star
 } from 'lucide-react';
 import { API_CONFIG } from '../constants';
 import { useToast } from './Toast';
@@ -1223,7 +1223,7 @@ export const AdminDashboard: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={goConfig}
+                  onClick={() => goConfig()}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-stone-100 text-stone-700 hover:bg-stone-200 transition-all"
                 >
                   <Sliders size={14} />
