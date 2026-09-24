@@ -103,15 +103,6 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
                 </div>
               </div>
 
-              {/* Nota de parqueo (si aplica) */}
-              {ceremonyParkingNote && !ceremonyParkingUrl && (
-                <div className="mt-3 mb-1">
-                  <span className="inline-block text-[11px] text-amber-900 font-medium bg-amber-50 border border-amber-200/70 rounded-full py-1 px-3">
-                    {ceremonyParkingNote}
-                  </span>
-                </div>
-              )}
-
               <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
                 {ceremonyMapsUrl && (
                   <a
@@ -138,6 +129,15 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
                   </a>
                 )}
               </div>
+
+              {/* Nota de parqueo (si aplica) */}
+              {ceremonyParkingNote && !ceremonyParkingUrl && (
+                <div className="mt-3">
+                  <span className="inline-block text-[11px] text-amber-900 font-medium bg-amber-50 border border-amber-200/70 rounded-full py-1 px-3">
+                    {ceremonyParkingNote}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Image */}
@@ -186,15 +186,6 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
                 </div>
               </div>
 
-              {/* Nota de parqueo */}
-              {receptionParkingNote && !receptionParkingUrl && (
-                <div className="mt-3 mb-1">
-                  <span className="inline-block text-[11px] text-amber-900 font-medium bg-amber-50 border border-amber-200/70 rounded-full py-1 px-3">
-                    {receptionParkingNote}
-                  </span>
-                </div>
-              )}
-
               <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
                 {receptionMapsUrl && (
                   <a
@@ -204,7 +195,7 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
                     className="inline-flex items-center gap-1.5 rounded-full bg-terracotta px-5 py-2 text-[9px] font-bold uppercase tracking-widest text-white transition-all shadow-sm hover:bg-terracotta/90 active:scale-95"
                   >
                     <MapPin size={13} />
-                    Ver Mapa
+                    Ver Ubicación
                   </a>
                 )}
 
@@ -221,6 +212,15 @@ export const EventDetails: React.FC<{ id: string }> = ({ id }) => {
                   </a>
                 )}
               </div>
+
+              {/* Nota de parqueo */}
+              {receptionParkingNote && !receptionParkingUrl && (
+                <div className="mt-3">
+                  <span className="inline-block text-[11px] text-amber-900 font-medium bg-amber-50 border border-amber-200/70 rounded-full py-1 px-3">
+                    {receptionParkingNote}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Map Placeholder Image */}
