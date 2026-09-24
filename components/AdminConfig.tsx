@@ -15,6 +15,7 @@ interface Props {
   onBack: () => void;
   toast: Toast;
   initialSection?: string;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const IMAGE_SLOTS: { slot: string; label: string; hint: string }[] = [
@@ -101,14 +102,28 @@ const PRES_DEFAULTS: Record<string, any> = {
   registryBanks: [], galleryUrls: [], theme: 'clasico', paletteSeeds: [], palette: null,
 };
 
-export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, patchSettings, loadSettings, onBack, toast, initialSection }) => {
+export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, patchSettings: patchSettingsNow, loadSettings, onBack, toast, initialSection, onDirtyChange }) => {
   const s = settings;
-  const set = (obj: Record<string, any>) => setSettings((p: any) => ({ ...p, ...obj }));
-  const [nav, setNav] = useState<string>(() => initialSection || 'portales');
+  const nav = initialSection || 'portales';
 
+  // --- Cambios pendientes: nada se guarda hasta pulsar "Guardar cambios" ---
+  const pendingPortal = useRef<Record<string, Record<string, any>>>({});
+  const pendingGlobal = useRef<Record<string, any>>({});
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty]); // eslint-disable-line
   useEffect(() => {
-    if (initialSection) setNav(initialSection);
-  }, [initialSection]);
+    if (!dirty) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [dirty]);
+  const set = (obj: Record<string, any>) => {
+    setSettings((p: any) => ({ ...p, ...obj }));
+    Object.assign(pendingGlobal.current, obj);
+    setDirty(true);
+  };
+  const patchSettings = async (obj: Record<string, any>) => { set(obj); };
 
   useEffect(() => { if (!settings) loadSettings(); }, []); // eslint-disable-line
 
@@ -122,31 +137,56 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
   const portalNames: Record<string, string> = s?.portalNames || {};
   const portalData: Record<string, any> = s?.portals?.[editPortal] || {};
   const pv = (key: string) => (key in portalData ? portalData[key] : PRES_DEFAULTS[key]);
-  const pset = (obj: Record<string, any>) =>
+  const pset = (obj: Record<string, any>) => {
     setSettings((p: any) => ({
       ...p,
       portals: { ...(p.portals || {}), [editPortal]: { ...(p.portals?.[editPortal] || {}), ...obj } },
     }));
-  const patchPortal = async (obj: Record<string, any>) => {
-    pset(obj);
+    pendingPortal.current[editPortal] = { ...(pendingPortal.current[editPortal] || {}), ...obj };
+    setDirty(true);
+  };
+  const patchPortal = async (obj: Record<string, any>) => { pset(obj); };
+
+  const saveAll = async (): Promise<boolean> => {
+    setSaving(true);
     try {
-      const r = await fetch(`${API_CONFIG.backendUrl}/api/admin/portals/${editPortal}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
-        body: JSON.stringify(obj),
-      });
-      if (r.ok) {
+      for (const [n, obj] of Object.entries(pendingPortal.current)) {
+        const r = await fetch(`${API_CONFIG.backendUrl}/api/admin/portals/${n}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+          body: JSON.stringify(obj),
+        });
+        if (!r.ok) throw new Error('portal');
         const d = await r.json();
         setSettings((p: any) => ({
           ...p,
-          portals: { ...(p.portals || {}), [editPortal]: d.presentation },
+          portals: { ...(p.portals || {}), [n]: d.presentation },
           portalNames: d.portalNames || p.portalNames,
         }));
-      } else toast('No se pudo guardar.', 'error');
-    } catch { toast('Error de conexión.', 'error'); }
+      }
+      if (Object.keys(pendingGlobal.current).length) await patchSettingsNow(pendingGlobal.current);
+      pendingPortal.current = {};
+      pendingGlobal.current = {};
+      setDirty(false);
+      toast('Cambios guardados.', 'success');
+      return true;
+    } catch {
+      toast('No se pudieron guardar los cambios.', 'error');
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+  const discard = async () => {
+    pendingPortal.current = {};
+    pendingGlobal.current = {};
+    setDirty(false);
+    await loadSettings();
+    toast('Cambios descartados.', 'success');
   };
   const activate = async () => {
-    await patchSettings({ activePortal: editPortal });
+    if (dirty && !(await saveAll())) return;
+    await patchSettingsNow({ activePortal: editPortal });
     toast(`Portal ${editPortal} activado — es el que ven los invitados.`, 'success');
   };
   const preview = () => window.open(`/?portalPreview=${editPortal}`, '_blank');
@@ -199,7 +239,7 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
         body: JSON.stringify(body),
       });
       const d = await r.json().catch(() => ({}));
-      if (r.ok) { toast('Imagen actualizada.', 'success'); await loadAssets(); await loadSettings(); }
+      if (r.ok) { toast('Imagen actualizada.', 'success'); await loadAssets(); }
       else toast(d.error || 'No se pudo guardar la imagen.', 'error');
     } catch { toast('Error de conexión.', 'error'); }
   };
@@ -207,7 +247,7 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
     try {
       await fetch(`${API_CONFIG.backendUrl}/api/admin/assets/${slot}?portal=${editPortal}`, { method: 'DELETE', headers: { 'x-api-key': apiKey } });
       toast('Imagen restablecida a la original.', 'success');
-      await loadAssets(); await loadSettings();
+      await loadAssets();
     } catch { toast('Error de conexión.', 'error'); }
   };
   const onPickFile = async (slot: string, file?: File) => {
@@ -620,11 +660,6 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
                 </div>
               ))}
             </div>
-            {stores.length > 0 && (
-              <button type="button" onClick={() => patchPortal({ registryStores: stores }).then(() => toast('Tiendas guardadas.', 'success'))} className="mt-3 flex items-center gap-2 rounded-lg bg-[#4a5d23] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#3b4c1b]">
-                <Check size={12} /> Guardar tiendas
-              </button>
-            )}
           </div>
 
           {/* Cuentas de banco */}
@@ -653,11 +688,6 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
                 </div>
               ))}
             </div>
-            {banks.length > 0 && (
-              <button type="button" onClick={() => patchPortal({ registryBanks: banks }).then(() => toast('Cuentas guardadas.', 'success'))} className="mt-3 flex items-center gap-2 rounded-lg bg-[#4a5d23] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#3b4c1b]">
-                <Check size={12} /> Guardar cuentas
-              </button>
-            )}
           </div>
         </>);
 
@@ -798,15 +828,12 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
           {heading('Plantilla de WhatsApp', 'Común a todos los portales. Etiquetas: {SALUDO} {NOMBRE} {TELEFONO} {PIN} {PASES} {ENLACE} {ACCESO} {NOTA_ACCESO}')}
           <div className="flex flex-wrap gap-1.5">
             {['{SALUDO}', '{NOMBRE}', '{TELEFONO}', '{PIN}', '{PASES}', '{ENLACE}', '{ACCESO}', '{NOTA_ACCESO}'].map((t) => (
-              <button key={t} type="button" onClick={() => setWa((p) => `${p} ${t} `)} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 font-mono text-[10px] font-bold text-emerald-800 hover:bg-emerald-100">+ {t}</button>
+              <button key={t} type="button" onClick={() => { const v = `${wa} ${t} `; setWa(v); set({ waTemplate: v }); }} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 font-mono text-[10px] font-bold text-emerald-800 hover:bg-emerald-100">+ {t}</button>
             ))}
           </div>
-          <textarea rows={12} value={wa} onChange={(e) => setWa(e.target.value)} className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3 font-mono text-xs leading-relaxed focus:border-[#4a5d23] focus:outline-none" />
+          <textarea rows={12} value={wa} onChange={(e) => { setWa(e.target.value); set({ waTemplate: e.target.value }); }} className="w-full rounded-2xl border border-stone-200 bg-stone-50/50 px-4 py-3 font-mono text-xs leading-relaxed focus:border-[#4a5d23] focus:outline-none" />
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => patchSettings({ waTemplate: wa }).then(() => toast('Plantilla guardada.', 'success'))} className="flex items-center gap-2 rounded-xl bg-[#4a5d23] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#3b4c1b]">
-              <Check size={14} /> Guardar plantilla
-            </button>
-            <button type="button" onClick={() => { setWa(DEFAULT_WA_TEMPLATE); patchSettings({ waTemplate: '' }); toast('Plantilla restablecida.', 'success'); }} className="flex items-center gap-1.5 rounded-xl border border-stone-200 px-4 py-2 text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
+            <button type="button" onClick={() => { setWa(DEFAULT_WA_TEMPLATE); set({ waTemplate: '' }); }} className="flex items-center gap-1.5 rounded-xl border border-stone-200 px-4 py-2 text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50">
               <RefreshCw size={13} /> Restablecer
             </button>
           </div>
@@ -814,59 +841,27 @@ export const AdminConfig: React.FC<Props> = ({ apiKey, settings, setSettings, pa
     }
   };
 
-  const navBtn = (item: { id: string; label: string; scope: string }, mobile = false) => (
-    <button
-      key={item.id}
-      onClick={() => setNav(item.id)}
-      className={`whitespace-nowrap rounded-lg px-3.5 py-2.5 text-left text-sm font-bold transition-colors ${
-        nav === item.id
-          ? 'bg-[#f1f4ea] text-[#4a5d23] md:border-l-2 md:border-[#4a5d23] md:rounded-l-none'
-          : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700'
-      } ${mobile ? '' : 'w-full'}`}
-    >
-      {item.label}
-    </button>
-  );
-
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-14">
-      <div className="sticky top-0 z-20 -mx-4 mb-5 flex items-center justify-between border-b border-stone-200/80 bg-[#fdfaf6]/90 px-4 py-3.5 backdrop-blur">
-        <button onClick={onBack} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-stone-500 hover:text-stone-800">
-          <ArrowLeft size={14} /> Volver al panel
-        </button>
-        <div className="flex items-center gap-2">
-          <span className="hidden text-[10px] font-bold uppercase tracking-wider text-stone-400 sm:inline">Editando</span>
-          <span className="rounded-md bg-[#f1f4ea] px-2 py-0.5 text-[11px] font-bold text-[#4a5d23]">{portalLabel}</span>
-        </div>
-      </div>
+    <div className="mx-auto max-w-4xl pb-28">
+      {content()}
 
-      <div className="mb-4">
-        <p className="admin-eyebrow">Configuración</p>
-        <h1 className="admin-title mt-0.5 text-2xl text-stone-800">Ajustes del sitio</h1>
-      </div>
-
-      {/* nav horizontal (móvil) */}
-      <div className="mb-4 flex gap-1 overflow-x-auto pb-1 md:hidden">
-        {NAV.map((i) => navBtn(i, true))}
-      </div>
-
-      <div className="flex gap-7">
-        {/* sidebar (escritorio) */}
-        <aside className="hidden w-56 shrink-0 md:block">
-          <div className="sticky top-20 space-y-5">
-            <div className="space-y-1">
-              <p className="px-3.5 pb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-stone-400">Portal · {portalLabel}</p>
-              {NAV.filter((i) => i.scope === 'x' || i.scope === 'p').map((i) => navBtn(i))}
-            </div>
-            <div className="space-y-1">
-              <p className="px-3.5 pb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-stone-400">General</p>
-              {NAV.filter((i) => i.scope === 'g').map((i) => navBtn(i))}
+      {dirty && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,.2)] backdrop-blur lg:left-72">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-sm font-bold text-stone-700">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" /> Tienes cambios sin guardar
+            </p>
+            <div className="flex gap-2">
+              <button onClick={discard} disabled={saving} className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-50 disabled:opacity-50">
+                Descartar
+              </button>
+              <button onClick={saveAll} disabled={saving} className="flex items-center gap-2 rounded-xl bg-[#4a5d23] px-5 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-sm hover:bg-[#3b4c1b] disabled:opacity-60">
+                <Check size={14} /> {saving ? 'Guardando…' : 'Guardar cambios'}
+              </button>
             </div>
           </div>
-        </aside>
-
-        <div className="min-w-0 flex-1">{content()}</div>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

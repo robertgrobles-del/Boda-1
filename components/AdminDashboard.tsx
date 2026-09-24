@@ -86,18 +86,23 @@ export const AdminDashboard: React.FC = () => {
   const goConfig = (sec = 'portales') => {
     setConfigSection(sec);
     window.history.pushState(null, '', '/admin/config');
+    if (subPage !== 'config') loadSettings();
     setSubPage('config');
-    loadSettings();
   };
   const openConfigSection = (sec: string) => {
     goConfig(sec);
     setSidebarOpen(false);
   };
-  const goDashboard = () => {
+  const [configDirty, setConfigDirty] = useState(false);
+  const goDashboard = (): boolean => {
+    if (subPage === 'config' && configDirty && !window.confirm('Tienes cambios sin guardar en Configuración. ¿Salir y descartarlos?')) return false;
+    setConfigDirty(false);
     window.history.pushState(null, '', '/admin');
     setSubPage('dashboard');
     setSidebarOpen(false);
+    return true;
   };
+  const goView = (v: 'rsvps' | 'allowed' | 'messages' | 'seating') => { if (goDashboard()) setActiveView(v); };
   useEffect(() => {
     const onPop = () => setSubPage(window.location.pathname.startsWith('/admin/config') ? 'config' : 'dashboard');
     window.addEventListener('popstate', onPop);
@@ -776,7 +781,7 @@ export const AdminDashboard: React.FC = () => {
             <p className="px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">Panel Principal</p>
             <nav className="mt-2 space-y-1">
               <button
-                onClick={() => { goDashboard(); setActiveView('rsvps'); }}
+                onClick={() => goView('rsvps')}
                 className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
                   subPage === 'dashboard' && activeView === 'rsvps'
                     ? 'bg-[#4a5d23] text-white shadow-sm'
@@ -794,7 +799,7 @@ export const AdminDashboard: React.FC = () => {
               </button>
 
               <button
-                onClick={() => { goDashboard(); setActiveView('allowed'); }}
+                onClick={() => goView('allowed')}
                 className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
                   subPage === 'dashboard' && activeView === 'allowed'
                     ? 'bg-[#4a5d23] text-white shadow-sm'
@@ -810,7 +815,7 @@ export const AdminDashboard: React.FC = () => {
               </button>
 
               <button
-                onClick={() => { goDashboard(); setActiveView('seating'); }}
+                onClick={() => goView('seating')}
                 className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
                   subPage === 'dashboard' && activeView === 'seating'
                     ? 'bg-[#4a5d23] text-white shadow-sm'
@@ -823,7 +828,7 @@ export const AdminDashboard: React.FC = () => {
               </button>
 
               <button
-                onClick={() => { goDashboard(); setActiveView('messages'); }}
+                onClick={() => goView('messages')}
                 className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
                   subPage === 'dashboard' && activeView === 'messages'
                     ? 'bg-[#4a5d23] text-white shadow-sm'
@@ -939,7 +944,7 @@ export const AdminDashboard: React.FC = () => {
               </span>
               <h1 className="text-sm font-bold text-stone-800">
                 {subPage === 'config'
-                  ? `Configuración · ${configSection.charAt(0).toUpperCase() + configSection.slice(1)}`
+                  ? `Configuración · ${({ portales: 'Portales de invitados', diseno: 'Diseño y temas', evento: 'Lugar y evento', anuncio: 'Anuncios', secciones: 'Secciones visibles', vestimenta: 'Código de vestimenta', regalos: 'Mesa de regalos', fotos: 'Fotos y galería', bloqueo: 'Acceso y bloqueo', confirmaciones: 'Aforo y fechas RSVP', whatsapp: 'Plantilla WhatsApp', correo: 'Servidor de correo', gracias: 'Pantalla de gracias' } as Record<string, string>)[configSection] || configSection}`
                   : activeView === 'rsvps'
                   ? 'Confirmaciones de Asistencia (RSVPs)'
                   : activeView === 'allowed'
@@ -993,7 +998,8 @@ export const AdminDashboard: React.FC = () => {
               setSettings={setSettings}
               patchSettings={patchSettings}
               loadSettings={loadSettings}
-              onBack={goDashboard}
+              onBack={() => { goDashboard(); }}
+              onDirtyChange={setConfigDirty}
               toast={toast}
               initialSection={configSection}
             />
